@@ -20,7 +20,7 @@ import org.xml.sax.InputSource;
 /**
  * A XUL-style element: an XML node that builds a live control tree. Each tag maps
  * to one of the project's {@link Control}s (the Java/Swing translation of the C++
- * {@code SPElement} parser that used {@code wxXml}); container tags lay their
+ * {@code SPElement} parser that used Expat); container tags lay their
  * children out, leaf tags host a single widget.
  *
  * <pre>{@code

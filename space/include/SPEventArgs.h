@@ -81,6 +81,9 @@ class SPKeyEventArgs : public SPEventArgs {
     int  m_keyCode;
     bool m_cmdDown;
 public:
+    static constexpr int KeyUp = 0x10001;
+    static constexpr int KeyDown = 0x10002;
+
     SPKeyEventArgs(int keyCode, bool cmdDown)
         : SPEventArgs(), m_keyCode(keyCode), m_cmdDown(cmdDown) {}
     int  getKeyCode()  const { return m_keyCode; }

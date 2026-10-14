@@ -7,17 +7,8 @@
 #include "SPSeekBarElement.h"
 #include "SPPlaybackEventArgs.h"
 
-#include <wx/app.h>
 #include <cstdio>
-
-// Forward-declare SpacifyApp so we can call its playback API.
-// The actual class is defined in spacify/include/SpacifyApp.h, but SPAppFooterElement
-// lives in the space/ layer.  We access it only through wxTheApp + dynamic_cast.
-class SpacifyApp;
-extern SpacifyApp* wxGetApp_SpacifyApp();  // resolved at link time via wxTheApp
-
-// Helper: cast wxTheApp to SpacifyApp without pulling in SpacifyApp.h
-#include "SpacifyApp.h"
+#include "SPApplicationContext.h"
 
 namespace space {
 
@@ -90,7 +81,7 @@ SPAppFooterElement::SPAppFooterElement(SPElement *parent) : SPHBoxElement(parent
     this->appendChild(m_durLabel);
 
     // ── Subscribe to playback events from SpacifyApp ───────────────────────
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp)) {
+    if (auto* app = SPApplicationContext::current()) {
         app->getPlaybackEvents().addEventListener(
             "playback:changed",
             reinterpret_cast<SPCallback>(&SPAppFooterElement::onPlaybackChanged),
@@ -114,7 +105,7 @@ int SPAppFooterElement::onPlaybackChanged(SPObject* /*sender*/, SPEventArgs* arg
     /*
     // Update track title
     if (m_trackLabel) {
-        if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp))
+        if (auto* app = SPApplicationContext::current())
             m_trackLabel->setInnerText(app->getTrackTitle());
     }
     */
@@ -143,7 +134,7 @@ int SPAppFooterElement::onSeek(SPObject* /*sender*/, SPEventArgs* args) {
     auto* sa = dynamic_cast<SPSeekEventArgs*>(args);
     if (!sa) return 0;
 
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp))
+    if (auto* app = SPApplicationContext::current())
         app->seekTo(sa->getPositionMs());
 
     return 0;
@@ -152,19 +143,19 @@ int SPAppFooterElement::onSeek(SPObject* /*sender*/, SPEventArgs* args) {
 // ── Button handlers ───────────────────────────────────────────────────────────
 
 int SPAppFooterElement::onPlayPause(SPObject* /*sender*/, SPEventArgs* /*args*/) {
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp))
+    if (auto* app = SPApplicationContext::current())
         app->togglePlayPause();
     return 0;
 }
 
 int SPAppFooterElement::onPrev(SPObject* /*sender*/, SPEventArgs* /*args*/) {
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp))
+    if (auto* app = SPApplicationContext::current())
         app->playbackPrev();
     return 0;
 }
 
 int SPAppFooterElement::onNext(SPObject* /*sender*/, SPEventArgs* /*args*/) {
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp))
+    if (auto* app = SPApplicationContext::current())
         app->playbackNext();
     return 0;
 }

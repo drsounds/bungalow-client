@@ -55,6 +55,8 @@ namespace space
           return this->m_window;
         }
         ~WxWidgetsGraphicsContext() override;
+        void request(const string& method, const string& url,
+                     const string& data, RequestCallback callback) override;
         SPImage *loadImage(const string& bitmap) override;
         void setControlAttribute(SPElement *, const string&, const string&) override;
         void setControlVisible(SPElement* elm, bool visible);

@@ -1,8 +1,8 @@
 #include "NativeApplication.h"
 
-#include "MainElement.h"
 #include "SPClassicSkin.h"
 #include "SPMouseEventArgs.h"
+#include "SPTextElement.h"
 #include "SPWindowElement.h"
 #include "Space.h"
 #include "Win32GraphicsContext.h"
@@ -27,8 +27,10 @@ namespace space
         windowElement->setColorScheme(SP_COLOR_SCHEME_DARK);
         space->addWindow(windowElement);
 
-        mainElement = new MainElement(windowElement);
+        mainElement = new SPTextElement(windowElement);
         mainElement->setId("main");
+        mainElement->setInnerText("Spacify");
+        mainElement->setHeight(32);
         windowElement->appendChild(mainElement);
         resize();
         return true;
