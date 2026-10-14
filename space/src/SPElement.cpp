@@ -6,7 +6,6 @@
 #include <cstdio>
 #include <fstream>
 #include <iterator>
-#include <boost/lexical_cast/bad_lexical_cast.hpp>
 #include <utility>
 #include "Space.h"
 
