@@ -78,7 +78,6 @@ add_executable(spacify-client
     ${BACKEND_HEADERS})
 
 target_include_directories(spacify-client PRIVATE
-    ${Boost_INCLUDE_DIRS}
     ${LUA_INCLUDE_DIR}
     ${PNG_INCLUDE_DIRS}
     ${EXPAT_INCLUDE_DIRS}
@@ -101,6 +100,7 @@ endif()
 
 target_link_libraries(spacify-client PRIVATE
     ${PLATFORM_LIBRARIES}
+    Boost::headers
     Boost::json
     PNG::PNG
     EXPAT::EXPAT
