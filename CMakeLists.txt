@@ -113,16 +113,6 @@ endif()
 install(TARGETS spacify-client RUNTIME DESTINATION .)
 
 if(BUILD_TESTING)
-    add_executable(spacify-template-test
-        space/tests/SPTemplateTest.cpp
-        space/src/SPTemplate.cpp)
-    target_include_directories(spacify-template-test PRIVATE
-        ${Boost_INCLUDE_DIRS}
-        ${LUA_INCLUDE_DIR}
-        space/include)
-    target_link_libraries(spacify-template-test PRIVATE Boost::json ${LUA_LIBRARIES})
-    add_test(NAME spacify-template-test COMMAND spacify-template-test)
-
     add_executable(spacify-xml-parser-test
         space/tests/SPXmlParserTest.cpp
         space/src/SPXmlParser.cpp)
