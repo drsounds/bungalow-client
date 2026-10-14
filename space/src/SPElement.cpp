@@ -8,7 +8,6 @@
 #include <iterator>
 #include <boost/lexical_cast/bad_lexical_cast.hpp>
 #include <utility>
-#include <boost/algorithm/string.hpp>
 #include "Space.h"
 
 #include "SPWindowElement.h"
@@ -28,23 +27,15 @@
 #include "SPTabBarViewElement.h"
 #include "SPTextElement.h"
 #include "SPViewElement.h"
-<<<<<<< HEAD
-#include "wx/wx.h"
 #include "SPTemplate.h"
 
-#include "SpaceWidget.h"
-
 #include <boost/json/src.hpp>
-#include <wx/mstream.h>
 #include <ctime>
 #include <exception>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
-=======
 
-#include <boost/json/src.hpp>
->>>>>>> origin/main
 namespace space {
 	std::function<void(const std::string&)> SPElement::s_xulErrorHandler;
 	SPElement* SPElement::s_capturedElement = nullptr;
@@ -390,7 +381,6 @@ namespace space {
 	}
 
 	void SPElement::request(const string& method, const string &uri, const string &data) {
-<<<<<<< HEAD
 		const string prefix = "spacify:";
 		if (uri.rfind(prefix, 0) != 0) {
 			this->loadXUL("./resources/app/views/error.xml");
@@ -449,22 +439,6 @@ namespace space {
 				s_xulErrorHandler(error.what());
 			this->loadXUL("./resources/app/views/error.xml");
 		}
-=======
-		auto *graphics = this->createGraphics();
-		if (!graphics)
-			return;
-		const string url = "http://127.0.0.1:2855/" +
-			boost::algorithm::replace_all_copy(uri, ":", "/").substr(strlen("spacify:"));
-		graphics->request(method, url, data,
-			[this](bool success, const string& response) {
-				if (success) {
-					this->setInnerXUL(response);
-				} else {
-					this->setFlex(1);
-					this->loadXUL("./resources/app/views/error.xml");
-				}
-			});
->>>>>>> origin/main
 	}
 
 	void SPElement::onLoad() {
