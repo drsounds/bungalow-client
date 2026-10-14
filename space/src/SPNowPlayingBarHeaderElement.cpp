@@ -5,11 +5,9 @@
 #include "SPGraphicsContext.h"
 #include "SPImage.h"
 #include "SPPlaybackEventArgs.h"
-#include "SpacifyApp.h"
+#include "SPApplicationContext.h"
 #include "SPNowPlayingBarTitleElement.h"
 #include "SPImageElement.h"
-
-#include <wx/app.h>
 
 namespace space {
 
@@ -34,7 +32,7 @@ SPNowPlayingBarHeaderElement::SPNowPlayingBarHeaderElement(SPElement* parent)
     this->appendChild(m_title);
 
     // ── Subscribe to playback events ───────────────────────────────────────
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp)) {
+    if (auto* app = SPApplicationContext::current()) {
         app->getPlaybackEvents().addEventListener(
             "playback:changed",
             reinterpret_cast<SPCallback>(&SPNowPlayingBarHeaderElement::onPlaybackChanged),
@@ -55,7 +53,7 @@ int SPNowPlayingBarHeaderElement::onPlaybackChanged(SPObject* /*sender*/, SPEven
     auto* pba = dynamic_cast<SPPlaybackStateEventArgs*>(args);
     if (!pba) return 0;
 
-    auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+    auto* app = SPApplicationContext::current();
     if (!app) return 0;
 
     /*

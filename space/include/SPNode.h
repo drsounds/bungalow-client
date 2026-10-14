@@ -8,7 +8,7 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <wx/xml/xml.h>
+#include "SPXmlParser.h"
 using namespace std;
 namespace space {
     class Space;
@@ -44,7 +44,8 @@ namespace space {
 	        return this->m_innerText;
         }
         void setInnerText(const string& value);
-        SPNode *parseNode(wxXmlNode *xmlNode, SPNode *parent, SPNode *document);
+        SPNode *parseNode(const SPXmlNode& xmlNode, SPNode *parent,
+                          SPNode *document);
 
     	space::Space *getSpace() {
     		if (this->m_space == nullptr) {

@@ -5,9 +5,7 @@
 #include "SPGraphicsContext.h"
 #include "SPImage.h"
 #include "SPPlaybackEventArgs.h"
-#include "SpacifyApp.h"
-
-#include <wx/app.h>
+#include "SPApplicationContext.h"
 
 namespace space {
 
@@ -39,7 +37,7 @@ SPNowPlayingBarTitleElement::SPNowPlayingBarTitleElement(SPElement* parent)
     this->appendChild(m_infoLabel);
 
     // ── Subscribe to playback events ───────────────────────────────────────
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp)) {
+    if (auto* app = SPApplicationContext::current()) {
         app->getPlaybackEvents().addEventListener(
             "playback:changed",
             reinterpret_cast<SPCallback>(&SPNowPlayingBarTitleElement::onPlaybackChanged),
@@ -57,10 +55,10 @@ int SPNowPlayingBarTitleElement::onPlaybackChanged(SPObject* /*sender*/, SPEvent
     auto* pba = dynamic_cast<SPPlaybackStateEventArgs*>(args);
     if (!pba) return 0;
 
-    auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+    auto* app = SPApplicationContext::current();
     if (!app) return 0;
 
-    if (app->getCurrentPlayable()) {
+    if (app->hasCurrentPlayable()) {
         if (m_titleLabel) m_titleLabel->setInnerText(app->getTrackTitle());
         if (m_infoLabel)  m_infoLabel->setInnerText(app->getArtistName());
 

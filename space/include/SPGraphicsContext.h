@@ -6,6 +6,8 @@
 #include "SPFontStyle.h"
 
 #include <map>
+#include <functional>
+#include <string>
 
 #include "SpaceBase.h"
 #include "Space.h"
@@ -26,10 +28,16 @@ namespace space {
 		SPFontStyle *fontStyle{};
     	Space *m_space;
 	public:
+		using RequestCallback = std::function<void(bool, const std::string&)>;
 		virtual ~SPGraphicsContext() = default;
     	SPGraphicsContext();
 		explicit SPGraphicsContext(Space *space);
 		SPSkin *skin{};
+		virtual void request(const std::string&, const std::string&,
+		                     const std::string&, RequestCallback callback) {
+			if (callback)
+				callback(false, {});
+		}
 		virtual void setControlAttribute(SPElement *, const string&, const string&) {}
 		virtual void drawImagePart(SPImage *image, int x, int y, int width, int height, int x1, int y1, int x2, int y2) {}
 		virtual void drawSkinImage(const string& resourceId, int x, int y, int w, int h) {}

@@ -41,14 +41,22 @@ file(GLOB SPACE_SOURCES CONFIGURE_DEPENDS "space/src/*.cpp")
 file(GLOB SPACIFY_SOURCES CONFIGURE_DEPENDS "spacify/src/*.cpp")
 file(GLOB SPACE_HEADERS CONFIGURE_DEPENDS "space/include/*.h")
 file(GLOB SPACIFY_HEADERS CONFIGURE_DEPENDS "spacify/include/*.h")
-list(FILTER SPACIFY_SOURCES EXCLUDE REGEX "/main\\.cpp$")
+if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
+    list(FILTER SPACIFY_SOURCES EXCLUDE REGEX "/main\\.cpp$")
+else()
+    set(SPACIFY_SOURCES)
+    set(SPACIFY_HEADERS)
+endif()
 
 if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
-    file(GLOB BACKEND_SOURCES CONFIGURE_DEPENDS "wxwidgets/src/*.cpp")
-    file(GLOB BACKEND_HEADERS CONFIGURE_DEPENDS "wxwidgets/include/*.h")
+    file(GLOB_RECURSE BACKEND_SOURCES CONFIGURE_DEPENDS
+        "wxwidgets/src/*.cpp"
+        "wxwidgets/app/src/*.cpp")
+    file(GLOB_RECURSE BACKEND_HEADERS CONFIGURE_DEPENDS
+        "wxwidgets/include/*.h"
+        "wxwidgets/app/include/*.h")
     set(PLATFORM_LIBRARIES ${wxWidgets_LIBRARIES})
 else()
-    list(FILTER SPACIFY_SOURCES EXCLUDE REGEX "/SpacifyApp\\.cpp$")
     file(GLOB BACKEND_HEADERS CONFIGURE_DEPENDS "windows/include/*.h")
     set(BACKEND_SOURCES
         windows/src/NativeApplication.cpp
@@ -86,7 +94,11 @@ target_include_directories(spacify-client PRIVATE
     spacify/include)
 
 if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
-    target_include_directories(spacify-client PRIVATE wxwidgets/include ${wxWidgets_INCLUDE_DIRS})
+    target_include_directories(spacify-client PRIVATE
+        wxwidgets/include
+        wxwidgets/app/include
+        ${wxWidgets_INCLUDE_DIRS})
+    target_compile_definitions(spacify-client PRIVATE BUNGALOW_ENABLE_PLAYER_CANVAS)
 else()
     target_include_directories(spacify-client PRIVATE windows/include)
     if(BUNGALOW_UI_BACKEND STREQUAL "wtl")
@@ -110,6 +122,7 @@ endif()
 install(TARGETS spacify-client RUNTIME DESTINATION .)
 
 if(BUILD_TESTING)
+<<<<<<< HEAD
     add_executable(spacify-template-test
         space/tests/SPTemplateTest.cpp
         space/src/SPTemplate.cpp)
@@ -120,4 +133,12 @@ if(BUILD_TESTING)
         elua/include)
     target_link_libraries(spacify-template-test PRIVATE Boost::json elua)
     add_test(NAME spacify-template-test COMMAND spacify-template-test)
+=======
+    add_executable(spacify-xml-parser-test
+        space/tests/SPXmlParserTest.cpp
+        space/src/SPXmlParser.cpp)
+    target_include_directories(spacify-xml-parser-test PRIVATE space/include)
+    target_link_libraries(spacify-xml-parser-test PRIVATE EXPAT::EXPAT)
+    add_test(NAME spacify-xml-parser-test COMMAND spacify-xml-parser-test)
+>>>>>>> origin/main
 endif()

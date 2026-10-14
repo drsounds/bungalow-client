@@ -15,7 +15,7 @@
 #include <optional>
 #include <vector>
 #include <boost/json/object.hpp>
-#include <wx/xml/xml.h>
+#include "SPXmlParser.h"
 
 using namespace std;
 
@@ -287,17 +287,15 @@ namespace space {
         sp_margin getPadding();
         void setPadding(sp_margin value);
     	void setMargins(sp_margin value);
-        SPElement *parseElement(wxXmlNode *xmlNode, SPElement *parent,
-                                SPNode *document);
         virtual SPElement *createElement(const string& tagName, SPElement* parent);
         SPElement *getElementById(const string &id) const;
-        SPElement *parseElement(wxXmlNode *xmlNode, SPElement *parent,
+        SPElement *parseElement(const SPXmlNode& xmlNode, SPElement *parent,
                                 SPElement *document);
         void onPostBackButtonClick(SPObject* sender, SPEventArgs* event);
         void endParseElement(void *data, const char *el);
         void startParseElement(void *data, const char *el, const char **attr);
         void setInnerXUL(const string &value);
-        void loadXULFromXMLDoc(const wxXmlDocument& xmlDoc);
+        void loadXULFromXMLDoc(const SPXmlNode& xmlDoc);
         SPElement *getTabBarViewElement();
         virtual SPElement *getViewStackElement();
         virtual void mouseMove(int, int) {}

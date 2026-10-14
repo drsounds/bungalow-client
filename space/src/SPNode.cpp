@@ -8,11 +8,6 @@
 
 #include "SPEventArgs.h"
 #include <regex>
-#include <wx/string.h>
-#include <wx/stream.h>
-#include <wx/xml/xml.h>
-#include <wx/mstream.h> // For wxMemoryInputStream
-#include <wx/txtstrm.h>
 
 using namespace std;
 
@@ -210,32 +205,31 @@ namespace space {
 		this->m_innerText = value;
 	}
 
-	SPNode *SPNode::parseNode(wxXmlNode *xmlNode, SPNode *parent,
+	SPNode *SPNode::parseNode(const SPXmlNode& xmlNode, SPNode *parent,
 								   SPNode *document) {
+		if (xmlNode.textNode)
+			return parent;
 		SPNode *elm = nullptr;
-		elm = document->getNodeById(string(xmlNode->GetAttribute("id")));
+		const auto id = xmlNode.attributes.find("id");
+		elm = document->getNodeById(id == xmlNode.attributes.end() ? "" : id->second);
 		if (elm == nullptr) {
-			elm = createNode(xmlNode->GetName().ToStdString(), parent);
+			elm = createNode(xmlNode.name, parent);
 		}
-		for (int i = 0; i < sizeof(xmlNode->GetAttributes()); i++) {
-			auto attribute = xmlNode->GetAttributes()[i];
-			elm->set(attribute.GetName().ToStdString(), attribute.GetValue().ToStdString());
-		}
-		elm->setInnerText(xmlNode->GetContent().ToStdString());
-		for (wxXmlNode *child = xmlNode->GetChildren(); child; child = child->GetNext()) {
+		for (const auto& attribute : xmlNode.attributes)
+			elm->set(attribute.first, attribute.second);
+		elm->setInnerText(xmlNode.text);
+		for (const auto& child : xmlNode.children)
 			parseNode(child, elm, document);
-		}
 		return elm;
 	}
 	void SPNode::setInnerXml(const string& value) {
-		wxMemoryInputStream wmis(value.data(), value.size());
-    	wxXmlDocument doc;
-		doc.Load(wmis);
-    	// start processing the XML file
-    	wxXmlNode *child = doc.GetRoot()->GetChildren();
+		SPXmlNode root;
+		if (!parseSPXml(value, root))
+			return;
     	SPNode *parsingNode = this;
-    	for (; child; child = child->GetNext()) {
-    		parsingNode = parseNode(child, parsingNode, this);
+		for (const auto& child : root.children) {
+			if (!child.textNode)
+				parsingNode = parseNode(child, parsingNode, this);
     	}
     }
 

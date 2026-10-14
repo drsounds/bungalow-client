@@ -6,17 +6,10 @@
 #include "SPMouseEventArgs.h"
 #include "SPEventArgs.h"   // SPKeyEventArgs
 #include "SPPlaybackEventArgs.h"  // SPTableRowEventArgs
-#include "SpacifyApp.h"
-#include "models/SPPlayable.h"
+#include "SPApplicationContext.h"
 
 #include <algorithm>
 #include <chrono>
-
-// WXK constants for arrow keys (matches wxWidgets values)
-#ifndef WXK_UP
-#  define WXK_UP   315
-#  define WXK_DOWN 317
-#endif
 
 namespace space {
     SPTableElement::SPTableElement()
@@ -117,13 +110,13 @@ namespace space {
         const int numCols = dataSource->getColumnCount();
         for (int i = 0; i < dataSource->getRowCount(); i++) {
             SPColor rowFg = fgColor;
-            auto *app = dynamic_cast<SpacifyApp*>(wxTheApp);
+            auto *app = SPApplicationContext::current();
             if (!dataSource->isRowPlayable(i)) {
                 rowFg = isDark ? unplayableDark : unplayableLight;
             }
-            if (app->getCurrentPlayable() != nullptr) {
+            if (app && app->hasCurrentPlayable()) {
                 if (i < dataSource->getRowCount()) {
-                    if (dataSource->getRowUri(i) == app->getCurrentPlayable()->uri) {
+                    if (dataSource->getRowUri(i) == app->currentPlayableUri()) {
                         rowFg = SPColor(50, 255, 50, 255);
                     }
                 }
@@ -220,9 +213,9 @@ namespace space {
                 if (rowCnt == 0) return;
 
                 int next = m_anchorRow;
-                if (ke->getKeyCode() == WXK_UP)
+                if (ke->getKeyCode() == SPKeyEventArgs::KeyUp)
                     next = (m_anchorRow <= 0) ? 0 : m_anchorRow - 1;
-                else if (ke->getKeyCode() == WXK_DOWN)
+                else if (ke->getKeyCode() == SPKeyEventArgs::KeyDown)
                     next = (m_anchorRow + 1 >= rowCnt) ? rowCnt - 1 : m_anchorRow + 1;
                 else
                     return;
