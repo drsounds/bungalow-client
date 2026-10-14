@@ -8,6 +8,7 @@
 #include "Win32GraphicsContext.h"
 
 #include <commctrl.h>
+#include <algorithm>
 #include <string>
 
 namespace space
@@ -26,21 +27,24 @@ namespace space
         windowElement->setColorScheme(SP_COLOR_SCHEME_DARK);
         space->addWindow(windowElement);
 
-        auto *main = new MainElement(windowElement);
-        main->setId("main");
-        windowElement->appendChild(main);
+        mainElement = new MainElement(windowElement);
+        mainElement->setId("main");
+        windowElement->appendChild(mainElement);
         resize();
         return true;
     }
 
     void NativeApplication::resize()
     {
-        if (!windowElement)
+        if (!windowElement || !mainElement)
             return;
         RECT client{};
         GetClientRect(windowHandle, &client);
         windowElement->setAbsoluteBounds({0, 0, client.right, client.bottom});
         windowElement->pack();
+        mainElement->setY(HeaderHeight);
+        mainElement->setHeight((std::max)(0, client.bottom - HeaderHeight));
+        mainElement->pack();
     }
 
     void NativeApplication::paint(HDC dc)
