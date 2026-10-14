@@ -6,11 +6,16 @@ It uses an own written GUI framework called **Space** which is a lightweight abs
 
 ## Building
 
-Required libraries
+Required libraries:
 
-* Boost
+* Boost.JSON
+* Lua
 * libpng
-* wxWidgets
+* Expat
+* wxWidgets with the WebView component enabled
+
+On Windows, the wxWidgets WebView backend also requires the Microsoft Edge
+WebView2 Runtime to be installed.
 
 ```bash
 cmake .

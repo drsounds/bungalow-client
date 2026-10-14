@@ -28,14 +28,18 @@
 #include "SPTabBarViewElement.h"
 #include "SPTextElement.h"
 #include "SPViewElement.h"
-#include "WxWidgetsGraphicsContext.h"
 #include "wx/wx.h"
+#include "SPTemplate.h"
 
 #include "SpaceWidget.h"
 
 #include <boost/json/src.hpp>
 #include <wx/mstream.h>
-#include <wx/webrequest.h>
+#include <ctime>
+#include <exception>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
 namespace space {
 	std::function<void(const std::string&)> SPElement::s_xulErrorHandler;
 	SPElement* SPElement::s_capturedElement = nullptr;
@@ -381,40 +385,64 @@ namespace space {
 	}
 
 	void SPElement::request(const string& method, const string &uri, const string &data) {
-		platform::wxwidgets::WxWidgetsGraphicsContext *gc = static_cast<platform::wxwidgets::WxWidgetsGraphicsContext *>(this->createGraphics());
-		wxWindow *window = gc->getWidget()->GetParent();
-		string url = "http://127.0.0.1:2855/" + boost::algorithm::replace_all_copy(uri, ":", "/").substr(strlen("spacify:"));
-		wxWebRequest request = wxWebSession::GetDefault().CreateRequest(
-			window,
-			url
-		);
-		request.SetMethod(method);
-		if (method != "get" && method != "HEAD" && method != "DELETE") {
-			request.SetData(data.c_str(), "application/json");
+		const string prefix = "spacify:";
+		if (uri.rfind(prefix, 0) != 0) {
+			this->loadXUL("./resources/app/views/error.xml");
+			return;
 		}
-		if (!request.IsOk()) {
-			throw "Failed to create wxWebRequest";
+
+		string route = uri.substr(prefix.size());
+		const size_t separator = route.find(':');
+		if (separator != string::npos)
+			route.resize(separator);
+		if (route != "start" && route != "artist") {
+			this->loadXUL("./resources/app/views/error.xml");
+			return;
 		}
-		window->Bind(wxEVT_WEBREQUEST_STATE, [&](wxWebRequestEvent& event) {
-			// Request completed
-			// Request completed
-			switch (event.GetState())
-			{
-			case wxWebRequest::State_Failed: {
-				// cout << "Failed to load " << uri << "\r\n";
-				this->setFlex(1);
-				this->loadXUL("./resources/app/views/error.xml");
-				break;
+
+		const string filename = "./resources/app/views/" + route + ".xml";
+		std::ifstream templateFile(filename, std::ios::binary);
+		if (!templateFile) {
+			this->loadXUL("./resources/app/views/error.xml");
+			return;
+		}
+
+		std::ostringstream templateSource;
+		templateSource << templateFile.rdbuf();
+		boost::json::object requestData;
+		if (!data.empty()) {
+			try {
+				boost::json::value parsed = boost::json::parse(data);
+				if (parsed.is_object())
+					requestData = parsed.as_object();
+			} catch (const boost::json::system_error&) {
 			}
-			case wxWebRequest::State_Completed: {
-				wxString res = event.GetResponse().AsString();
-				this->setInnerXUL(res.ToStdString());
-				break;
-			}
-			default:;
-			}
-		});
-		request.Start();
+		}
+
+		string action;
+		if (requestData.contains("command") && requestData.at("command").is_string())
+			action = string(requestData.at("command").as_string());
+
+		std::time_t now = std::time(nullptr);
+		std::tm localTime{};
+#ifdef _WIN32
+		localtime_s(&localTime, &now);
+#else
+		localtime_r(&now, &localTime);
+#endif
+		std::ostringstream timestamp;
+		timestamp << std::put_time(&localTime, "%Y-%m-%d %H:%M:%S");
+		boost::json::object model;
+		model["now"] = timestamp.str();
+
+		try {
+			this->setInnerXUL(space::SPTemplate::render(
+				templateSource.str(), method, uri, action, requestData, model));
+		} catch (const std::exception& error) {
+			if (s_xulErrorHandler)
+				s_xulErrorHandler(error.what());
+			this->loadXUL("./resources/app/views/error.xml");
+		}
 	}
 
 	void SPElement::onLoad() {
@@ -1106,5 +1134,3 @@ namespace space {
 	}
 
 }
-
-

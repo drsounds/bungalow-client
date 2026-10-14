@@ -77,10 +77,6 @@ bool SpacifyApp::OnInit(){
     // Set CWD to the resources parent so relative XUL paths work from anywhere.
     wxSetWorkingDirectory(resourcesDir.GetPathWithSep() + "..");
 
-    wxFileName appDir;
-    appDir.AssignDir(resourcesDir.GetFullPath() + "/app");
-    std::string appDirStr = appDir.GetPath().ToStdString();
-
     // Open (or create) the local SQLite database next to the resources directory.
     m_databasePath = resourcesDir.GetPath().ToStdString() + "/spacify.db";
     m_database = std::make_unique<Database>(m_databasePath);
@@ -186,17 +182,11 @@ bool SpacifyApp::OnInit(){
     // Initialise the position timer (owned by this wxEvtHandler)
     m_positionTimer.SetOwner(this, ID_POSITION_TIMER);
 
-    /*
-    CallAfter([this, appDirStr]() {
-        m_pythonRunner.start(appDirStr);
-    });
-    */
     return true;
 }
 
 int SpacifyApp::OnExit() {
     m_positionTimer.Stop();
-    // m_pythonRunner.stop();
     for (SPMediaService* svc : m_mediaServices)
         delete svc;
     m_mediaServices.clear();

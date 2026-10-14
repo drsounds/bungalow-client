@@ -6,7 +6,6 @@
 #include <lauxlib.h>
 
 //#define DEBUG 1
-#include "version.h"
 #include "macros.h"
 #include "elua.h"
 
@@ -156,7 +155,26 @@ void elua_reset_conf(elua_conf_t *conf) {
   conf->auto_begin_response_call = 0;
 }
 
-int elua_parse_file(lua_State *L, FILE *f, elua_context_t *ctx) {
+typedef int (*elua_read_char_fn)(void *source);
+
+static int elua_read_file_char(void *source) {
+  return fgetc((FILE *)source);
+}
+
+typedef struct {
+  const char *buffer;
+  size_t length;
+  size_t offset;
+} elua_buffer_t;
+
+static int elua_read_buffer_char(void *source) {
+  elua_buffer_t *buffer = (elua_buffer_t *)source;
+  if(buffer->offset >= buffer->length) return EOF;
+  return (unsigned char)buffer->buffer[buffer->offset++];
+}
+
+static int elua_parse(lua_State *L, elua_read_char_fn read_char, void *source,
+                      FILE *file, elua_context_t *ctx) {
   
   log_debug("Entered elua_parse_file");
   
@@ -176,11 +194,11 @@ int elua_parse_file(lua_State *L, FILE *f, elua_context_t *ctx) {
   
   log_debug("Entering read-loop");
   while(++column) {
-    c = fgetc(f);
+    c = read_char(source);
     // Handle EOF
     if(c == EOF) {
       log_debug("EOF @ column %lu, line %lu", column, line);
-      if(ferror(f)) {
+      if(file && ferror(file)) {
         log_error("I/O Error %d: %s", errno, strerror(errno));
         //clearerr(f);
         status = set_file_error(L);
@@ -202,7 +220,7 @@ int elua_parse_file(lua_State *L, FILE *f, elua_context_t *ctx) {
         context = CTX_EVAL;
       }
       else {
-        if(c == '"' || c == '\n') { // Escape " and \n in text
+        if(c == '"' || c == '\\' || c == '\n' || c == '\r') {
           cstr_appendc(ctx->buf, '\\');
         }
         cstr_appendc(ctx->buf, c);
@@ -260,12 +278,28 @@ int elua_parse_file(lua_State *L, FILE *f, elua_context_t *ctx) {
   return status;
 }
 
+int elua_parse_file(lua_State *L, FILE *f, elua_context_t *ctx) {
+  return elua_parse(L, elua_read_file_char, f, f, ctx);
+}
 
 // LUA addition
 int lua_load_cstr(lua_State *L, cstr_t *buf, const char *filename) {
+#if LUA_VERSION_NUM >= 502
+  return lua_load(L, elua_load_cstr_reader, (void *)buf, filename, NULL);
+#else
   return lua_load(L, elua_load_cstr_reader, (void *)buf, filename);
+#endif
 }
 
+int elua_loadbuffer(lua_State *L, const char *buffer, size_t length,
+                    const char *filename, elua_context_t *ctx) {
+  int status;
+  elua_buffer_t input = {buffer, length, 0};
+  if((status = elua_parse(L, elua_read_buffer_char, &input, NULL, ctx)) != 0) {
+    return status;
+  }
+  return lua_load_cstr(L, ctx->out, filename);
+}
 
 int elua_loadfile(lua_State *L, const char *fn, elua_context_t *ctx) {
   FILE *fp;
