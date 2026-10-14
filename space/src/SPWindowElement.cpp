@@ -6,7 +6,6 @@
 
 #include "SPSkin.h"
 #include "SPElement.h"
-#include "MainElement.h"
 #include "Space.h"
 #include "SPElement.h"
 #include "SPNavigateEventArgs.h"
