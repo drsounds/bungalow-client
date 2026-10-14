@@ -4,7 +4,6 @@
 
 #include "SPColor.h"
 #include "SPMouseEventArgs.h"
-#include "SpaceFrame.h"
 
 #include "SPEventArgs.h"
 #include <regex>
