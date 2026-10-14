@@ -21,6 +21,22 @@ jobs:
           ref: 065ef5597383c1231bd4892cf8e94331b29bdb97
           path: vendor/WTL
 
+      - name: Locate vcpkg installation
+        id: vcpkg
+        shell: pwsh
+        run: echo "root=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_OUTPUT
+
+      - name: Cache vcpkg dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.vcpkg.outputs.root }}/installed/x64-windows-static-md
+          key: ${{ runner.os }}-vcpkg-x64-windows-static-md-${{ hashFiles('CMakeLists.txt', '.github/workflows/native-windows-ci.yml') }}
+
+      - name: Cache C++ compiler outputs
+        uses: hendrikmuhs/ccache-action@v1.2.24
+        with:
+          key: windows-2022-wtl
+
       - name: Install build dependencies
         shell: pwsh
         run: |
@@ -39,6 +55,7 @@ jobs:
             "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static-md `
             "-DWTL_INCLUDE_DIR=$env:GITHUB_WORKSPACE/vendor/WTL/Include" `
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache `
             -DBUNGALOW_UI_BACKEND=wtl
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build build --config Release
