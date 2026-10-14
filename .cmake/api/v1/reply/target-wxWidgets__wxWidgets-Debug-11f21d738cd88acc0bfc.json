@@ -1,0 +1,97 @@
+{
+	"abstract" : true,
+	"backtrace" : 3,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"find_package",
+			"target_link_libraries"
+		],
+		"files" : 
+		[
+			"/opt/homebrew/share/cmake/Modules/FindwxWidgets.cmake",
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 16,
+				"parent" : 0
+			},
+			{
+				"file" : 0,
+				"parent" : 1
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 1189,
+				"parent" : 2
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 1190,
+				"parent" : 2
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "wxWidgets::wxWidgets::@6890427a1f51a3e7e1df",
+	"imported" : true,
+	"interfaceLinkLibraries" : 
+	[
+		{
+			"backtrace" : 4,
+			"fragment" : "-L/usr/local/lib"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "-lwx_osx_cocoau_xrc-3.3"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "-lwx_osx_cocoau_html-3.3"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "-lwx_osx_cocoau_qa-3.3"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "-lwx_osx_cocoau_core-3.3"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "-lwx_baseu_xml-3.3"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "-lwx_baseu_net-3.3"
+		},
+		{
+			"backtrace" : 4,
+			"fragment" : "-lwx_baseu-3.3"
+		}
+	],
+	"local" : true,
+	"name" : "wxWidgets::wxWidgets",
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sources" : [],
+	"type" : "INTERFACE_LIBRARY"
+}

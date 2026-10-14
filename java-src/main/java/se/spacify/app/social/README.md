@@ -1,0 +1,1 @@
+In this app, we should implement the foundation for the SocialService aspect, which creates a SocialConcept, which lays out foundation for implementing integrations with social networks.

@@ -1,0 +1,79 @@
+name: Release wxWidgets Windows build
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (for example v1.0.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Set up vcpkg binary cache
+        shell: pwsh
+        run: |
+          $cache = Join-Path $env:RUNNER_TEMP "vcpkg-cache"
+          New-Item -ItemType Directory -Force -Path $cache | Out-Null
+          "VCPKG_DEFAULT_BINARY_CACHE=$cache" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Cache vcpkg dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ github.workflow }}-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', '.github/workflows/*.yml') }}-${{ github.run_id }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-${{ github.workflow }}-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', '.github/workflows/*.yml') }}-
+            vcpkg-${{ runner.os }}-${{ github.workflow }}-
+
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-${{ github.workflow }}
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install boost-json lua libpng expat wxwidgets --triplet x64-windows-static-md
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure and build
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache `
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache `
+            "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static-md `
+            -DBUNGALOW_UI_BACKEND=wxwidgets
+          cmake --build build --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --install build --config Release --prefix package
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item resources package/resources -Recurse
+          Compress-Archive -Path package/* -DestinationPath bungalow-native-wxwidgets-windows-x64.zip
+
+      - uses: actions/upload-artifact@v4.6.2
+        with:
+          name: bungalow-native-wxwidgets-windows-x64
+          path: bungalow-native-wxwidgets-windows-x64.zip
+          if-no-files-found: error
+
+      - uses: softprops/action-gh-release@v2.0.8
+        with:
+          tag_name: ${{ inputs.tag }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          files: bungalow-native-wxwidgets-windows-x64.zip

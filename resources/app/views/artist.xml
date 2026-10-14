@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<view>
+    <section title="Overview" id="overview">
+        <text>Artist</text>
+    </section>
+    <section title="Test" id="test">
+        <text>Second view</text>
+    </section>
+</view>

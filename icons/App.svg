@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 64 64" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,-263.655656,-0.196262)">
+        <g id="App" transform="matrix(4,0,0,4,263.655656,0.196262)">
+            <rect x="0" y="0" width="16" height="16" style="fill:none;"/>
+            <g transform="matrix(1.333333,0,0,1.333333,-97.333333,-1.333333)">
+                <path d="M77.697,13L75,13L75,10C73.896,10 73,9.104 73,8C73,6.896 73.896,6 75,6L75,3L78,3C78,1.896 78.896,1 80,1C81.104,1 82,1.896 82,3L85,3L85,5.696C83.729,5.696 82.697,6.738 82.697,8.022C82.697,9.305 83.729,10.347 85,10.347L85,13L82.303,13C82.303,11.717 81.271,10.675 80,10.675C78.729,10.675 77.697,11.717 77.697,13Z" style="fill:url(#_Linear1);"/>
+            </g>
+        </g>
+    </g>
+    <defs>
+        <linearGradient id="_Linear1" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(0,8.977685,-6.113729,0,80.611765,3)"><stop offset="0" style="stop-color:white;stop-opacity:1"/><stop offset="1" style="stop-color:rgb(174,174,174);stop-opacity:1"/></linearGradient>
+    </defs>
+</svg>

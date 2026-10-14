@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<vbox bgcolor="#ffffff" fgcolor="#000000">
+    <text italic="true" size="28" fgcolor="#ff0000" height="18">Error in template application</text>
+    <text fgcolor="#333333">An error occurred during the request</text>
+</vbox>

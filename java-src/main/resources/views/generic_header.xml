@@ -1,0 +1,6 @@
+<hbox>
+    <vbox flex="1">
+        <h3 uri="${node.uri}">${node.name}</h3>
+        <text>${node.description}</text>
+    </vbox>
+</hbox>

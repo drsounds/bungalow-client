@@ -1,0 +1,17 @@
+<?xml version="1.0" ?>
+<document>
+  <appheader id="header" height="120">
+    <button id="backButton">&lt;</button>
+    <button id="forwardButton">&gt;</button>
+    <input id="searchInput" />
+  </appheader>
+  <hbox flex="1" id="body">
+    <vbox width="300" id="leftSidebar">
+      <tabbar id="leftTabBar" height="28" />
+      <treeview id="treeview" width="228" flex="1" />
+    </vbox>
+    <splitter />
+    <viewstack flex="1" id="viewstack" />
+  </hbox> 
+  <appfooter id="footer" height="30" />
+</document>
