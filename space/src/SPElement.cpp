@@ -29,6 +29,7 @@
 #include "SPTemplate.h"
 
 #include <boost/json/src.hpp>
+#include <boost/system/system_error.hpp>
 #include <ctime>
 #include <exception>
 #include <fstream>
@@ -410,7 +411,7 @@ namespace space {
 				boost::json::value parsed = boost::json::parse(data);
 				if (parsed.is_object())
 					requestData = parsed.as_object();
-			} catch (const boost::json::system_error&) {
+			} catch (const boost::system::system_error&) {
 			}
 		}
 
