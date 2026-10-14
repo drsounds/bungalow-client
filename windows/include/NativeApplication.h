@@ -4,6 +4,7 @@
 
 namespace space
 {
+    class MainElement;
     class SPWindowElement;
     class Win32GraphicsContext;
     class Space;
@@ -11,6 +12,8 @@ namespace space
     class NativeApplication
     {
     public:
+        static constexpr int HeaderHeight = 40;
+
         bool initialize(HWND window);
         void resize();
         void paint(HDC dc);
@@ -22,6 +25,7 @@ namespace space
         HWND windowHandle = nullptr;
         Space *space = nullptr;
         SPWindowElement *windowElement = nullptr;
+        MainElement *mainElement = nullptr;
         Win32GraphicsContext *graphics = nullptr;
         bool leftButtonDown = false;
     };
