@@ -4,11 +4,11 @@
 #include "SPGraphicsContext.h"
 #include "SPImage.h"
 #include "SPPlaybackEventArgs.h"
-#include "SpacifyApp.h"
+#include "SPApplicationContext.h"
 #include "SPNowPlayingBarHeaderElement.h"
+#ifdef BUNGALOW_ENABLE_PLAYER_CANVAS
 #include "SPPlayerCanvasElement.h"
-
-#include <wx/app.h>
+#endif
 
 namespace space {
 
@@ -24,6 +24,7 @@ SPNowPlayingBarElement::SPNowPlayingBarElement(SPElement* parent)
     m_header = new SPNowPlayingBarHeaderElement(this);
 this->appendChild(m_header);
 
+#ifdef BUNGALOW_ENABLE_PLAYER_CANVAS
     m_playerCanvas = new views::SPPlayerCanvasElement(this);
     m_playerCanvas->setHeight(128); // hidden until we have cover art to show
     m_playerCanvas->setFlex(1);
@@ -37,9 +38,10 @@ this->appendChild(m_header);
         this,
         nullptr
     );
+#endif
 
     // ── Subscribe to playback events ───────────────────────────────────────
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp)) {
+    if (auto* app = SPApplicationContext::current()) {
         app->getPlaybackEvents().addEventListener(
             "playback:changed",
             reinterpret_cast<SPCallback>(&SPNowPlayingBarElement::onPlaybackChanged),
@@ -50,7 +52,9 @@ this->appendChild(m_header);
 
 SPNowPlayingBarElement::~SPNowPlayingBarElement() {
     delete m_header;
+#ifdef BUNGALOW_ENABLE_PLAYER_CANVAS
     delete m_playerCanvas;
+#endif
 }
 
 // ── Playback event handler ────────────────────────────────────────────────────
@@ -59,7 +63,7 @@ int SPNowPlayingBarElement::onPlaybackChanged(SPObject* /*sender*/, SPEventArgs*
     auto* pba = dynamic_cast<SPPlaybackStateEventArgs*>(args);
     if (!pba) return 0;
 
-    auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+    auto* app = SPApplicationContext::current();
     if (!app) return 0;
 
     // m_playerCanvas->setPlaybackState(pba->isPlaying(), pba->getPositionMs(), pba->getDurationMs());

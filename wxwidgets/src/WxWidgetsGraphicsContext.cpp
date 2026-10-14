@@ -1,4 +1,5 @@
 #include "WxWidgetsGraphicsContext.h"
+#include <wx/webrequest.h>
 #include <wx/fontenum.h>
 #include <wx/url.h>
 #include <wx/protocol/http.h>
@@ -8,6 +9,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <utility>
 
 #include "SPImage.h"
 #include "SPInputEventArgs.h"
@@ -21,6 +23,45 @@ namespace space
     {
         namespace wxwidgets
         {
+            void WxWidgetsGraphicsContext::request(const string& method,
+                                                    const string& url,
+                                                    const string& data,
+                                                    RequestCallback callback)
+            {
+                wxWindow *window = m_widget ? m_widget->GetParent() : nullptr;
+                if (!window) {
+                    if (callback)
+                        callback(false, {});
+                    return;
+                }
+
+                const int eventId = wxNewId();
+                wxWebRequest request = wxWebSession::GetDefault().CreateRequest(
+                    window, wxString::FromUTF8(url.c_str()), eventId);
+                request.SetMethod(wxString::FromUTF8(method.c_str()));
+                if (method != "get" && method != "HEAD" && method != "DELETE")
+                    request.SetData(data.c_str(), "application/json");
+                if (!request.IsOk()) {
+                    if (callback)
+                        callback(false, {});
+                    return;
+                }
+
+                window->Bind(wxEVT_WEBREQUEST_STATE,
+                    [callback = std::move(callback)](wxWebRequestEvent& event) mutable {
+                        const auto state = event.GetState();
+                        if (state == wxWebRequest::State_Completed) {
+                            if (callback)
+                                callback(true, event.GetResponse().AsString().ToStdString());
+                        } else if (state == wxWebRequest::State_Failed ||
+                                   state == wxWebRequest::State_Cancelled) {
+                            if (callback)
+                                callback(false, {});
+                        }
+                    }, eventId);
+                request.Start();
+            }
+
             static wxString resolveWxFontFamily(const std::string& preferred) {
                 wxString face(preferred);
                 if (wxFontEnumerator::IsValidFacename(face))

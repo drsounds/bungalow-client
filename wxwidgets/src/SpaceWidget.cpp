@@ -140,7 +140,12 @@ void SpaceWidget::OnLeftDown(wxMouseEvent& event) {
 }
 
 void SpaceWidget::OnKeyDown(wxKeyEvent& event) {
-    auto *args = new space::SPKeyEventArgs(event.GetKeyCode(), event.CmdDown());
+    int keyCode = event.GetKeyCode();
+    if (keyCode == WXK_UP)
+        keyCode = space::SPKeyEventArgs::KeyUp;
+    else if (keyCode == WXK_DOWN)
+        keyCode = space::SPKeyEventArgs::KeyDown;
+    auto *args = new space::SPKeyEventArgs(keyCode, event.CmdDown());
     space::SPEvent evt("keydown", args, nullptr);
     this->getSpace()->dispatchEvent(
         "keydown",

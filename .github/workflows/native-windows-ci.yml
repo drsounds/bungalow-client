@@ -1,0 +1,43 @@
+name: Native Windows CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-wtl:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Check out WTL headers
+        uses: actions/checkout@v4.2.2
+        with:
+          repository: Win32-WTL/WTL
+          ref: 065ef5597383c1231bd4892cf8e94331b29bdb97
+          path: vendor/WTL
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install boost-json lua libpng expat --triplet x64-windows-static-md
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure, build, and test
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static-md `
+            "-DWTL_INCLUDE_DIR=$env:GITHUB_WORKSPACE/vendor/WTL/Include" `
+            -DBUNGALOW_UI_BACKEND=wtl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build build --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir build --output-on-failure -C Release

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cstdio>
 #include <fstream>
+#include <iterator>
 #include <boost/lexical_cast/bad_lexical_cast.hpp>
 #include <utility>
 #include <boost/algorithm/string.hpp>
@@ -27,13 +28,8 @@
 #include "SPTabBarViewElement.h"
 #include "SPTextElement.h"
 #include "SPViewElement.h"
-#include "WxWidgetsGraphicsContext.h"
-#include "wx/wx.h"
-
-#include "SpaceWidget.h"
 
 #include <boost/json/src.hpp>
-#include <wx/webrequest.h>
 namespace space {
 	std::function<void(const std::string&)> SPElement::s_xulErrorHandler;
 	SPElement* SPElement::s_capturedElement = nullptr;
@@ -379,53 +375,28 @@ namespace space {
 	}
 
 	void SPElement::request(const string& method, const string &uri, const string &data) {
-		platform::wxwidgets::WxWidgetsGraphicsContext *gc = static_cast<platform::wxwidgets::WxWidgetsGraphicsContext *>(this->createGraphics());
-		wxWindow *window = gc->getWidget()->GetParent();
-		string url = "http://127.0.0.1:2855/" + boost::algorithm::replace_all_copy(uri, ":", "/").substr(strlen("spacify:"));
-		wxWebRequest request = wxWebSession::GetDefault().CreateRequest(
-			window,
-			url
-		);
-		request.SetMethod(method);
-		if (method != "get" && method != "HEAD" && method != "DELETE") {
-			request.SetData(data.c_str(), "application/json");
-		}
-		if (!request.IsOk()) {
-			throw "Failed to create wxWebRequest";
-		}
-		window->Bind(wxEVT_WEBREQUEST_STATE, [&](wxWebRequestEvent& event) {
-			// Request completed
-			// Request completed
-			switch (event.GetState())
-			{
-			case wxWebRequest::State_Failed: {
-				// cout << "Failed to load " << uri << "\r\n";
-				this->setFlex(1);
-				this->loadXUL("./resources/app/views/error.xml");
-				break;
-			}
-			case wxWebRequest::State_Completed: {
-				wxString res = event.GetResponse().AsString();
-				this->setInnerXUL(res.ToStdString());
-				break;
-			}
-			default:;
-			}
-		});
-		request.Start();
+		auto *graphics = this->createGraphics();
+		if (!graphics)
+			return;
+		const string url = "http://127.0.0.1:2855/" +
+			boost::algorithm::replace_all_copy(uri, ":", "/").substr(strlen("spacify:"));
+		graphics->request(method, url, data,
+			[this](bool success, const string& response) {
+				if (success) {
+					this->setInnerXUL(response);
+				} else {
+					this->setFlex(1);
+					this->loadXUL("./resources/app/views/error.xml");
+				}
+			});
 	}
 
 	void SPElement::onLoad() {
 	}
 
 	void SPElement::loadXUL(const string &filename) {
-		// Safely load a XUL document from disk.
-		//
-		// Previously, a failure to load any file caused a call to load the
-		// generic error view, "../resources/app/views/error.xml". If that
-		// file was also missing or unreadable, we would recurse indefinitely:
-		//   loadXUL(bad_path) -> loadXUL(error.xml) -> loadXUL(error.xml) ...
-		// which previously caused repeated fallback attempts.
+		// Safely load a XUL document from disk without recursively retrying the
+		// error view when it is also unavailable.
 		//
 		// To avoid this:
 		//  - We only attempt to fall back to the error view when we are NOT
@@ -1098,4 +1069,3 @@ namespace space {
 	}
 
 }
-

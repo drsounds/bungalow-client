@@ -10,6 +10,7 @@
 #include "PythonRunner.h"
 #include "Database.h"
 #include "SPObservable.h"
+#include "SPApplicationContext.h"
 #include "DownloadManager.h"
 
 #include <memory>
@@ -27,7 +28,7 @@ namespace space
     class MainElement;
 }
 
-class SpacifyApp : public wxApp
+class SpacifyApp : public wxApp, public space::SPApplicationContext
 {
 protected:
     space::Space* m_space;
@@ -118,24 +119,26 @@ public:
     void playTrackId(int64_t trackId);
     void playUri(const std::string& uri);
 
-    void togglePlayPause();
-    void seekTo(int posMs);
-    void playbackNext();
-    void playbackPrev();
+    void togglePlayPause() override;
+    void seekTo(int posMs) override;
+    void playbackNext() override;
+    void playbackPrev() override;
 
     bool        isPlaying()    const { return m_isPlaying; }
     int         getPositionMs()const { return m_positionMs; }
     int         getDurationMs()const { return m_durationMs; }
     SPPlayable* getCurrentPlayable() const { return m_currentPlayable; }
+    bool hasCurrentPlayable() const override { return m_currentPlayable != nullptr; }
+    std::string currentPlayableUri() const override;
 
     const std::vector<PlayQueueEntry>& getQueueEntries() const { return m_queueEntries; }
     int getQueueIndex() const { return m_queueIndex; }
 
-    const std::string& getTrackTitle()   const { return m_trackTitle; }
-    const std::string& getArtistName()   const { return m_artistName; }
+    const std::string& getTrackTitle()   const override { return m_trackTitle; }
+    const std::string& getArtistName()   const override { return m_artistName; }
     const std::string& getCoverArtPath() const { return m_coverArtPath; }
 
-    space::SPObservable& getPlaybackEvents() { return m_playbackEvents; }
+    space::SPObservable& getPlaybackEvents() override { return m_playbackEvents; }
 
     wxDECLARE_EVENT_TABLE();
 };

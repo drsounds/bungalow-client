@@ -4,7 +4,7 @@
 
 namespace space
 {
-    class MainElement;
+    class SPTextElement;
     class SPWindowElement;
     class Win32GraphicsContext;
     class Space;
@@ -25,7 +25,7 @@ namespace space
         HWND windowHandle = nullptr;
         Space *space = nullptr;
         SPWindowElement *windowElement = nullptr;
-        MainElement *mainElement = nullptr;
+        SPTextElement *mainElement = nullptr;
         Win32GraphicsContext *graphics = nullptr;
         bool leftButtonDown = false;
     };

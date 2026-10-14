@@ -54,6 +54,7 @@ wxEND_EVENT_TABLE()
 bool SpacifyApp::OnInit(){
     if( !wxApp::OnInit() )
         return false;
+    space::SPApplicationContext::setCurrent(this);
 
     // Route XUL load failures to the global info banner
     space::SPElement::s_xulErrorHandler = [this](const std::string& msg) {
@@ -195,6 +196,8 @@ bool SpacifyApp::OnInit(){
 }
 
 int SpacifyApp::OnExit() {
+    if (space::SPApplicationContext::current() == this)
+        space::SPApplicationContext::setCurrent(nullptr);
     m_positionTimer.Stop();
     // m_pythonRunner.stop();
     for (SPMediaService* svc : m_mediaServices)
@@ -207,6 +210,10 @@ int SpacifyApp::OnExit() {
     m_queueEntries.clear();
     m_currentPlayable = nullptr;
     return wxApp::OnExit();
+}
+
+std::string SpacifyApp::currentPlayableUri() const {
+    return m_currentPlayable ? m_currentPlayable->uri : std::string();
 }
 
 // ── Service lookup ────────────────────────────────────────────────────────────

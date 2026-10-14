@@ -7,10 +7,9 @@
 #include "SPGraphicsContext.h"
 #include "SPTableDataSource.h"
 #include "libspace.h"
-#include "models/SPPlayable.h"
 #include "SPAppHeaderElement.h"
 #include "SPButtonElement.h"
-#include "SpacifyApp.h"
+#include "SPApplicationContext.h"
 #include "SPColor.h"
 
 #include <cmath>
@@ -236,12 +235,12 @@ void SPClassicSkin::drawTableRow(SPGraphicsContext *g, SPTableElement *table, in
                 g->fillRectangle(x, y, width, height, stripeColor);
             }
         }
-        auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+        auto* app = SPApplicationContext::current();
         if (app != nullptr) {
-            if (app->getCurrentPlayable() != nullptr && table->dataSource) {
+            if (app->hasCurrentPlayable() && table->dataSource) {
                 auto* dataSource = table->dataSource;
                 if (row < dataSource->getRowCount()) {
-                    if (dataSource->getRowUri(row) == app->getCurrentPlayable()->uri) {
+                    if (dataSource->getRowUri(row) == app->currentPlayableUri()) {
                         g->fillRectangle(x, y, width, height, SPColor(0, 0, 0, 255));
                     }
                 }

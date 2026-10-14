@@ -10,7 +10,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find dependencies
 find_package(Boost REQUIRED)
-find_packagce(Lua REQUIRED)
+find_package(Lua REQUIRED)
+find_package(EXPAT 2.2.8 REQUIRED)
 
 # Include directories
 include_directories(${Boost_INCLUDE_DIRS})
@@ -24,3 +25,4 @@ file(GLOB HEADERS "include/*.h")
 add_library(space ${SOURCES} ${HEADERS}
         src/SPMessageType.cpp
         include/SPMessageType.h)
+target_link_libraries(space PUBLIC EXPAT::EXPAT)

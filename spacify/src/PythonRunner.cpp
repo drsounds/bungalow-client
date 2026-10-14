@@ -33,7 +33,7 @@ void PythonRunner::start(const std::string& appDir) {
         std::filesystem::remove(shutdownFile);
 
         // Py_InitializeEx(0): skip signal handler registration so we don't
-        // interfere with wxWidgets' signal/Cocoa setup on the main thread.
+        // interfere with the UI framework's signal and Cocoa setup.
         Py_InitializeEx(0);
 
         std::string setup =
