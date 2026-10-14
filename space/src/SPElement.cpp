@@ -1,12 +1,12 @@
 #include "SPElement.h"
 
 #include "SPButtonElement.h"
+#include "SPTemplate.h"
 
 #include <iostream>
 #include <cstdio>
 #include <boost/lexical_cast/bad_lexical_cast.hpp>
 #include <utility>
-#include <boost/algorithm/string.hpp>
 #include "Space.h"
 
 #include <wx/xml/xml.h>
@@ -28,14 +28,17 @@
 #include "SPTabBarViewElement.h"
 #include "SPTextElement.h"
 #include "SPViewElement.h"
-#include "WxWidgetsGraphicsContext.h"
 #include "wx/wx.h"
 
 #include "SpaceWidget.h"
 
 #include <boost/json/src.hpp>
 #include <wx/mstream.h>
-#include <wx/webrequest.h>
+
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include <exception>
 namespace space {
 	std::function<void(const std::string&)> SPElement::s_xulErrorHandler;
 	SPElement* SPElement::s_capturedElement = nullptr;
@@ -381,40 +384,42 @@ namespace space {
 	}
 
 	void SPElement::request(const string& method, const string &uri, const string &data) {
-		platform::wxwidgets::WxWidgetsGraphicsContext *gc = static_cast<platform::wxwidgets::WxWidgetsGraphicsContext *>(this->createGraphics());
-		wxWindow *window = gc->getWidget()->GetParent();
-		string url = "http://127.0.0.1:2855/" + boost::algorithm::replace_all_copy(uri, ":", "/").substr(strlen("spacify:"));
-		wxWebRequest request = wxWebSession::GetDefault().CreateRequest(
-			window,
-			url
-		);
-		request.SetMethod(method);
-		if (method != "get" && method != "HEAD" && method != "DELETE") {
-			request.SetData(data.c_str(), "application/json");
+		string route = uri.rfind("spacify:", 0) == 0 ? uri.substr(8) : uri;
+		std::replace(route.begin(), route.end(), ':', '/');
+
+		string templatePath;
+		if (route == "start")
+			templatePath = "./resources/app/views/start.xml";
+		else if (route == "artist")
+			templatePath = "./resources/app/views/artist.xml";
+		else
+			templatePath = "./resources/app/views/error.xml";
+
+		std::ifstream file(templatePath);
+		if (!file) {
+			this->setFlex(1);
+			this->loadXUL("./resources/app/views/error.xml");
+			return;
 		}
-		if (!request.IsOk()) {
-			throw "Failed to create wxWebRequest";
+
+		std::ostringstream source;
+		source << file.rdbuf();
+		SPTemplateRequest templateRequest;
+		templateRequest.method = method;
+		templateRequest.uri = uri;
+		try {
+			if (!data.empty()) {
+				boost::json::value payload = boost::json::parse(data);
+				if (payload.is_object())
+					templateRequest.data = payload.as_object();
+				if (templateRequest.data.if_contains("action"))
+					templateRequest.action = templateRequest.data.at("action").as_string().c_str();
+			}
+			this->setInnerXUL(SPTemplate::render(source.str(), templateRequest));
+		} catch (const std::exception&) {
+			this->setFlex(1);
+			this->loadXUL("./resources/app/views/error.xml");
 		}
-		window->Bind(wxEVT_WEBREQUEST_STATE, [&](wxWebRequestEvent& event) {
-			// Request completed
-			// Request completed
-			switch (event.GetState())
-			{
-			case wxWebRequest::State_Failed: {
-				// cout << "Failed to load " << uri << "\r\n";
-				this->setFlex(1);
-				this->loadXUL("./resources/app/views/error.xml");
-				break;
-			}
-			case wxWebRequest::State_Completed: {
-				wxString res = event.GetResponse().AsString();
-				this->setInnerXUL(res.ToStdString());
-				break;
-			}
-			default:;
-			}
-		});
-		request.Start();
 	}
 
 	void SPElement::onLoad() {
@@ -1106,5 +1111,3 @@ namespace space {
 	}
 
 }
-
-

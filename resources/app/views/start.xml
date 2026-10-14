@@ -2,7 +2,7 @@
 <view>
     <section title="Overview" id="overview">
         <text id="testtext">First view</text>
-        <text bgcolor="#00ff00" id="time">Current time is ${now}</text>
+        <text bgcolor="#00ff00" id="time">Current time is ${os.date("%Y-%m-%d %H:%M:%S")}</text>
         <button id="test_button" name="refresh" onclick="refresh">Test</button>
     </section>
     <section title="Test" id="test">
