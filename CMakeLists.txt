@@ -110,4 +110,11 @@ if(BUILD_TESTING)
         space/include)
     target_link_libraries(spacify-template-test PRIVATE Boost::json ${LUA_LIBRARIES})
     add_test(NAME spacify-template-test COMMAND spacify-template-test)
+
+    add_executable(spacify-xml-parser-test
+        space/tests/SPXmlParserTest.cpp
+        space/src/SPXmlParser.cpp)
+    target_include_directories(spacify-xml-parser-test PRIVATE space/include)
+    target_link_libraries(spacify-xml-parser-test PRIVATE EXPAT::EXPAT)
+    add_test(NAME spacify-xml-parser-test COMMAND spacify-xml-parser-test)
 endif()

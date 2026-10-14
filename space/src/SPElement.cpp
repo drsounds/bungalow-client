@@ -4,12 +4,11 @@
 
 #include <iostream>
 #include <cstdio>
+#include <fstream>
 #include <boost/lexical_cast/bad_lexical_cast.hpp>
 #include <utility>
 #include <boost/algorithm/string.hpp>
 #include "Space.h"
-
-#include <wx/xml/xml.h>
 
 #include "SPWindowElement.h"
 #include "SPObservable.h"
@@ -34,7 +33,6 @@
 #include "SpaceWidget.h"
 
 #include <boost/json/src.hpp>
-#include <wx/mstream.h>
 #include <wx/webrequest.h>
 namespace space {
 	std::function<void(const std::string&)> SPElement::s_xulErrorHandler;
@@ -427,20 +425,19 @@ namespace space {
 		// generic error view, "../resources/app/views/error.xml". If that
 		// file was also missing or unreadable, we would recurse indefinitely:
 		//   loadXUL(bad_path) -> loadXUL(error.xml) -> loadXUL(error.xml) ...
-		// which eventually surfaced as a wxWidgets logging/printf assertion
-		// inside wxFile/wxXmlDocument.
+		// which previously caused repeated fallback attempts.
 		//
 		// To avoid this:
 		//  - We only attempt to fall back to the error view when we are NOT
 		//    already trying to load it.
 		//  - If loading the error view itself fails, we just return quietly.
 		//
-		// We also construct a wxString explicitly to avoid any ambiguity about
-		// encoding/overloads when calling wxXmlDocument::Load.
-		wxXmlDocument doc;
-		wxString wxFilename = wxString::FromUTF8(filename.c_str());
-		if (doc.Load(wxFilename)) {
-			this->loadXULFromXMLDoc(doc);
+		std::ifstream file(filename, std::ios::binary);
+		std::string contents((std::istreambuf_iterator<char>(file)),
+							 std::istreambuf_iterator<char>());
+		SPXmlNode root;
+		if (file && parseSPXml(contents, root)) {
+			this->loadXULFromXMLDoc(root);
 		} else {
 			// Avoid infinite recursion if the error view can't be loaded either.
 			const std::string kErrorViewPath = "./resources/app/views/error.xml";
@@ -454,25 +451,23 @@ namespace space {
 	}
 
 	void SPElement::setInnerXUL(const string &uri) {
-		wxMemoryInputStream stream(uri.data(), uri.size());
-		wxXmlDocument doc;
-		if (doc.Load(stream)) {
-			this->loadXULFromXMLDoc(doc);
-		}
+		SPXmlNode root;
+		if (parseSPXml(uri, root))
+			this->loadXULFromXMLDoc(root);
 	}
 	SPElement *SPElement::getSlotElement() {
 		return this;
 	}
-	void SPElement::loadXULFromXMLDoc(const wxXmlDocument& xmlDoc) {
-		wxXmlNode *root = xmlDoc.GetRoot();
+	void SPElement::loadXULFromXMLDoc(const SPXmlNode& root) {
 		this->clear();
 		string thisType = this->getType();
 
 		SPElement *slot = this->getSlotElement();
-		for (const wxXmlAttribute *attribute = root->GetAttributes(); attribute != nullptr; attribute = attribute->GetNext()) {
-			slot->set(attribute->GetName().ToStdString(), attribute->GetValue().ToStdString());
-		}
-		for (wxXmlNode *child = root->GetChildren(); child; child = child->GetNext()) {
+		for (const auto& attribute : root.attributes)
+			slot->set(attribute.first, attribute.second);
+		for (const auto& child : root.children) {
+			if (child.textNode)
+				continue;
 			SPElement *elm = this->parseElement(child, slot, this);
 			slot->appendChild(elm);
 		}
@@ -1012,38 +1007,35 @@ namespace space {
 
 	}
 
-	SPElement *SPElement::parseElement(wxXmlNode *xmlNode, SPElement *parent,
+	SPElement *SPElement::parseElement(const SPXmlNode& xmlNode, SPElement *parent,
 							   SPElement *document) {
 		SPElement *elm = nullptr;
 		/*
-		string elementId = xmlNode->GetAttribute("id").ToStdString();
+		string elementId = xmlNode.attributes.at("id");
 		if (!elementId.empty()) {
 			elm = document->getElementById(elementId);
 			assert(elm != nullptr && elm->getParentElement() != parent);
 		}*/
 		if (elm == nullptr) {
-			elm = createElement(xmlNode->GetName().ToStdString(), parent);
+			elm = createElement(xmlNode.name, parent);
 		}
 		assert(elm->getParentElement() != nullptr);
 		elm->setVisible(true);
-		for (const wxXmlAttribute *attribute = xmlNode->GetAttributes(); attribute != nullptr; attribute = attribute->GetNext()) {
-			elm->set(attribute->GetName().ToStdString(), attribute->GetValue().ToStdString());
-			if (attribute->GetName().ToStdString() == "hidden") {
+		for (const auto& attribute : xmlNode.attributes) {
+			elm->set(attribute.first, attribute.second);
+			if (attribute.first == "hidden") {
 				elm->setVisible(false);
 			}
-			if (attribute->GetName() == "onclick") {
+			if (attribute.first == "onclick") {
 				if (elm->getType() == "button") {
 					elm->addEventListener("click", SPCallback(&SPElement::onPostBackButtonClick), this, elm);
 				}
 			}
 		}
-		for (wxXmlNode *child = xmlNode->GetChildren(); child; child = child->GetNext()) {
- 			if (child->GetParent() != xmlNode) {
-				break;
-			}
-			if (child->GetType() == wxXML_TEXT_NODE) {
-				elm->getSlotElement()->setInnerText(child->GetContent().ToStdString());
-			} else if (child->GetType() == wxXML_ELEMENT_NODE) {
+		for (const auto& child : xmlNode.children) {
+			if (child.textNode) {
+				elm->getSlotElement()->setInnerText(child.text);
+			} else {
 				SPElement *childElement = parseElement(child, elm->getSlotElement(), document);
 				elm->getSlotElement()->appendChild(childElement);
 				this->pack();
@@ -1106,5 +1098,4 @@ namespace space {
 	}
 
 }
-
 
