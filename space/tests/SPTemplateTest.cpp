@@ -1,5 +1,7 @@
 #include "SPTemplate.h"
 
+#include <boost/json.hpp>
+
 #include <stdexcept>
 
 int main() {
