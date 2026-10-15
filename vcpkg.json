@@ -1,0 +1,16 @@
+{
+	"name": "bungalow-client",
+	"version-string": "1.0.0",
+    "builtin-baseline": "c52f7bd748185ef0e0daf033d9f2ddfc8a3449ea",
+	"dependencies": [
+		"boost-headers",
+		"boost-json",
+		"boost-algorithm",
+		"boost-asio",
+		"boost-lexical-cast",
+		"boost-property-tree",
+		"lua",
+		"libpng",
+		"expat"
+	]
+}

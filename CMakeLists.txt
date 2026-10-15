@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
+
+if(CMAKE_HOST_WIN32)
+    set(VCPKG_TARGET_TRIPLET "x64-windows-static-md" CACHE STRING "vcpkg target triplet")
+endif()
+
 project(BungalowNative LANGUAGES C CXX)
 include(CTest)
 

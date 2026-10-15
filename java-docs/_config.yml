@@ -1,0 +1,25 @@
+# We ship our own layout/stylesheet; disable the github-pages gem's
+# default theme (jekyll-theme-primer) so it doesn't pull in its assets.
+theme: null
+
+title: Bungalow
+description: >-
+  An open, plugin operating system for music — architecture documentation
+  for the Bungalow desktop media player.
+baseurl: "/bungalow"
+url: "https://drsounds.github.io"
+
+repository: drsounds/bungalow
+github_username: drsounds
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - migrate-legacy-db.sql
+  - vendor/

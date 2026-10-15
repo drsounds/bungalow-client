@@ -10,6 +10,9 @@ skin.png
 # Dump file
 *.stackdump
 
+/vcpkg/
+/vcpkg_installed/
+
 # Folder config file
 [Dd]esktop.ini
 

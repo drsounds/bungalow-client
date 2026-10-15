@@ -1,0 +1,47 @@
+{
+	"cmake" : 
+	{
+		"generator" : 
+		{
+			"multiConfig" : true,
+			"name" : "Visual Studio 18 2026",
+			"platform" : "x64"
+		},
+		"paths" : 
+		{
+			"cmake" : "C:/Users/drsou/AppData/Local/Microsoft/WinGet/Packages/Kitware.CMake_Microsoft.Winget.Source_8wekyb3d8bbwe/cmake-4.4.4-windows-x86_64/bin/cmake.exe",
+			"cpack" : "C:/Users/drsou/AppData/Local/Microsoft/WinGet/Packages/Kitware.CMake_Microsoft.Winget.Source_8wekyb3d8bbwe/cmake-4.4.4-windows-x86_64/bin/cpack.exe",
+			"ctest" : "C:/Users/drsou/AppData/Local/Microsoft/WinGet/Packages/Kitware.CMake_Microsoft.Winget.Source_8wekyb3d8bbwe/cmake-4.4.4-windows-x86_64/bin/ctest.exe",
+			"root" : "C:/Users/drsou/AppData/Local/Microsoft/WinGet/Packages/Kitware.CMake_Microsoft.Winget.Source_8wekyb3d8bbwe/cmake-4.4.4-windows-x86_64/share/cmake-4.4"
+		},
+		"version" : 
+		{
+			"isDirty" : false,
+			"major" : 4,
+			"minor" : 4,
+			"patch" : 4,
+			"string" : "4.4.4",
+			"suffix" : ""
+		}
+	},
+	"objects" : [],
+	"reply" : 
+	{
+		"cache-v2" : 
+		{
+			"error" : "no buildsystem generated"
+		},
+		"cmakeFiles-v1" : 
+		{
+			"error" : "no buildsystem generated"
+		},
+		"codemodel-v2" : 
+		{
+			"error" : "no buildsystem generated"
+		},
+		"toolchains-v1" : 
+		{
+			"error" : "no buildsystem generated"
+		}
+	}
+}
