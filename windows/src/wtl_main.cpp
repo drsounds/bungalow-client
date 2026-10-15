@@ -122,10 +122,16 @@ public:
 	}
 
 	LRESULT OnNcHitTest(UINT, WPARAM, LPARAM lParam, BOOL &) {
-		if (IsZoomed())
-			return HTCLIENT;
-
 		const POINT point{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+		if (IsZoomed()) {
+			POINT clientPoint = point;
+			ScreenToClient(&clientPoint);
+			if (clientPoint.y < space::NativeApplication::HeaderHeight &&
+				!IsHeaderButtonAt(clientPoint))
+				return HTCAPTION;
+			return HTCLIENT;
+		}
+
 		RECT window{};
 		GetWindowRect(&window);
 		const int border = GetSystemMetrics(SM_CXSIZEFRAME) +
