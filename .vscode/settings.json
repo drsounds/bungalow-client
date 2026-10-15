@@ -1,3 +1,4 @@
 {
+  "cmake.useCMakePresets": "always",
   "C_Cpp.errorSquiggles": "disabled"
 }

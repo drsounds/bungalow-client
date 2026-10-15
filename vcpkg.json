@@ -5,6 +5,7 @@
 	"dependencies": [
 		"nlohmann-json",
 		"lua",
+        "wtl",
 		"libpng",
 		"expat"
 	],
