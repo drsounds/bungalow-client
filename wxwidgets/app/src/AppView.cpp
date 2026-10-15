@@ -13,7 +13,7 @@ namespace space {
 namespace views {
 
 static bool getDevMode() {
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp))
+    if (auto* app = SpacifyApp::current())
         return app->isDeveloperMode();
     return false;
 }
@@ -56,7 +56,7 @@ void AppView::navigate(const string& uri) {
 }
 
 void AppView::updateAppNavBar(const string& uri) {
-    auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+    auto* app = SpacifyApp::current();
     if (!app || !app->getDatabase()) return;
     bool favorited = app->getDatabase()->isBookmarked(uri);
     setNavBarVisible(!favorited);

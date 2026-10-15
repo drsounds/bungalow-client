@@ -2,8 +2,13 @@
 
 #include <Windows.h>
 
+#include <memory>
+
+class SpacifyApp;
+
 namespace space
 {
+    class SPElement;
     class SPTextElement;
     class SPWindowElement;
     class Win32GraphicsContext;
@@ -13,6 +18,9 @@ namespace space
     {
     public:
         static constexpr int HeaderHeight = 40;
+
+        NativeApplication();
+        ~NativeApplication();
 
         bool initialize(HWND window);
         void resize();
@@ -26,8 +34,9 @@ namespace space
         HWND windowHandle = nullptr;
         Space *space = nullptr;
         SPWindowElement *windowElement = nullptr;
-        SPTextElement *mainElement = nullptr;
+        SPElement *mainElement = nullptr;
         Win32GraphicsContext *graphics = nullptr;
+        std::unique_ptr<SpacifyApp> app;
         bool leftButtonDown = false;
         bool rightButtonDown = false;
     };

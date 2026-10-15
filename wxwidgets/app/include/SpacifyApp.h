@@ -79,6 +79,7 @@ protected:
     void playFromIndex(int idx);
 
 public:
+    static SpacifyApp* current() { return dynamic_cast<SpacifyApp*>(wxTheApp); }
     virtual bool OnInit() override;
     virtual int OnExit() override;
     Database* getDatabase() { return m_database.get(); }

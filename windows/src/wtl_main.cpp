@@ -55,6 +55,7 @@ public:
 	MSG_WM_MOUSEMOVE(OnMouseMove)
 	MSG_WM_KEYDOWN(OnKeyDown)
 	MSG_WM_TIMER(OnTimer)
+	MSG_WM_DESTROY(OnDestroy)
 	CHAIN_MSG_MAP(CFrameWindowImpl<MainFrame>)
 	END_MSG_MAP()
 
@@ -237,6 +238,11 @@ public:
 	}
 
 	void OnTimer(UINT_PTR) { app.timer(); }
+
+	void OnDestroy() {
+		SetMsgHandled(FALSE);
+		PostQuitMessage(0);
+	}
 
 	LRESULT OnCommand(UINT, WPARAM wParam, LPARAM lParam, BOOL &) {
 		if (HIWORD(wParam) == BN_CLICKED) {

@@ -9,7 +9,6 @@
 #include "SPPlaybackEventArgs.h"
 #include "SpacifyApp.h"
 
-#include <wx/app.h>
 #include <regex>
 
 namespace space {
@@ -57,7 +56,7 @@ namespace space {
             auto* rowArgs = dynamic_cast<SPTableRowEventArgs*>(args);
             if (!rowArgs || !m_dataSource) return 0;
 
-            auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+            auto* app = SpacifyApp::current();
             if (!app) return 0;
 
             PlayContext ctx;

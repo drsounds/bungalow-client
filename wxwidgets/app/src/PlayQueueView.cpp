@@ -7,7 +7,6 @@
 #include "SPTabBarElement.h"
 #include "SPPlaybackEventArgs.h"
 
-#include <wx/app.h>
 
 namespace space {
 namespace views {
@@ -48,7 +47,7 @@ PlayQueueView::PlayQueueView(SPElement* parent)
     this->tabStack->setTabId("overview");
 
     // Subscribe to queue and playback events so the panel stays in sync.
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp)) {
+    if (auto* app = SpacifyApp::current()) {
         app->getPlaybackEvents().addEventListener(
             "queue:changed",
             reinterpret_cast<SPCallback>(&PlayQueueView::reload),
@@ -66,7 +65,7 @@ PlayQueueView::PlayQueueView(SPElement* parent)
 
 int PlayQueueView::reload(SPObject* /*sender*/, SPEventArgs* /*args*/) {
     if (!m_dataSource) return 0;
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp)) {
+    if (auto* app = SpacifyApp::current()) {
         m_dataSource->setEntries(app->getQueueEntries(), app->getQueueIndex());
     }
     if (m_table) m_table->invalidate();
@@ -77,7 +76,7 @@ int PlayQueueView::onRowDblClicked(SPObject* /*sender*/, SPEventArgs* args) {
     auto* rowArgs = dynamic_cast<SPTableRowEventArgs*>(args);
     if (!rowArgs) return 0;
 
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp))
+    if (auto* app = SpacifyApp::current())
         app->playQueueAtIndex(rowArgs->getRow());
 
     return 0;

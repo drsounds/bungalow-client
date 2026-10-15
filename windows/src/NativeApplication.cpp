@@ -7,6 +7,12 @@
 #include "SPWindowElement.h"
 #include "Space.h"
 #include "Win32GraphicsContext.h"
+#ifdef BUNGALOW_WTL
+#include "SpacifyApp.h"
+#include "MainElement.h"
+#else
+class SpacifyApp {};
+#endif
 
 #include <commctrl.h>
 #include <algorithm>
@@ -28,14 +34,22 @@ namespace space
         windowElement->setColorScheme(SP_COLOR_SCHEME_DARK);
         space->addWindow(windowElement);
 
+#ifdef BUNGALOW_WTL
+        app = std::make_unique<SpacifyApp>();
+        mainElement = app->initialize(space, windowElement);
+#else
         mainElement = new SPTextElement(windowElement);
         mainElement->setId("main");
-        mainElement->setInnerText("Spacify");
+        static_cast<SPTextElement *>(mainElement)->setInnerText("Spacify");
         mainElement->setHeight(32);
         windowElement->appendChild(mainElement);
+#endif
         resize();
         return true;
     }
+
+    NativeApplication::NativeApplication() = default;
+    NativeApplication::~NativeApplication() = default;
 
     void NativeApplication::resize()
     {

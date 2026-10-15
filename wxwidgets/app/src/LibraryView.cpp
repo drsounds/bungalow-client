@@ -9,11 +9,9 @@
 #include "SPPlaybackEventArgs.h"
 #include "SpacifyApp.h"
 #include "SPColor.h"
-#include "AddTrackDialog.h"
+#include "PlatformUi.h"
 
 #include <regex>
-#include <wx/app.h>
-#include <wx/menu.h>
 
 namespace space {
     namespace views {
@@ -66,7 +64,7 @@ namespace space {
         }
 
         void LibraryView::playRowInContext(int row) {
-            auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+            auto* app = SpacifyApp::current();
             if (!app || !m_dataSource || !m_db) return;
 
             PlayContext ctx;
@@ -86,12 +84,9 @@ namespace space {
         int LibraryView::onToolButtonClicked(SPObject* /*sender*/, SPEventArgs* args) {
             auto* btnArgs = dynamic_cast<space::TabBarToolButtonEventArgs*>(args);
             if (!btnArgs || btnArgs->buttonId != "add") return 0;
+            if (!m_db) return 0;
 
-            wxWindow* parent = wxTheApp ? wxTheApp->GetTopWindow() : nullptr;
-            if (!parent || !m_db) return 0;
-
-            AddTrackDialog dlg(parent, m_db);
-            if (dlg.ShowModal() == wxID_OK) {
+            if (platform::showAddTrackDialog(m_db)) {
                 if (m_dataSource) m_dataSource->reload(m_db);
                 if (m_table)      m_table->invalidate();
             }
@@ -105,23 +100,13 @@ namespace space {
             const int trackId = m_dataSource->getTrackIdForRow(rowArgs->getRow());
             if (trackId <= 0) return 0;
 
-            wxWindow* win = wxTheApp ? wxTheApp->GetTopWindow() : nullptr;
-            if (!win) return 0;
-
             enum { ID_PLAY = 10100, ID_EDIT };
-            wxMenu menu;
-            menu.Append(ID_PLAY, "Play");
-            menu.Append(ID_EDIT, "Edit...");
-
-            int sel = -1;
-            menu.Bind(wxEVT_MENU, [&sel](wxCommandEvent& ev) { sel = ev.GetId(); });
-            win->PopupMenu(&menu);
+            const int sel = platform::showPopupMenu({ { ID_PLAY, "Play" }, { ID_EDIT, "Edit..." } });
 
             if (sel == ID_PLAY) {
                 playRowInContext(rowArgs->getRow());
             } else if (sel == ID_EDIT) {
-                AddTrackDialog dlg(win, m_db, trackId);
-                if (dlg.ShowModal() == wxID_OK) {
+                if (platform::showAddTrackDialog(m_db, trackId)) {
                     if (m_dataSource) m_dataSource->reload(m_db);
                     if (m_table)      m_table->invalidate();
                 }

@@ -37,6 +37,7 @@ public:
     std::string getTextForColumn(int column)        override;
     int         getTrackIdForRow(int row)           override;
     bool        isRowPlayable(int row)              override;
+    std::string getRowUri(int index)                override;
 
     /** Reload rows from the database (call after saves change). */
     void reload(sqlite3* db);

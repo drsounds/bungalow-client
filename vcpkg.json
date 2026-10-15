@@ -7,7 +7,8 @@
 		"lua",
         "wtl",
 		"libpng",
-		"expat"
+		"expat",
+		"sqlite3"
 	],
 	"features": {
 		"wxwidgets": {

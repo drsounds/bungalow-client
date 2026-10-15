@@ -13,20 +13,14 @@
 #include "SPFrutigerAeroSkin.h"
 #include "SPAeroColorSlider.h"
 #include "SPGraphicsContext.h"
-#include "WxWidgetsGraphicsContext.h"
-#include "SpaceWidget.h"
+#include "PlatformUi.h"
 #include "DownloadManager.h"
-
-#include <wx/dirdlg.h>
 
 #include <nlohmann/json.hpp>
 #include <cstdint>
 
 #include <fstream>
 #include <sstream>
-
-#include <wx/stdpaths.h>
-#include <wx/filename.h>
 
 namespace space {
 namespace views {
@@ -339,12 +333,7 @@ void ConfigView::navigate(const string& uri) {
 // ── Settings path ─────────────────────────────────────────────────────────────
 
 string ConfigView::getSettingsPath() {
-    wxFileName path;
-    path.AssignDir(wxStandardPaths::Get().GetUserDataDir());
-    path.Normalize(wxPATH_NORM_ALL);
-    wxFileName::Mkdir(path.GetPath(), wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
-    path.SetFullName("settings.json");
-    return path.GetFullPath().ToStdString();
+    return platform::userDataDir() + "/settings.json";
 }
 
 // ── Button state helpers ──────────────────────────────────────────────────────
@@ -532,7 +521,7 @@ void ConfigView::saveSettings() {
     }
     win->setSkin(newSkin);
 
-    if (auto* a = dynamic_cast<SpacifyApp*>(wxTheApp)) {
+    if (auto* a = SpacifyApp::current()) {
         a->setDeveloperMode(m_pendingDeveloperMode);
         a->setFullWidthAddressBar(m_pendingFullWidthAddressBar);
     }
@@ -570,16 +559,13 @@ int ConfigView::onGlossyClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
 }
 
 int ConfigView::onBrowseDownloadsClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
-    auto* gc = dynamic_cast<platform::wxwidgets::WxWidgetsGraphicsContext*>(createGraphics());
-    wxWindow* parent = gc ? gc->getWidget() : nullptr;
+    std::string current = m_downloadsFolderInput
+        ? std::string(m_downloadsFolderInput->getValue())
+        : platform::homeDir() + "/Downloads";
 
-    wxString current = m_downloadsFolderInput
-        ? wxString(m_downloadsFolderInput->getValue())
-        : wxGetHomeDir() + "/Downloads";
-
-    wxDirDialog dlg(parent, "Choose Downloads Folder", current, wxDD_DEFAULT_STYLE);
-    if (dlg.ShowModal() == wxID_OK && m_downloadsFolderInput)
-        m_downloadsFolderInput->setValue(dlg.GetPath().ToStdString());
+    std::string chosen = platform::showFolderDialog("Choose Downloads Folder", current);
+    if (!chosen.empty() && m_downloadsFolderInput)
+        m_downloadsFolderInput->setValue(chosen);
     return 0;
 }
 
@@ -642,16 +628,13 @@ int ConfigView::onFullWidthAddressBarClicked(SPObject* /*sender*/, SPEventArgs* 
 }
 
 int ConfigView::onBrowseMusicClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
-    auto* gc = dynamic_cast<platform::wxwidgets::WxWidgetsGraphicsContext*>(createGraphics());
-    wxWindow* parent = gc ? gc->getWidget() : nullptr;
+    std::string current = m_musicFolderInput
+        ? std::string(m_musicFolderInput->getValue())
+        : platform::homeDir() + "/Music";
 
-    wxString current = m_musicFolderInput
-        ? wxString(m_musicFolderInput->getValue())
-        : wxGetHomeDir() + "/Music";
-
-    wxDirDialog dlg(parent, "Choose Music Folder", current, wxDD_DEFAULT_STYLE);
-    if (dlg.ShowModal() == wxID_OK && m_musicFolderInput)
-        m_musicFolderInput->setValue(dlg.GetPath().ToStdString());
+    std::string chosen = platform::showFolderDialog("Choose Music Folder", current);
+    if (!chosen.empty() && m_musicFolderInput)
+        m_musicFolderInput->setValue(chosen);
     return 0;
 }
 

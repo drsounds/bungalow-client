@@ -1,6 +1,6 @@
 #pragma once
 #include "SPTableDataSource.h"
-#include "DownloadManager.h"
+#include <DownloadManager.h>
 
 #include <vector>
 

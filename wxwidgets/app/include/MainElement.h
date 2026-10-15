@@ -3,7 +3,7 @@
 #include "SPVBoxElement.h"
 
 #include "SPMessageType.h"
-#include "FaviconCache.h"
+#include <FaviconCache.h>
 
 #include "libspace.h"
 

@@ -47,6 +47,12 @@ if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
 else()
     set(SPACIFY_SOURCES)
     set(SPACIFY_HEADERS)
+    if(BUNGALOW_UI_BACKEND STREQUAL "wtl")
+        find_package(SQLite3 REQUIRED)
+        file(GLOB_RECURSE SPACIFY_SOURCES CONFIGURE_DEPENDS "spacify/src/*.cpp")
+        file(GLOB_RECURSE SPACIFY_HEADERS CONFIGURE_DEPENDS "spacify/include/*.h")
+        list(FILTER SPACIFY_SOURCES EXCLUDE REGEX "/main\\.cpp$")
+    endif()
 endif()
 
 if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
@@ -67,11 +73,34 @@ else()
         if(NOT WTL_INCLUDE_DIR)
             message(FATAL_ERROR "WTL was not found. Set WTL_INCLUDE_DIR to its include directory.")
         endif()
-        list(APPEND BACKEND_SOURCES windows/src/wtl_main.cpp)
+        list(APPEND BACKEND_SOURCES
+            windows/src/wtl_main.cpp
+            windows/src/SpacifyApp.cpp
+            windows/src/SiteView.cpp
+            windows/src/FaviconCache.cpp
+            windows/src/DownloadManager.cpp
+            windows/src/PlatformUi.cpp
+            windows/src/WinAudio.cpp
+            windows/src/WinHttpClient.cpp
+            windows/src/SPPlayerCanvasElement.cpp
+            windows/src/SPMusicVisualizerElement.cpp
+            windows/src/UiDispatcher.cpp
+            wxwidgets/app/src/MainElement.cpp
+            wxwidgets/app/src/AppView.cpp
+            wxwidgets/app/src/ConfigView.cpp
+            wxwidgets/app/src/LibraryView.cpp
+            wxwidgets/app/src/LocalFilesView.cpp
+            wxwidgets/app/src/PlayQueueView.cpp
+            wxwidgets/app/src/SPAppView.cpp)
+        file(GLOB WTL_SHARED_HEADERS CONFIGURE_DEPENDS "wxwidgets/app/include/*.h")
+        list(APPEND BACKEND_HEADERS ${WTL_SHARED_HEADERS})
     else()
         list(APPEND BACKEND_SOURCES windows/src/main.cpp)
     endif()
-    set(PLATFORM_LIBRARIES winhttp msimg32 comctl32 gdi32 user32)
+    set(PLATFORM_LIBRARIES winhttp msimg32 comctl32 gdi32 user32 ole32 shell32 comdlg32)
+    if(BUNGALOW_UI_BACKEND STREQUAL "wtl")
+        list(APPEND PLATFORM_LIBRARIES winmm shell32 ole32 SQLite::SQLite3)
+    endif()
 endif()
 
 if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets" AND wxWidgets_USE_FILE)
@@ -102,7 +131,8 @@ if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
 else()
     target_include_directories(spacify-client PRIVATE windows/include)
     if(BUNGALOW_UI_BACKEND STREQUAL "wtl")
-        target_include_directories(spacify-client PRIVATE "${WTL_INCLUDE_DIR}")
+        target_include_directories(spacify-client PRIVATE "${WTL_INCLUDE_DIR}" wxwidgets/app/include)
+        target_compile_definitions(spacify-client PRIVATE BUNGALOW_WTL)
     endif()
     target_compile_definitions(spacify-client PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0601)
 endif()

@@ -33,8 +33,7 @@
 #include "Database.h"
 #include "SPUri.h"
 
-#include <wx/menu.h>
-#include <wx/app.h>
+#include "PlatformUi.h"
 
 namespace space {
 
@@ -131,21 +130,14 @@ namespace space {
         SPTreeItem* item = args->getItem();
         if (!item || !item->isBookmark()) return 0;
 
-        wxMenu menu;
-        menu.Append(wxID_DELETE, "Remove bookmark");
-
-        wxWindow* win = wxTheApp->GetTopWindow();
-        if (!win) return 0;
-
         // Capture URI before menu closes (item pointer may be invalidated after rebuild)
         string uri = item->getUri() ? item->getUri()->getUri() : "";
 
-        int sel = -1;
-        win->Bind(wxEVT_MENU, [&sel](wxCommandEvent& ev) { sel = ev.GetId(); });
-        win->PopupMenu(&menu); // positions at current cursor location
+        enum { ID_REMOVE_BOOKMARK = 10200 };
+        const int sel = platform::showPopupMenu({ { ID_REMOVE_BOOKMARK, "Remove bookmark" } });
 
-        if (sel == wxID_DELETE && !uri.empty()) {
-            auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+        if (sel == ID_REMOVE_BOOKMARK && !uri.empty()) {
+            auto* app = SpacifyApp::current();
             if (app && app->getDatabase())
                 app->getDatabase()->removeBookmark(uri);
             rebuildNavItems();
@@ -160,7 +152,7 @@ namespace space {
         auto* args = dynamic_cast<space::SPBookmarkEventArgs*>(e);
         if (!args) return 0;
 
-        auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+        auto* app = SpacifyApp::current();
         if (!app || !app->getDatabase()) return 0;
         Database* db = app->getDatabase();
 
@@ -220,7 +212,7 @@ namespace space {
     void MainElement::rebuildNavItems() {
         treeView->clearItems();
 
-        auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+        auto* app = SpacifyApp::current();
         Database* db = (app && app->getDatabase()) ? app->getDatabase() : nullptr;
 
         // Resolve icon path: use cached favicon if available, otherwise the default SVG.
@@ -399,11 +391,11 @@ namespace space {
         viewStack = (SPViewStackElement *)this->getElementById("viewstack");
         viewStack->setFlex(1);
         sqlite3* db = nullptr;
-        if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp))
+        if (auto* app = SpacifyApp::current())
             db = app->getDatabase() ? app->getDatabase()->handle() : nullptr;
 
         DownloadManager* dm = nullptr;
-        if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp))
+        if (auto* app = SpacifyApp::current())
             dm = app->getDownloadManager();
 
         viewStack->appendChild(new views::SpaceView(viewStack));
