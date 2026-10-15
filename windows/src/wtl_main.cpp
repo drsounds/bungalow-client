@@ -31,6 +31,8 @@ public:
 
 	space::NativeApplication app;
 
+	bool didFailInitialization() const { return initializationFailed; }
+
 	~MainFrame() {
 		if (fileMenu)
 			DestroyMenu(fileMenu);
@@ -47,14 +49,19 @@ public:
 	MESSAGE_HANDLER(WM_COMMAND, OnCommand)
 	MSG_WM_LBUTTONDOWN(OnLeftButtonDown)
 	MSG_WM_LBUTTONUP(OnLeftButtonUp)
+	MSG_WM_RBUTTONDOWN(OnRightButtonDown)
+	MSG_WM_RBUTTONUP(OnRightButtonUp)
 	MSG_WM_MOUSEMOVE(OnMouseMove)
+	MSG_WM_KEYDOWN(OnKeyDown)
 	MSG_WM_TIMER(OnTimer)
 	CHAIN_MSG_MAP(CFrameWindowImpl<MainFrame>)
 	END_MSG_MAP()
 
 	LRESULT OnCreate(LPCREATESTRUCT) {
-		if (!app.initialize(m_hWnd))
+		if (!app.initialize(m_hWnd)) {
+			initializationFailed = true;
 			return -1;
+		}
 
 		fileMenuButton = CreateHeaderButton(L"&File", FileMenuButtonId);
 		minimizeButton = CreateHeaderButton(L"\u2014", MinimizeButtonId);
@@ -62,8 +69,10 @@ public:
 		closeButton = CreateHeaderButton(L"\u00D7", CloseButtonId);
 		fileMenu = CreatePopupMenu();
 		if (!fileMenuButton || !minimizeButton || !maximizeButton ||
-			!closeButton || !fileMenu)
+			!closeButton || !fileMenu) {
+			initializationFailed = true;
 			return -1;
+		}
 
 		AppendMenuW(fileMenu, MF_STRING, FileAboutCommandId, L"&About Spacify");
 		AppendMenuW(fileMenu, MF_SEPARATOR, 0, nullptr);
@@ -174,6 +183,7 @@ public:
 	}
 
 	void OnLeftButtonDown(UINT, CPoint point) {
+		SetFocus();
 		SetCapture();
 		app.mouseEvent("mousedown", point.x, point.y);
 	}
@@ -185,6 +195,20 @@ public:
 
 	void OnMouseMove(UINT, CPoint point) {
 		app.mouseEvent("mousemove", point.x, point.y);
+	}
+
+	void OnRightButtonDown(UINT, CPoint point) {
+		SetCapture();
+		app.mouseEvent("mousedown", point.x, point.y, 1);
+	}
+
+	void OnRightButtonUp(UINT, CPoint point) {
+		ReleaseCapture();
+		app.mouseEvent("mouseup", point.x, point.y, 1);
+	}
+
+	void OnKeyDown(UINT keyCode, UINT, UINT) {
+		app.keyEvent(static_cast<int>(keyCode), (GetKeyState(VK_CONTROL) & 0x8000) != 0);
 	}
 
 	void OnTimer(UINT_PTR) { app.timer(); }
@@ -226,6 +250,7 @@ private:
 	HWND maximizeButton = nullptr;
 	HWND closeButton = nullptr;
 	HMENU fileMenu = nullptr;
+	bool initializationFailed = false;
 
 	HWND CreateHeaderButton(const wchar_t *text, int id) {
 		return CreateWindowExW(
@@ -311,23 +336,34 @@ private:
 } // namespace
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
-	if (FAILED(_Module.Init(nullptr, instance)))
-		return 1;
-
-	MainFrame frame;
-	const DWORD style = WS_POPUP | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX |
-						WS_MAXIMIZEBOX | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
-	if (frame.CreateEx(nullptr, nullptr, style, WS_EX_APPWINDOW) == nullptr) {
-		_Module.Term();
+	if (FAILED(_Module.Init(nullptr, instance))) {
+		::MessageBoxW(nullptr, L"Unable to initialize the WTL application.",
+					  L"Spacify", MB_OK | MB_ICONERROR);
 		return 1;
 	}
-	::SetWindowTextW(frame.m_hWnd, L"Spacify");
-	frame.ShowWindow(showCommand);
-	frame.UpdateWindow();
 
 	CMessageLoop loop;
 	_Module.AddMessageLoop(&loop);
-	const int result = loop.Run();
+	int result = 1;
+	{
+		MainFrame frame;
+		const DWORD style = WS_POPUP | WS_THICKFRAME | WS_SYSMENU |
+							WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CLIPCHILDREN |
+							WS_CLIPSIBLINGS;
+		if (frame.CreateEx(nullptr, nullptr, style, WS_EX_APPWINDOW) == nullptr) {
+			::MessageBoxW(
+				nullptr,
+				frame.didFailInitialization()
+					? L"Unable to initialize the Spacify user interface."
+					: L"Unable to create the Spacify window.",
+				L"Spacify", MB_OK | MB_ICONERROR);
+		} else {
+			::SetWindowTextW(frame.m_hWnd, L"Spacify");
+			frame.ShowWindow(showCommand);
+			frame.UpdateWindow();
+			result = loop.Run();
+		}
+	}
 	_Module.RemoveMessageLoop();
 	_Module.Term();
 	return result;

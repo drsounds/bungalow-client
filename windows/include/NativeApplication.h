@@ -18,6 +18,7 @@ namespace space
         void resize();
         void paint(HDC dc);
         void mouseEvent(const char *name, int x, int y, int button = 0);
+        void keyEvent(int keyCode, bool commandDown);
         void command(WPARAM wParam, LPARAM lParam);
         void timer();
 
@@ -28,5 +29,6 @@ namespace space
         SPTextElement *mainElement = nullptr;
         Win32GraphicsContext *graphics = nullptr;
         bool leftButtonDown = false;
+        bool rightButtonDown = false;
     };
 }

@@ -1,6 +1,7 @@
 #include "NativeApplication.h"
 
 #include "SPClassicSkin.h"
+#include "SPEventArgs.h"
 #include "SPMouseEventArgs.h"
 #include "SPTextElement.h"
 #include "SPWindowElement.h"
@@ -65,16 +66,38 @@ namespace space
             return;
         auto *args = new SPMouseEventArgs(button, x, y);
         space->dispatchEvent(name, args, windowElement);
-        if (std::string(name) == "mouseup" && button == 0 && leftButtonDown)
+        if (std::string(name) == "mouseup" &&
+            ((button == 0 && leftButtonDown) || (button == 1 && rightButtonDown)))
         {
             auto *clickArgs = new SPMouseEventArgs(button, x, y);
             space->dispatchEvent("click", clickArgs, windowElement);
-            leftButtonDown = false;
+            if (button == 0)
+                leftButtonDown = false;
+            else
+                rightButtonDown = false;
         }
         else if (std::string(name) == "mousedown" && button == 0)
         {
             leftButtonDown = true;
         }
+        else if (std::string(name) == "mousedown" && button == 1)
+        {
+            rightButtonDown = true;
+        }
+    }
+
+    void NativeApplication::keyEvent(int keyCode, bool commandDown)
+    {
+        if (!space || !windowElement)
+            return;
+        if (keyCode == VK_UP)
+            keyCode = SPKeyEventArgs::KeyUp;
+        else if (keyCode == VK_DOWN)
+            keyCode = SPKeyEventArgs::KeyDown;
+        auto *args = new SPKeyEventArgs(keyCode, commandDown);
+        const SPEvent event("keydown", args, nullptr);
+        space->dispatchEvent("keydown", args, windowElement);
+        space->processEvent(event);
     }
 
     void NativeApplication::timer()

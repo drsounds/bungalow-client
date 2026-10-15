@@ -37,6 +37,7 @@ namespace
             return 0;
         }
         case WM_LBUTTONDOWN:
+            SetFocus(window);
             SetCapture(window);
             if (app)
                 app->mouseEvent("mousedown", GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
@@ -46,9 +47,23 @@ namespace
             if (app)
                 app->mouseEvent("mouseup", GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
             return 0;
+        case WM_RBUTTONDOWN:
+            SetCapture(window);
+            if (app)
+                app->mouseEvent("mousedown", GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), 1);
+            return 0;
+        case WM_RBUTTONUP:
+            ReleaseCapture();
+            if (app)
+                app->mouseEvent("mouseup", GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), 1);
+            return 0;
         case WM_MOUSEMOVE:
             if (app)
                 app->mouseEvent("mousemove", GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            return 0;
+        case WM_KEYDOWN:
+            if (app)
+                app->keyEvent(static_cast<int>(wParam), (GetKeyState(VK_CONTROL) & 0x8000) != 0);
             return 0;
         case WM_TIMER:
             if (app)
