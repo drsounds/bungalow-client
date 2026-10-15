@@ -9,7 +9,7 @@
 #include "DownloadManager.h"
 #include "Database.h"
 
-#include <boost/algorithm/string/predicate.hpp>
+#include "SPString.h"
 #include <wx/msgdlg.h>
 
 namespace space {
@@ -66,7 +66,7 @@ bool SiteView::isDomainAllowed(const string& url) const {
     if (hostname.empty()) return true;
 
     // Bungalow-operated domains are always allowed
-    if (hostname == "spacify.se" || boost::algorithm::ends_with(hostname, ".spacify.se"))
+    if (hostname == "spacify.se" || space::endsWith(hostname, ".spacify.se"))
         return true;
 
     auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
@@ -256,7 +256,7 @@ void SiteView::updateBookmarkButton(const string& uri) {
 // ── SPViewElement interface ───────────────────────────────────────────────────
 
 bool SiteView::acceptsUri(const string& uri) {
-    return boost::algorithm::starts_with(uri, "spacify:site:");
+    return space::startsWith(uri, "spacify:site:");
 }
 
 void SiteView::navigate(const string& uri) {
@@ -405,10 +405,10 @@ void SiteView::pack() {
 
 // Returns true for any URI that uses the spacify: scheme or an accepted alias.
 static bool isSpacifyScheme(const string& uri) {
-    return boost::algorithm::starts_with(uri, "spacify:") ||
-           boost::algorithm::starts_with(uri, "space:")    ||
-           boost::algorithm::starts_with(uri, "bungalow:") ||
-           boost::algorithm::starts_with(uri, "musik:");
+    return space::startsWith(uri, "spacify:") ||
+           space::startsWith(uri, "space:")    ||
+           space::startsWith(uri, "bungalow:") ||
+           space::startsWith(uri, "musik:");
 }
 
 // Called BEFORE the webview loads a URL.
@@ -490,7 +490,7 @@ void SiteView::navigateToInputUrl(const string& text) {
     if (resolved.find("://") == string::npos && !isSpacifyScheme(resolved))
         resolved = "https://" + resolved;
     string spacifyUri;
-    if (boost::algorithm::starts_with(resolved, "https://"))
+    if (space::startsWith(resolved, "https://"))
         spacifyUri = urlToUri(resolved);
     else if (isSpacifyScheme(resolved))
         spacifyUri = resolved;

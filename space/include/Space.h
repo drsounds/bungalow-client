@@ -4,7 +4,6 @@
 
 #ifndef SPACIFYCLIENT_APP_H
 #define SPACIFYCLIENT_APP_H
-#include <boost/json/string.hpp>
 #include <string>
 
 #include "SPObservable.h"

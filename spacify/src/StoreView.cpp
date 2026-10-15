@@ -1,5 +1,5 @@
 #include "StoreView.h"
-#include <boost/algorithm/string/predicate.hpp>
+#include "SPString.h"
 
 namespace space {
 namespace views {
@@ -8,7 +8,7 @@ StoreView::StoreView(SPElement* parent)
     : SiteView(parent, "spacify:store:", true, true) {}
 
 bool StoreView::acceptsUri(const string& uri) {
-    return boost::algorithm::starts_with(uri, "spacify:store:");
+    return space::startsWith(uri, "spacify:store:");
 }
 
 // spacify:store:mystore       -> https://mystore.store.spacify.se

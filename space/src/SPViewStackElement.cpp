@@ -9,7 +9,6 @@
 #include "SPUri.h"
 
 #include <vector>
-#include <boost/algorithm/string/predicate.hpp>
 inline bool ends_with(std::string const & value, std::string const & ending)
 {
     if (ending.size() > value.size()) return false;

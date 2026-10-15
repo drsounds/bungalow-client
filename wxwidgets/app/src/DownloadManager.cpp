@@ -1,8 +1,7 @@
 #include "DownloadManager.h"
 #include "ConfigView.h"
 
-#include <boost/json/parse.hpp>
-#include <boost/json/value.hpp>
+#include <nlohmann/json.hpp>
 
 #include <wx/filename.h>
 #include <wx/stdpaths.h>
@@ -503,10 +502,9 @@ static std::string readStringSetting(const std::string& key) {
     std::ostringstream ss;
     ss << f.rdbuf();
     try {
-        auto jv = boost::json::parse(ss.str());
-        auto& obj = jv.as_object();
+        auto obj = nlohmann::json::parse(ss.str());
         if (obj.contains(key))
-            return std::string(obj.at(key).as_string().c_str());
+            return obj.at(key).get<std::string>();
     } catch (...) {}
     return "";
 }

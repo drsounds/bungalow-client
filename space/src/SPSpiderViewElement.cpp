@@ -4,9 +4,7 @@
 
 #include "SPSpiderViewElement.h"
 
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/multi_index/detail/index_matcher.hpp>
+#include "SPString.h"
 
 namespace space {
 
@@ -23,8 +21,7 @@ namespace space {
 		return false;
 	}
 	void SPSpiderViewElement::navigate(const string &uri) {
-		vector<string> parts;
-		boost::algorithm::split(parts, uri, boost::algorithm::is_any_of(":"));
+		vector<string> parts = split(uri, ':');
 		string baseUri = parts[0] + ":" + parts[1];
 		this->setAttribute("src", baseUri);
 	}

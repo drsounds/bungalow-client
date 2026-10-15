@@ -1,5 +1,5 @@
 #include "CuratorView.h"
-#include <boost/algorithm/string/predicate.hpp>
+#include "SPString.h"
 
 namespace space {
 namespace views {
@@ -8,7 +8,7 @@ CuratorView::CuratorView(SPElement* parent)
     : SiteView(parent, "spacify:curator:", true, true) {}
 
 bool CuratorView::acceptsUri(const string& uri) {
-    return boost::algorithm::starts_with(uri, "spacify:curator:");
+    return space::startsWith(uri, "spacify:curator:");
 }
 
 // spacify:curator:mycurator       -> https://mycurator.curator.spacify.se

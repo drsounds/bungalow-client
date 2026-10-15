@@ -1,10 +1,7 @@
 #ifndef STYLESHEET_H
 #define STYLESHEET_H
 #include "SPNode.h"
-#ifdef _MSC_VER
-#include <boost/config/compiler/visualc.hpp>
-#endif
-#include <boost/property_tree/ptree.hpp>
+#include <nlohmann/json.hpp>
 #include <string>
 namespace space {
 class SPStylesheet;
@@ -23,7 +20,7 @@ class SPStylesheet
         virtual ~SPStylesheet();
         string get(string entity, string prop);
     protected:
-         boost::property_tree::ptree *pt;
+        nlohmann::json pt = nlohmann::json::object();
         map<string, string> selectors;
     private:
 };

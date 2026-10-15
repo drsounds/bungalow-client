@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/json.hpp>
+#include <nlohmann/json.hpp>
 #include <string>
 
 namespace space {
@@ -11,8 +11,8 @@ public:
 							  const std::string &method = "GET",
 							  const std::string &uri = "",
 							  const std::string &action = "",
-							  const boost::json::object &data = {},
-							  const boost::json::object &model = {});
+							  const nlohmann::json &data = nlohmann::json::object(),
+							  const nlohmann::json &model = nlohmann::json::object());
 };
 
 } // namespace space

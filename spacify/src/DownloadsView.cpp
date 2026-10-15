@@ -3,7 +3,7 @@
 #include "SPTabStackElement.h"
 #include "SPTabBarElement.h"
 #include "SPPlaybackEventArgs.h"
-#include <boost/algorithm/string/predicate.hpp>
+#include "SPString.h"
 
 namespace space {
 namespace views {
@@ -66,7 +66,7 @@ DownloadsView::~DownloadsView() {
 
 bool DownloadsView::acceptsUri(const std::string& uri) {
     return uri == "spacify:downloads" ||
-           boost::algorithm::starts_with(uri, "spacify:downloads#");
+           space::startsWith(uri, "spacify:downloads#");
 }
 
 void DownloadsView::navigate(const std::string& /*uri*/) {}

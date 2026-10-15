@@ -19,10 +19,8 @@
 
 #include <wx/dirdlg.h>
 
-#include <boost/json/object.hpp>
-#include <boost/json/parse.hpp>
-#include <boost/json/serialize.hpp>
-#include <boost/json/value.hpp>
+#include <nlohmann/json.hpp>
+#include <cstdint>
 
 #include <fstream>
 #include <sstream>
@@ -414,43 +412,42 @@ void ConfigView::loadSettings() {
         file.close();
 
         try {
-            boost::json::value jv = boost::json::parse(ss.str());
-            auto& obj = jv.as_object();
+            nlohmann::json obj = nlohmann::json::parse(ss.str());
 
             if (obj.contains("tintColor") && m_colorChooser) {
-                string hex = string(obj.at("tintColor").as_string().c_str());
+                string hex = obj.at("tintColor").get<string>();
                 m_colorChooser->setSelectedColor(SPColor(hex));
             }
             if (obj.contains("colorScheme"))
-                m_pendingScheme = static_cast<short>(obj.at("colorScheme").as_int64());
+                m_pendingScheme = static_cast<short>(obj.at("colorScheme").get<std::int64_t>());
             if (obj.contains("glossy"))
-                m_pendingGlossy = obj.at("glossy").as_bool();
+                m_pendingGlossy = obj.at("glossy").get<bool>();
             if (obj.contains("developerMode"))
-                m_pendingDeveloperMode = obj.at("developerMode").as_bool();
+                m_pendingDeveloperMode = obj.at("developerMode").get<bool>();
             if (obj.contains("skinType"))
-                m_pendingSkinType = string(obj.at("skinType").as_string().c_str());
+                m_pendingSkinType = obj.at("skinType").get<string>();
             if (obj.contains("fullWidthAddressBar"))
-                m_pendingFullWidthAddressBar = obj.at("fullWidthAddressBar").as_bool();
+                m_pendingFullWidthAddressBar = obj.at("fullWidthAddressBar").get<bool>();
             if (obj.contains("downloadsFolder") && m_downloadsFolderInput)
                 m_downloadsFolderInput->setValue(
-                    string(obj.at("downloadsFolder").as_string().c_str()));
+                    obj.at("downloadsFolder").get<string>());
             if (obj.contains("musicFolder") && m_musicFolderInput)
                 m_musicFolderInput->setValue(
-                    string(obj.at("musicFolder").as_string().c_str()));
+                    obj.at("musicFolder").get<string>());
 
             // Frutiger Aero colour params
             if (obj.contains("aeroHue"))
-                m_pendingAeroHue = static_cast<float>(obj.at("aeroHue").as_double());
+                m_pendingAeroHue = static_cast<float>(obj.at("aeroHue").get<double>());
             if (obj.contains("aeroSaturation"))
-                m_pendingAeroSaturation = static_cast<float>(obj.at("aeroSaturation").as_double());
+                m_pendingAeroSaturation = static_cast<float>(obj.at("aeroSaturation").get<double>());
             if (obj.contains("aeroLightness"))
-                m_pendingAeroLightness = static_cast<float>(obj.at("aeroLightness").as_double());
+                m_pendingAeroLightness = static_cast<float>(obj.at("aeroLightness").get<double>());
             if (obj.contains("aeroHeaderStyle"))
                 m_pendingAeroHeaderStyle = static_cast<AeroHeaderStyle>(
-                    obj.at("aeroHeaderStyle").as_int64());
+                    obj.at("aeroHeaderStyle").get<std::int64_t>());
             if (obj.contains("buttonStyle"))
                 m_pendingButtonStyle = static_cast<SPButtonStyle>(
-                    obj.at("buttonStyle").as_int64());
+                    obj.at("buttonStyle").get<std::int64_t>());
         } catch (...) {}
     }
 
@@ -484,7 +481,7 @@ void ConfigView::saveSettings() {
 
     SPColor color = m_colorChooser->getSelectedColor();
 
-    boost::json::object obj;
+    nlohmann::json obj = nlohmann::json::object();
     obj["tintColor"]            = color.toHTMLColor();
     obj["colorScheme"]          = m_pendingScheme;
     obj["glossy"]               = m_pendingGlossy;
@@ -503,7 +500,7 @@ void ConfigView::saveSettings() {
 
     std::ofstream file(getSettingsPath());
     if (file.is_open()) {
-        file << boost::json::serialize(boost::json::value(std::move(obj)));
+        file << obj.dump();
         file.close();
     }
 

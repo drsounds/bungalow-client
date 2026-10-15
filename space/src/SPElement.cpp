@@ -6,8 +6,6 @@
 #include <cstdio>
 #include <fstream>
 #include <iterator>
-#include <boost/lexical_cast/bad_lexical_cast.hpp>
-#include <boost/system/system_error.hpp>
 #include <utility>
 #include "Space.h"
 
@@ -30,7 +28,7 @@
 #include "SPViewElement.h"
 #include "SPTemplate.h"
 
-#include <boost/json/src.hpp>
+#include <nlohmann/json.hpp>
 #include <ctime>
 #include <exception>
 #include <fstream>
@@ -176,9 +174,9 @@ namespace space {
 		this->m_parsingDepth++;
 	}
 
-	void SPElement::postBack(const boost::json::object& payload) {
+	void SPElement::postBack(const nlohmann::json& payload) {
 		string uri = this->getSrc();
-		this->request("POST", uri, serialize(payload));
+		this->request("POST", uri, payload.dump());
 	}
 
 	SPElement::SPElement() : SPNode(), fontStyle(SPFontStyle("Tahoma", 11, 1, false, false)) {
@@ -406,19 +404,19 @@ namespace space {
 
 		std::ostringstream templateSource;
 		templateSource << templateFile.rdbuf();
-		boost::json::object requestData;
+		nlohmann::json requestData = nlohmann::json::object();
 		if (!data.empty()) {
 			try {
-				boost::json::value parsed = boost::json::parse(data);
+				nlohmann::json parsed = nlohmann::json::parse(data);
 				if (parsed.is_object())
-					requestData = parsed.as_object();
-			} catch (const boost::system::system_error&) {
+					requestData = std::move(parsed);
+			} catch (const std::exception&) {
 			}
 		}
 
 		string action;
 		if (requestData.contains("command") && requestData.at("command").is_string())
-			action = string(requestData.at("command").as_string());
+			action = requestData.at("command").get<string>();
 
 		std::time_t now = std::time(nullptr);
 		std::tm localTime{};
@@ -429,7 +427,7 @@ namespace space {
 #endif
 		std::ostringstream timestamp;
 		timestamp << std::put_time(&localTime, "%Y-%m-%d %H:%M:%S");
-		boost::json::object model;
+		nlohmann::json model = nlohmann::json::object();
 		model["now"] = timestamp.str();
 
 		try {
@@ -567,8 +565,8 @@ namespace space {
 		this->m_backgroundImage = value;
 	}
 
-	boost::json::object SPElement::getFormData() {
-		boost::json::object formData;
+	nlohmann::json SPElement::getFormData() {
+		nlohmann::json formData = nlohmann::json::object();
 		for (auto & it : this->children)
 		{
 			auto *elm = dynamic_cast<SPElement *>(it);
@@ -576,8 +574,9 @@ namespace space {
 				SPInputElement *input = (SPInputElement *)elm;
 				formData[input->getStringAttribute("name", "")] = input->getValue();
 			}
-			for (auto subFormData : elm->getFormData()) {
-				formData[subFormData.key()] = subFormData.value();
+			auto subFormData = elm->getFormData();
+			for (auto item : subFormData.items()) {
+				formData[item.key()] = item.value();
 			}
 		}
 		return formData;
@@ -732,7 +731,6 @@ namespace space {
 
 			if (message.type == "event") {
 				if (message.predicate == "mousedown" || message.predicate == "mouseup" || message.predicate == "mousemove") {
-					//SPMouseEventArgs *args = new SPMouseEventArgs(0, message.data.at("x").as_double(), message.data.at("y").as_double(), this);
 					//this->dispatchEvent(message.predicate, args, this);
 				}
 			}
@@ -1072,7 +1070,7 @@ namespace space {
 	void SPElement::onPostBackButtonClick(SPObject *sender, SPEventArgs *event) {
 		SPMouseEventArgs *args = dynamic_cast<SPMouseEventArgs*>(event);
 		SPButtonElement *button = dynamic_cast<SPButtonElement*>(sender);
-		boost::json::object formData = this->getFormData();
+		nlohmann::json formData = this->getFormData();
 		formData["command"] = button->getStringAttribute("onclick", "submit");
 		this->postBack(formData);
 	}

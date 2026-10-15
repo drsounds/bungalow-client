@@ -1,4 +1,6 @@
 #include "PlayerView.h"
+
+#include <cstdint>
 #include "SPTextElement.h"
 #include "SPVBoxElement.h"
 #include "SPWindowElement.h"
@@ -8,10 +10,7 @@
 #include "SPPlayerCanvasImplementationElement.h"
 #include "ConfigView.h"
 
-#include <boost/json/object.hpp>
-#include <boost/json/parse.hpp>
-#include <boost/json/serialize.hpp>
-#include <boost/json/value.hpp>
+#include <nlohmann/json.hpp>
 
 #include <fstream>
 #include <sstream>
@@ -143,34 +142,33 @@ void PlayerView::loadSettings() {
         ss << file.rdbuf();
         file.close();
         try {
-            boost::json::value jv = boost::json::parse(ss.str());
-            auto& obj = jv.as_object();
+            nlohmann::json obj = nlohmann::json::parse(ss.str());
 
             if (obj.contains("colorScheme"))
-                m_scheme = static_cast<short>(obj.at("colorScheme").as_int64());
+                m_scheme = static_cast<short>(obj.at("colorScheme").get<std::int64_t>());
             if (obj.contains("glossy"))
-                m_glossy = obj.at("glossy").as_bool();
+                m_glossy = obj.at("glossy").get<bool>();
             if (obj.contains("skinType"))
-                m_skinType = std::string(obj.at("skinType").as_string().c_str());
+                m_skinType = obj.at("skinType").get<std::string>();
             if (obj.contains("aeroHue"))
-                m_hue = static_cast<float>(obj.at("aeroHue").as_double());
+                m_hue = static_cast<float>(obj.at("aeroHue").get<double>());
             if (obj.contains("aeroSaturation"))
-                m_saturation = static_cast<float>(obj.at("aeroSaturation").as_double());
+                m_saturation = static_cast<float>(obj.at("aeroSaturation").get<double>());
             if (obj.contains("aeroLightness"))
-                m_lightness = static_cast<float>(obj.at("aeroLightness").as_double());
+                m_lightness = static_cast<float>(obj.at("aeroLightness").get<double>());
             if (obj.contains("aeroHeaderStyle"))
                 m_headerStyle = static_cast<AeroHeaderStyle>(
-                    obj.at("aeroHeaderStyle").as_int64());
+                    obj.at("aeroHeaderStyle").get<std::int64_t>());
             if (obj.contains("developerMode"))
-                m_developerMode = obj.at("developerMode").as_bool();
+                m_developerMode = obj.at("developerMode").get<bool>();
             if (obj.contains("fullWidthAddressBar"))
-                m_fullWidthAddressBar = obj.at("fullWidthAddressBar").as_bool();
+                m_fullWidthAddressBar = obj.at("fullWidthAddressBar").get<bool>();
             if (obj.contains("tintColor"))
-                m_tintColor = std::string(obj.at("tintColor").as_string().c_str());
+                m_tintColor = obj.at("tintColor").get<std::string>();
             if (obj.contains("downloadsFolder"))
-                m_downloadsFolder = std::string(obj.at("downloadsFolder").as_string().c_str());
+                m_downloadsFolder = obj.at("downloadsFolder").get<std::string>();
             if (obj.contains("musicFolder"))
-                m_musicFolder = std::string(obj.at("musicFolder").as_string().c_str());
+                m_musicFolder = obj.at("musicFolder").get<std::string>();
         } catch (...) {}
     }
 
@@ -182,7 +180,7 @@ void PlayerView::loadSettings() {
 }
 
 void PlayerView::saveSettings() {
-    boost::json::object obj;
+    nlohmann::json obj = nlohmann::json::object();
     obj["colorScheme"]         = m_scheme;
     obj["glossy"]              = m_glossy;
     obj["skinType"]            = m_skinType;
@@ -198,7 +196,7 @@ void PlayerView::saveSettings() {
 
     std::ofstream file(views::ConfigView::getSettingsPath());
     if (file.is_open())
-        file << boost::json::serialize(boost::json::value(std::move(obj)));
+        file << obj.dump();
 }
 
 void PlayerView::applyLive() {

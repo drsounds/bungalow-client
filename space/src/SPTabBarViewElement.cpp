@@ -6,10 +6,8 @@
 #include "SPTabBarElement.h"
 #include "SPUri.h"
 #include "SPViewStackElement.h"
-#include <boost/algorithm/string.hpp>
+#include "SPString.h"
 #include <iostream>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/algorithm/string/split.hpp>
 #include "SPTabStackElement.h"
 #include "SPWindowElement.h"
 
@@ -82,7 +80,7 @@ namespace space {
     }
 	bool SPTabBarViewElement::acceptsUri(const string& uri) {
 		string this_uri = this->getUri();
-		bool ret = boost::algorithm::starts_with(uri, this_uri);
+		bool ret = startsWith(uri, this_uri);
 		return ret;
 	}
 	void SPTabBarViewElement::onTreeChanged(SPObject *sender, SPEventArgs *e) {

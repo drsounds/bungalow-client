@@ -1,8 +1,7 @@
 #include "SPStylesheet.h"
 
+#include <fstream>
 #include <iostream>
-#include <boost/json.hpp>
-#include <boost/property_tree/json_parser.hpp>
 namespace space {
 
 Selector::Selector()
@@ -20,7 +19,9 @@ SPStylesheet::SPStylesheet()
         // send your JSON above to the parser below, but populate ss first
 
 
-        boost::property_tree::read_json("../../skin.json", *pt);
+        std::ifstream file("../../skin.json");
+        if (file)
+            pt = nlohmann::json::parse(file);
 
     }
     catch (std::exception const& e)
@@ -32,9 +33,7 @@ SPStylesheet::SPStylesheet()
 }
 
 string SPStylesheet::get(string entity, string prop) {
-    boost::property_tree::ptree tree = this->pt->get_child((string)entity.c_str());
-    string val = tree.get_child((string)prop.c_str()).get_value<std::string>();
-    return val;
+    return pt.at(entity).at(prop).get<string>();
 }
 
 SPStylesheet::~SPStylesheet()

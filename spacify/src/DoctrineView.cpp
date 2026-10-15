@@ -3,7 +3,7 @@
 #include <regex>
 #include <string>
 #include <vector>
-#include <boost/algorithm/string.hpp>
+#include "SPString.h"
 #include "SPTextElement.h"
 #include "SPElement.h"
 #include "SPGraphicsContext.h"
@@ -30,8 +30,7 @@ namespace space {
 
         void DoctrineView::navigate(const string& uri) {
 
-            vector<string> strs;
-            boost::split(strs, uri, boost::is_any_of(":")); 
+            vector<string> strs = split(uri, ':');
 
         }
 

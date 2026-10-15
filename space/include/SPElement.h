@@ -14,7 +14,7 @@
 #include <functional>
 #include <optional>
 #include <vector>
-#include <boost/json/object.hpp>
+#include <nlohmann/json.hpp>
 #include "SPXmlParser.h"
 
 using namespace std;
@@ -97,7 +97,7 @@ namespace space {
         void setGap(int value) {
             m_gap = value;
         }
-    	boost::json::object getFormData();
+        nlohmann::json getFormData();
     	int getState() const {
     		return this->m_state;
     	}
@@ -184,7 +184,7 @@ namespace space {
     		this->m_skipElement = value;
     	}
 
-        void postBack(const boost::json::object& data);
+        void postBack(const nlohmann::json& data);
 
         bool m_skipElement = false;
 

@@ -16,6 +16,8 @@ int main() {
   <page title="${model.title}">
     <text>${method} ${uri} ${action} ${data.name}</text>
     <text>${data.missing}</text>
+    <text>${data.items[1]}</text>
+    <text>${data.items[2]}</text>
     % for i,3 do
     <text>${i}</text>
     % end
@@ -29,14 +31,17 @@ int main() {
   </page>
 </view>)";
 
-	const boost::json::object data = {{"name", "Lua"}, {"enabled", true}};
-	const boost::json::object model = {{"title", "Overview"},
-									   {"nested", {{"label", "nested value"}}}};
+	const nlohmann::json data = {
+		{"name", "Lua"}, {"enabled", true}, {"items", {1, "two"}}};
+	const nlohmann::json model = {{"title", "Overview"},
+								  {"nested", {{"label", "nested value"}}}};
 
 	const auto rendered = space::SPTemplate::render(
 		source, "POST", "spacify:start", "refresh", data, model);
 	if (!contains(rendered, "title=\"Overview\"") ||
 		!contains(rendered, "POST spacify:start refresh Lua") ||
+		!contains(rendered, "<text>1</text>") ||
+		!contains(rendered, "<text>two</text>") ||
 		!contains(rendered, "1</text>") || !contains(rendered, "2</text>") ||
 		!contains(rendered, "3</text>") ||
 		!contains(rendered, "nested value") ||

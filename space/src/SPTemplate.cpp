@@ -73,50 +73,34 @@ std::string convertTemplate(const std::string &source) {
 	return converted;
 }
 
-void pushJson(lua_State *state, const boost::json::value &value) {
-	switch (value.kind()) {
-	case boost::json::kind::null:
+void pushJson(lua_State *state, const nlohmann::json &value) {
+	if (value.is_null()) {
 		lua_pushnil(state);
-		break;
-	case boost::json::kind::bool_:
-		lua_pushboolean(state, value.as_bool());
-		break;
-	case boost::json::kind::int64:
-		lua_pushnumber(state, static_cast<lua_Number>(value.as_int64()));
-		break;
-	case boost::json::kind::uint64:
-		lua_pushnumber(state, static_cast<lua_Number>(value.as_uint64()));
-		break;
-	case boost::json::kind::double_:
-		lua_pushnumber(state, static_cast<lua_Number>(value.as_double()));
-		break;
-	case boost::json::kind::string: {
-		const auto &text = value.as_string();
+	} else if (value.is_boolean()) {
+		lua_pushboolean(state, value.get<bool>());
+	} else if (value.is_number()) {
+		lua_pushnumber(state, value.get<lua_Number>());
+	} else if (value.is_string()) {
+		const auto &text = value.get_ref<const std::string &>();
 		lua_pushlstring(state, text.data(), text.size());
-		break;
-	}
-	case boost::json::kind::array: {
-		lua_createtable(state, static_cast<int>(value.as_array().size()), 0);
+	} else if (value.is_array()) {
+		lua_createtable(state, static_cast<int>(value.size()), 0);
 		lua_Integer index = 1;
-		for (const auto &item : value.as_array()) {
+		for (const auto &item : value) {
 			pushJson(state, item);
 			lua_rawseti(state, -2, index++);
 		}
-		break;
-	}
-	case boost::json::kind::object: {
-		lua_createtable(state, 0, static_cast<int>(value.as_object().size()));
-		for (const auto &item : value.as_object()) {
-			pushJson(state, item.value());
-			lua_setfield(state, -2, item.key_c_str());
+	} else if (value.is_object()) {
+		lua_createtable(state, 0, static_cast<int>(value.size()));
+		for (const auto &[key, item] : value.items()) {
+			pushJson(state, item);
+			lua_setfield(state, -2, key.c_str());
 		}
-		break;
-	}
 	}
 }
 
-void pushObject(lua_State *state, const boost::json::object &object) {
-	pushJson(state, boost::json::value(object));
+void pushObject(lua_State *state, const nlohmann::json &object) {
+	pushJson(state, object);
 }
 
 int appendPrint(lua_State *state) {
@@ -146,8 +130,8 @@ std::string SPTemplate::render(const std::string &source,
 							   const std::string &method,
 							   const std::string &uri,
 							   const std::string &action,
-							   const boost::json::object &data,
-							   const boost::json::object &model) {
+							   const nlohmann::json &data,
+							   const nlohmann::json &model) {
 	using LuaState = std::unique_ptr<lua_State, decltype(&lua_close)>;
 	LuaState state(luaL_newstate(), &lua_close);
 	if (!state)
