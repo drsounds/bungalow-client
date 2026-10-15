@@ -1,8 +1,9 @@
 name: Release Win32 build
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
@@ -74,7 +75,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v2.0.8
         with:
-          tag_name: ${{ github.event.release.tag_name || inputs.tag }}
+          tag_name: ${{ inputs.tag || github.ref_name }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
           files: bungalow-native-win32-windows-x64.zip
