@@ -21,6 +21,27 @@ jobs:
           ref: 065ef5597383c1231bd4892cf8e94331b29bdb97
           path: vendor/WTL
 
+      - name: Set up vcpkg binary cache
+        shell: pwsh
+        run: |
+          $cache = Join-Path $env:RUNNER_TEMP "vcpkg-cache"
+          New-Item -ItemType Directory -Force -Path $cache | Out-Null
+          "VCPKG_DEFAULT_BINARY_CACHE=$cache" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Cache vcpkg dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ github.workflow }}-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', '.github/workflows/*.yml') }}-${{ github.run_id }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-${{ github.workflow }}-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', '.github/workflows/*.yml') }}-
+            vcpkg-${{ runner.os }}-${{ github.workflow }}-
+
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-${{ github.workflow }}
+
       - name: Install build dependencies
         shell: pwsh
         run: |
@@ -36,6 +57,8 @@ jobs:
         run: |
           cmake -S . -B build -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache `
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache `
             "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static-md `
             "-DWTL_INCLUDE_DIR=$env:GITHUB_WORKSPACE/vendor/WTL/Include" `
