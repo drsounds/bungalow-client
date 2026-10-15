@@ -34,7 +34,6 @@ namespace space
         void drawHTMLText(const string& html, SPFontStyle font, SPColor color, int x, int y, int width, int height) override;
         void drawLinearGradient(const sp_rectangle& rect, const SPGradient& gradient) override;
         SPImage *loadImage(const string& bitmap) override;
-        void scheduleThaw(int milliseconds) override;
         void freeze() override;
         void thaw() override;
         sp_rectangle measureString(const string& text, const SPFontStyle& font) override;

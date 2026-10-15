@@ -386,12 +386,6 @@ namespace space
         }
     }
 
-    void Win32GraphicsContext::scheduleThaw(int milliseconds)
-    {
-        if (window)
-            SetTimer(window, 1, static_cast<UINT>(milliseconds), nullptr);
-    }
-
     void Win32GraphicsContext::freeze()
     {
         frozen = true;
