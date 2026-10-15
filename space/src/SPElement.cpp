@@ -8,7 +8,6 @@
 #include <iterator>
 #include <boost/lexical_cast/bad_lexical_cast.hpp>
 #include <utility>
-#include <boost/algorithm/string.hpp>
 #include "Space.h"
 
 #include "SPWindowElement.h"
@@ -28,8 +27,15 @@
 #include "SPTabBarViewElement.h"
 #include "SPTextElement.h"
 #include "SPViewElement.h"
+#include "SPTemplate.h"
 
 #include <boost/json/src.hpp>
+#include <ctime>
+#include <exception>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+
 namespace space {
 	std::function<void(const std::string&)> SPElement::s_xulErrorHandler;
 	SPElement* SPElement::s_capturedElement = nullptr;
@@ -375,20 +381,64 @@ namespace space {
 	}
 
 	void SPElement::request(const string& method, const string &uri, const string &data) {
-		auto *graphics = this->createGraphics();
-		if (!graphics)
+		const string prefix = "spacify:";
+		if (uri.rfind(prefix, 0) != 0) {
+			this->loadXUL("./resources/app/views/error.xml");
 			return;
-		const string url = "http://127.0.0.1:2855/" +
-			boost::algorithm::replace_all_copy(uri, ":", "/").substr(strlen("spacify:"));
-		graphics->request(method, url, data,
-			[this](bool success, const string& response) {
-				if (success) {
-					this->setInnerXUL(response);
-				} else {
-					this->setFlex(1);
-					this->loadXUL("./resources/app/views/error.xml");
-				}
-			});
+		}
+
+		string route = uri.substr(prefix.size());
+		const size_t separator = route.find(':');
+		if (separator != string::npos)
+			route.resize(separator);
+		if (route != "start" && route != "artist") {
+			this->loadXUL("./resources/app/views/error.xml");
+			return;
+		}
+
+		const string filename = "./resources/app/views/" + route + ".xml";
+		std::ifstream templateFile(filename, std::ios::binary);
+		if (!templateFile) {
+			this->loadXUL("./resources/app/views/error.xml");
+			return;
+		}
+
+		std::ostringstream templateSource;
+		templateSource << templateFile.rdbuf();
+		boost::json::object requestData;
+		if (!data.empty()) {
+			try {
+				boost::json::value parsed = boost::json::parse(data);
+				if (parsed.is_object())
+					requestData = parsed.as_object();
+			} catch (const boost::json::system_error&) {
+			}
+		}
+
+		string action;
+		if (requestData.contains("command") && requestData.at("command").is_string())
+			action = string(requestData.at("command").as_string());
+
+		std::time_t now = std::time(nullptr);
+		std::tm localTime{};
+#ifdef _WIN32
+		localtime_s(&localTime, &now);
+#else
+		localtime_r(&now, &localTime);
+#endif
+		std::ostringstream timestamp;
+		timestamp << std::put_time(&localTime, "%Y-%m-%d %H:%M:%S");
+		boost::json::object model;
+		model["now"] = timestamp.str();
+
+		try {
+			this->setInnerXUL(space::SPTemplate::render(
+				templateSource.str(), method, uri, action, requestData, model));
+		} catch (const std::exception& error) {
+			if (s_xulErrorHandler)
+				s_xulErrorHandler(error.what());
+			this->loadXUL("./resources/app/views/error.xml");
+		}
 	}
 
 	void SPElement::onLoad() {

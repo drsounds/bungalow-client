@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(BungalowNative LANGUAGES CXX)
+project(BungalowNative LANGUAGES C CXX)
 include(CTest)
 
 if(POLICY CMP0167)
@@ -26,8 +26,16 @@ find_package(PNG REQUIRED)
 find_package(EXPAT 2.2.8 REQUIRED)
 
 if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
-    find_package(wxWidgets REQUIRED)
+    find_package(wxWidgets REQUIRED COMPONENTS core base xml webview)
 endif()
+
+add_library(elua STATIC
+    elua/src/cstr.c
+    elua/src/elua.c)
+target_include_directories(elua PUBLIC
+    elua/include
+    ${LUA_INCLUDE_DIR})
+target_link_libraries(elua PUBLIC ${LUA_LIBRARIES})
 
 file(GLOB SPACE_SOURCES CONFIGURE_DEPENDS "space/src/*.cpp")
 file(GLOB SPACIFY_SOURCES CONFIGURE_DEPENDS "spacify/src/*.cpp")
@@ -104,7 +112,8 @@ target_link_libraries(spacify-client PRIVATE
     Boost::json
     PNG::PNG
     EXPAT::EXPAT
-    ${LUA_LIBRARIES})
+    ${LUA_LIBRARIES}
+    elua)
 
 if(WIN32)
     set_target_properties(spacify-client PROPERTIES WIN32_EXECUTABLE TRUE)
@@ -113,6 +122,17 @@ endif()
 install(TARGETS spacify-client RUNTIME DESTINATION .)
 
 if(BUILD_TESTING)
+    add_executable(spacify-template-test
+        space/tests/SPTemplateTest.cpp
+        space/src/SPTemplate.cpp)
+    target_include_directories(spacify-template-test PRIVATE
+        ${Boost_INCLUDE_DIRS}
+        ${LUA_INCLUDE_DIR}
+        space/include
+        elua/include)
+    target_link_libraries(spacify-template-test PRIVATE Boost::json elua)
+    add_test(NAME spacify-template-test COMMAND spacify-template-test)
+
     add_executable(spacify-xml-parser-test
         space/tests/SPXmlParserTest.cpp
         space/src/SPXmlParser.cpp)

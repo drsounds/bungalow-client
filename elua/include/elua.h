@@ -1,6 +1,10 @@
 #ifndef ELUA_H
 #define ELUA_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <lualib.h>
 #include "cstr.h"
 
@@ -44,6 +48,10 @@ void elua_reset_conf (elua_conf_t *conf);
  */
 int elua_parse_file (lua_State *L, FILE *f, elua_context_t *ctx);
 
+// Parse and load a template from memory.
+int elua_loadbuffer(lua_State *L, const char *buffer, size_t length,
+                    const char *filename, elua_context_t *ctx);
+
 // Load a ELUA file
 // Convenience function.
 int elua_loadfile (lua_State *L, const char *fn, elua_context_t *ctx);
@@ -63,5 +71,8 @@ int elua_loadfile (lua_State *L, const char *fn, elua_context_t *ctx);
  */
 int lua_load_cstr (lua_State *L, cstr_t *buf, const char *filename);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

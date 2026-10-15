@@ -41,7 +41,7 @@ jobs:
       - name: Install build dependencies
         shell: pwsh
         run: |
-          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install boost-json lua libpng expat wxwidgets --triplet x64-windows-static-md
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install boost-json lua libpng expat "wxwidgets[webview]" --triplet x64-windows-static-md
 
       - name: Set up MSVC environment
         uses: ilammy/msvc-dev-cmd@v1

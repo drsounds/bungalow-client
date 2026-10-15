@@ -7,7 +7,6 @@
 
 #include "PlayContext.h"
 #include "PlayQueueEntry.h"
-#include "PythonRunner.h"
 #include "Database.h"
 #include "SPObservable.h"
 #include "SPApplicationContext.h"
@@ -35,7 +34,6 @@ protected:
     space::SPWindowElement *m_windowElement;
     SpaceFrame* m_frame;
     space::MainElement* m_main;
-    PythonRunner m_pythonRunner;
     std::unique_ptr<Database> m_database;
     std::string m_databasePath;
     std::unique_ptr<DownloadManager> m_downloadManager;
