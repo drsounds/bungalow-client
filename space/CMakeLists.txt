@@ -9,12 +9,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find dependencies
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS json)
 find_package(Lua REQUIRED)
 find_package(EXPAT 2.2.8 REQUIRED)
 
 # Include directories
-include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${LUA_INCLUDE_DIR})
 
 include_directories(include)
@@ -25,4 +24,4 @@ file(GLOB HEADERS "include/*.h")
 add_library(space ${SOURCES} ${HEADERS}
         src/SPMessageType.cpp
         include/SPMessageType.h)
-target_link_libraries(space PUBLIC EXPAT::EXPAT)
+target_link_libraries(space PUBLIC Boost::headers Boost::json EXPAT::EXPAT)

@@ -1,5 +1,5 @@
-#include <atlapp.h>
 #include <atlbase.h>
+#include <atlapp.h>
 #include <atlcrack.h>
 #include <atlframe.h>
 #include <atltypes.h>
@@ -81,7 +81,7 @@ public:
 
 	LRESULT OnPaint(UINT, WPARAM, LPARAM, BOOL &) {
 		PAINTSTRUCT paint{};
-		HDC dc = BeginPaint(m_hWnd, &paint);
+		HDC dc = ::BeginPaint(m_hWnd, &paint);
 		app.paint(dc);
 
 		RECT client{};
@@ -103,11 +103,11 @@ public:
 		RECT title = header;
 		DrawTextW(dc, L"Spacify", -1, &title,
 				  DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-		EndPaint(m_hWnd, &paint);
+		::EndPaint(m_hWnd, &paint);
 		return 0;
 	}
 
-	LRESULT OnEraseBackground(HDC, BOOL &) { return 1; }
+	LRESULT OnEraseBackground(UINT, WPARAM, LPARAM, BOOL &) { return 1; }
 
 	LRESULT OnNcCalcSize(UINT, WPARAM wParam, LPARAM lParam, BOOL &) {
 		if (wParam && IsZoomed()) {
@@ -236,22 +236,23 @@ private:
 		const int headerHeight = space::NativeApplication::HeaderHeight;
 		const int buttonHeight = headerHeight - 8;
 		const int buttonWidth = 44;
-		MoveWindow(fileMenuButton, 8, 4, 56, buttonHeight, TRUE);
-		MoveWindow(closeButton, client.right - buttonWidth - 4, 4, buttonWidth,
-				   buttonHeight, TRUE);
-		MoveWindow(maximizeButton, client.right - buttonWidth * 2 - 4, 4,
-				   buttonWidth, buttonHeight, TRUE);
-		MoveWindow(minimizeButton, client.right - buttonWidth * 3 - 4, 4,
-				   buttonWidth, buttonHeight, TRUE);
+		::MoveWindow(fileMenuButton, 8, 4, 56, buttonHeight, TRUE);
+		::MoveWindow(closeButton, client.right - buttonWidth - 4, 4, buttonWidth,
+					 buttonHeight, TRUE);
+		::MoveWindow(maximizeButton, client.right - buttonWidth * 2 - 4, 4,
+					 buttonWidth, buttonHeight, TRUE);
+		::MoveWindow(minimizeButton, client.right - buttonWidth * 3 - 4, 4,
+					 buttonWidth, buttonHeight, TRUE);
 	}
 
 	bool IsHeaderButtonAt(POINT point) const {
-		for (HWND button :
-			 {fileMenuButton, minimizeButton, maximizeButton, closeButton}) {
+		const HWND buttons[] = {fileMenuButton, minimizeButton, maximizeButton,
+								closeButton};
+		for (HWND button : buttons) {
 			if (!button)
 				continue;
 			RECT bounds{};
-			GetWindowRect(button, &bounds);
+			::GetWindowRect(button, &bounds);
 			POINT topLeft{bounds.left, bounds.top};
 			POINT bottomRight{bounds.right, bounds.bottom};
 			ScreenToClient(&topLeft);
@@ -266,7 +267,7 @@ private:
 
 	void ShowFileMenu() {
 		RECT button{};
-		GetWindowRect(fileMenuButton, &button);
+		::GetWindowRect(fileMenuButton, &button);
 		TrackPopupMenu(fileMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON,
 					   button.left, button.bottom, 0, m_hWnd, nullptr);
 	}
@@ -310,11 +311,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
 	MainFrame frame;
 	const DWORD style = WS_POPUP | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX |
 						WS_MAXIMIZEBOX | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
-	if (frame.CreateEx(nullptr, rcDefault, style, WS_EX_APPWINDOW) == nullptr) {
+	if (frame.CreateEx(nullptr, nullptr, style, WS_EX_APPWINDOW) == nullptr) {
 		_Module.Term();
 		return 1;
 	}
-	frame.SetWindowText(L"Spacify");
+	::SetWindowTextW(frame.m_hWnd, L"Spacify");
 	frame.ShowWindow(showCommand);
 	frame.UpdateWindow();
 
