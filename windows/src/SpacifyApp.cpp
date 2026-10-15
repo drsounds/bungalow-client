@@ -68,15 +68,20 @@ space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::S
 
     m_mediaServices.push_back(new LocalMediaService());
 
-    // The resources/ directory sits next to the executable, or one level up
-    // when the binary lives in a build subdirectory.
+    // The resources/ directory sits next to the executable or in an ancestor
+    // directory (e.g. the repo root when running from build/ninja).
     wchar_t exePath[MAX_PATH * 2] = L"";
     GetModuleFileNameW(nullptr, exePath, static_cast<DWORD>(sizeof(exePath) / sizeof(exePath[0])));
     namespace fs = std::filesystem;
     fs::path exeDir = fs::path(exePath).parent_path();
     fs::path resourcesDir = exeDir / "resources";
-    if (!fs::exists(resourcesDir))
-        resourcesDir = exeDir.parent_path() / "resources";
+    for (fs::path dir = exeDir; dir.has_parent_path(); dir = dir.parent_path()) {
+        if (fs::exists(dir / "resources" / "app" / "views" / "app.xml")) {
+            resourcesDir = dir / "resources";
+            break;
+        }
+        if (dir == dir.parent_path()) break;
+    }
     resourcesDir = resourcesDir.lexically_normal();
 
     // Relative XUL paths resolve against the resources parent.

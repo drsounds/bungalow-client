@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <iostream>
 #include <cstdlib>
+#include <stdexcept>
+#include <string>
 using namespace std;
 
 namespace space {
@@ -31,13 +33,13 @@ SPImage::SPImage()
     //ctor
 }
 void abort_(char *text, int t, png_byte byte) {
-    throw;
+    throw std::runtime_error(text);
 }
 void abort_(char *text, char *fileName) {
-    throw;
+    throw std::runtime_error(std::string(text) + ": " + fileName);
 }
 void abort_(char *text) {
-    throw;
+    throw std::runtime_error(text);
 }
 SPImage::SPImage(const string& fileName) {
 
@@ -79,6 +81,8 @@ SPImage::SPImage(const string& fileName) {
     bit_depth = png_get_bit_depth(png_ptr, info_ptr);
 
     number_of_passes = png_set_interlace_handling(png_ptr);
+    if (color_type == PNG_COLOR_TYPE_RGB)
+        png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
     png_read_update_info(png_ptr, info_ptr);
 
 
@@ -103,11 +107,8 @@ SPImage::SPImage(const string& fileName) {
 
     // Process pixels
 
-    if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
-                abort_("[process_file] input file is PNG_COLOR_TYPE_RGB but must be PNG_COLOR_TYPE_RGBA "
-                       "(lacks the alpha channel)", file_name);
-
-    if (png_get_color_type(png_ptr, info_ptr) != PNG_COLOR_TYPE_RGBA)
+    if (png_get_color_type(png_ptr, info_ptr) != PNG_COLOR_TYPE_RGBA &&
+        png_get_color_type(png_ptr, info_ptr) != PNG_COLOR_TYPE_RGB)
             abort_("[process_file] color_type of input file must be PNG_COLOR_TYPE_RGBA (%d) (is %d)",
                    PNG_COLOR_TYPE_RGBA, png_get_color_type(png_ptr, info_ptr));
 
