@@ -60,16 +60,16 @@ namespace space
         windowElement->draw(graphics, client.right, client.bottom);
     }
 
-    void NativeApplication::mouseEvent(const char *name, int x, int y, int button)
+    void NativeApplication::mouseEvent(const char *name, int x, int y, int button, bool commandDown)
     {
         if (!space || !windowElement)
             return;
-        auto *args = new SPMouseEventArgs(button, x, y);
+        auto *args = new SPMouseEventArgs(button, x, y, commandDown);
         space->dispatchEvent(name, args, windowElement);
         if (std::string(name) == "mouseup" &&
             ((button == 0 && leftButtonDown) || (button == 1 && rightButtonDown)))
         {
-            auto *clickArgs = new SPMouseEventArgs(button, x, y);
+            auto *clickArgs = new SPMouseEventArgs(button, x, y, commandDown);
             space->dispatchEvent("click", clickArgs, windowElement);
             if (button == 0)
                 leftButtonDown = false;

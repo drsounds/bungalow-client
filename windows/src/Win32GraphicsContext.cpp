@@ -213,12 +213,29 @@ namespace space
         std::vector<unsigned char> pixels(pixelCount * 4);
         for (size_t i = 0; i < pixelCount; ++i)
         {
-            pixels[i * 4] = image->pixels[i].b;
-            pixels[i * 4 + 1] = image->pixels[i].g;
-            pixels[i * 4 + 2] = image->pixels[i].r;
-            pixels[i * 4 + 3] = image->pixels[i].a;
+            // Premultiply for AlphaBlend.
+            const unsigned a = image->pixels[i].a;
+            pixels[i * 4] = static_cast<unsigned char>(image->pixels[i].b * a / 255);
+            pixels[i * 4 + 1] = static_cast<unsigned char>(image->pixels[i].g * a / 255);
+            pixels[i * 4 + 2] = static_cast<unsigned char>(image->pixels[i].r * a / 255);
+            pixels[i * 4 + 3] = static_cast<unsigned char>(a);
         }
-        StretchDIBits(dc, x, y, width, height, x1, y1, x2, y2, pixels.data(), &info, DIB_RGB_COLORS, SRCCOPY);
+        void *bits = nullptr;
+        HBITMAP bitmap = CreateDIBSection(dc, &info, DIB_RGB_COLORS, &bits, nullptr, 0);
+        if (!bitmap || !bits)
+        {
+            if (bitmap)
+                DeleteObject(bitmap);
+            return;
+        }
+        memcpy(bits, pixels.data(), pixels.size());
+        HDC source = CreateCompatibleDC(dc);
+        HGDIOBJ old = SelectObject(source, bitmap);
+        BLENDFUNCTION blend{AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+        AlphaBlend(dc, x, y, width, height, source, x1, y1, x2, y2, blend);
+        SelectObject(source, old);
+        DeleteDC(source);
+        DeleteObject(bitmap);
     }
 
     void Win32GraphicsContext::drawSkinImage(const string& resourceId, int x, int y, int width, int height)
@@ -311,7 +328,16 @@ namespace space
     void Win32GraphicsContext::fillRoundedLinearGradientRectangle(int x, int y, int width, int height,
         int radius, int direction, const SPGradient& gradient)
     {
-        fillRoundedRectangle(x, y, width, height, radius, gradient.getStart());
+        if (!dc)
+            return;
+        // Clip to the rounded shape, then paint a vertical gradient like the wx backend.
+        const int state = SaveDC(dc);
+        BeginPath(dc);
+        RoundRect(dc, x, y, x + width, y + height, radius * 2, radius * 2);
+        EndPath(dc);
+        SelectClipPath(dc, RGN_AND);
+        drawLinearGradient({x, y, width, height}, gradient);
+        RestoreDC(dc, state);
     }
 
     void Win32GraphicsContext::drawImage(SPImage *image, int x, int y, int width, int height)
@@ -342,7 +368,7 @@ namespace space
         const int oldMode = SetBkMode(dc, TRANSPARENT);
         const COLORREF oldColor = SetTextColor(dc, nativeColor(color));
         RECT rect{x, y, x + width, y + height};
-        DrawTextW(dc, value.c_str(), static_cast<int>(value.size()), &rect, DT_LEFT | DT_TOP | DT_WORDBREAK);
+        DrawTextW(dc, value.c_str(), static_cast<int>(value.size()), &rect, DT_LEFT | DT_TOP | DT_NOPREFIX | DT_NOCLIP);
         SetTextColor(dc, oldColor);
         SetBkMode(dc, oldMode);
         SelectObject(dc, oldFont);
@@ -409,18 +435,21 @@ namespace space
 
     sp_rectangle Win32GraphicsContext::measureString(const string& text, const SPFontStyle& font)
     {
-        if (!dc)
+        HDC measureDc = dc ? dc : (window ? GetDC(window) : nullptr);
+        if (!measureDc)
             return {};
         const std::wstring value = toWide(text);
         const std::wstring family = toWide(font.family);
         HFONT handle = CreateFontW(-std::max(1, font.height), 0, 0, 0, font.weight,
             font.italic, font.underline, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
             CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, family.c_str());
-        HGDIOBJ oldFont = SelectObject(dc, handle);
+        HGDIOBJ oldFont = SelectObject(measureDc, handle);
         RECT rect{0, 0, 0, 0};
-        DrawTextW(dc, value.c_str(), static_cast<int>(value.size()), &rect, DT_CALCRECT | DT_WORDBREAK);
-        SelectObject(dc, oldFont);
+        DrawTextW(measureDc, value.c_str(), static_cast<int>(value.size()), &rect, DT_CALCRECT | DT_NOPREFIX);
+        SelectObject(measureDc, oldFont);
         DeleteObject(handle);
+        if (!dc)
+            ReleaseDC(window, measureDc);
         return {0, 0, rect.right - rect.left, rect.bottom - rect.top};
     }
 

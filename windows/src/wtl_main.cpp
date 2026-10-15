@@ -8,6 +8,7 @@
 
 #include <windowsx.h>
 
+#include <algorithm>
 namespace WTL {
 using ::CPoint;
 using ::CSize;
@@ -90,11 +91,22 @@ public:
 
 	LRESULT OnPaint(UINT, WPARAM, LPARAM, BOOL &) {
 		PAINTSTRUCT paint{};
-		HDC dc = ::BeginPaint(m_hWnd, &paint);
-		app.paint(dc);
-
+		HDC windowDc = ::BeginPaint(m_hWnd, &paint);
 		RECT client{};
 		GetClientRect(&client);
+
+		// Draw off-screen and blit once to avoid flicker (like wxAutoBufferedPaintDC).
+		HDC dc = CreateCompatibleDC(windowDc);
+		HBITMAP buffer =
+			CreateCompatibleBitmap(windowDc, (std::max)(1L, client.right),
+								   (std::max)(1L, client.bottom));
+		HGDIOBJ oldBuffer = SelectObject(dc, buffer);
+		HBRUSH clear = CreateSolidBrush(RGB(38, 43, 54));
+		FillRect(dc, &client, clear);
+		DeleteObject(clear);
+		IntersectClipRect(dc, paint.rcPaint.left, paint.rcPaint.top,
+						  paint.rcPaint.right, paint.rcPaint.bottom);
+		app.paint(dc);
 		RECT header{0, 0, client.right, space::NativeApplication::HeaderHeight};
 		HBRUSH background = CreateSolidBrush(RGB(38, 43, 54));
 		FillRect(dc, &header, background);
@@ -112,6 +124,15 @@ public:
 		RECT title = header;
 		DrawTextW(dc, L"Spacify", -1, &title,
 				  DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+		SelectClipRgn(dc, nullptr);
+		BitBlt(windowDc, paint.rcPaint.left, paint.rcPaint.top,
+			   paint.rcPaint.right - paint.rcPaint.left,
+			   paint.rcPaint.bottom - paint.rcPaint.top, dc, paint.rcPaint.left,
+			   paint.rcPaint.top, SRCCOPY);
+		SelectObject(dc, oldBuffer);
+		DeleteObject(buffer);
+		DeleteDC(dc);
 		::EndPaint(m_hWnd, &paint);
 		return 0;
 	}
@@ -185,31 +206,34 @@ public:
 	void OnLeftButtonDown(UINT, CPoint point) {
 		SetFocus();
 		SetCapture();
-		app.mouseEvent("mousedown", point.x, point.y);
+		app.mouseEvent("mousedown", point.x, point.y, 0, IsCommandDown());
 	}
 
 	void OnLeftButtonUp(UINT, CPoint point) {
-		ReleaseCapture();
-		app.mouseEvent("mouseup", point.x, point.y);
+		if (GetCapture() == m_hWnd)
+			ReleaseCapture();
+		app.mouseEvent("mouseup", point.x, point.y, 0, IsCommandDown());
 	}
 
 	void OnMouseMove(UINT, CPoint point) {
-		app.mouseEvent("mousemove", point.x, point.y);
+		app.mouseEvent("mousemove", point.x, point.y, 0, IsCommandDown());
 	}
 
 	void OnRightButtonDown(UINT, CPoint point) {
 		SetCapture();
-		app.mouseEvent("mousedown", point.x, point.y, 1);
+		app.mouseEvent("mousedown", point.x, point.y, 1, IsCommandDown());
 	}
 
 	void OnRightButtonUp(UINT, CPoint point) {
-		ReleaseCapture();
-		app.mouseEvent("mouseup", point.x, point.y, 1);
+		if (GetCapture() == m_hWnd)
+			ReleaseCapture();
+		app.mouseEvent("mouseup", point.x, point.y, 1, IsCommandDown());
 	}
 
+	static bool IsCommandDown() { return (GetKeyState(VK_CONTROL) & 0x8000) != 0; }
+
 	void OnKeyDown(UINT keyCode, UINT, UINT) {
-		const bool commandDown = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
-		app.keyEvent(static_cast<int>(keyCode), commandDown);
+		app.keyEvent(static_cast<int>(keyCode), IsCommandDown());
 	}
 
 	void OnTimer(UINT_PTR) { app.timer(); }
