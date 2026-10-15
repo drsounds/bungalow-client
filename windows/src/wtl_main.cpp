@@ -208,7 +208,8 @@ public:
 	}
 
 	void OnKeyDown(UINT keyCode, UINT, UINT) {
-		app.keyEvent(static_cast<int>(keyCode), (GetKeyState(VK_CONTROL) & 0x8000) != 0);
+		const bool commandDown = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+		app.keyEvent(static_cast<int>(keyCode), commandDown);
 	}
 
 	void OnTimer(UINT_PTR) { app.timer(); }
@@ -350,7 +351,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
 		const DWORD style = WS_POPUP | WS_THICKFRAME | WS_SYSMENU |
 							WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CLIPCHILDREN |
 							WS_CLIPSIBLINGS;
-		if (frame.CreateEx(nullptr, nullptr, style, WS_EX_APPWINDOW) == nullptr) {
+		if (frame.CreateEx(nullptr, nullptr, style, WS_EX_APPWINDOW) ==
+			nullptr) {
 			::MessageBoxW(
 				nullptr,
 				frame.didFailInitialization()
