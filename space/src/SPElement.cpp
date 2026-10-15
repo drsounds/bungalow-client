@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iterator>
 #include <boost/lexical_cast/bad_lexical_cast.hpp>
+#include <boost/system/system_error.hpp>
 #include <utility>
 #include "Space.h"
 
@@ -411,7 +412,7 @@ namespace space {
 				boost::json::value parsed = boost::json::parse(data);
 				if (parsed.is_object())
 					requestData = parsed.as_object();
-			} catch (const boost::json::system_error&) {
+			} catch (const boost::system::system_error&) {
 			}
 		}
 
