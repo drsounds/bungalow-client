@@ -2,7 +2,7 @@
 
 #include "SPElement.h"
 #include "SPPlayerCanvasImplementationElement.h"
-#include "SPMusicVisualizerElement.h"
+#include <SPMusicVisualizerElement.h>
 
 namespace space {
 namespace views {

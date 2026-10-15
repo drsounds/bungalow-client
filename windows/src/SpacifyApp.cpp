@@ -29,6 +29,7 @@
 #include "SPFrutigerAeroSkin.h"
 #include "ConfigView.h"
 #include "UiDispatcher.h"
+#include "PlatformUi.h"
 
 #include <nlohmann/json.hpp>
 #include <cstdint>
@@ -81,7 +82,15 @@ space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::S
     // Relative XUL paths resolve against the resources parent.
     SetCurrentDirectoryW(resourcesDir.parent_path().c_str());
 
-    m_databasePath = (resourcesDir / "spacify.db").generic_string();
+    // Use an existing bundled database, otherwise create one in the user data dir.
+    fs::path dbPath = resourcesDir / "spacify.db";
+    if (!fs::exists(dbPath)) {
+        fs::path dataDir = fs::u8path(space::platform::userDataDir());
+        std::error_code ec;
+        fs::create_directories(dataDir, ec);
+        dbPath = dataDir / "spacify.db";
+    }
+    m_databasePath = dbPath.generic_string();
     m_database = std::make_unique<Database>(m_databasePath);
     m_downloadManager = std::make_unique<DownloadManager>(m_database->handle());
 

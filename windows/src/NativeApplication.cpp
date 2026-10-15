@@ -36,7 +36,12 @@ namespace space
 
 #ifdef BUNGALOW_WTL
         app = std::make_unique<SpacifyApp>();
-        mainElement = app->initialize(space, windowElement);
+        try {
+            mainElement = app->initialize(space, windowElement);
+        } catch (const std::exception &e) {
+            MessageBoxA(window, e.what(), "Spacify startup error", MB_OK | MB_ICONERROR);
+            return false;
+        }
 #else
         mainElement = new SPTextElement(windowElement);
         mainElement->setId("main");

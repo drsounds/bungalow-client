@@ -3,7 +3,7 @@
 #include "SPViewElement.h"
 #include "SPAeroColorSlider.h"
 #include "SPFrutigerAeroSkin.h"
-#include "SPPlayerCanvasElement.h"
+#include <SPPlayerCanvasElement.h>
 #include "SPMusicVisualizerCanvasElement.h"
 #include "SPVBoxElement.h"
 #include "SPTextElement.h"
