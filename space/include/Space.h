@@ -24,8 +24,8 @@ namespace space
     {
     protected:
         //Spider *m_spider;
-        SPStore *m_store;
-        SPGraphicsContext *m_graphicsContext;
+        SPStore *m_store = nullptr;
+        SPGraphicsContext *m_graphicsContext = nullptr;
         vector<SPWindowElement *> m_windows;
         queue<SPEvent> m_events;
         queue<SPMessage> m_messages;

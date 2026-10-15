@@ -21,7 +21,7 @@ namespace space {
         map<string, string> stringAttributes;
         map<string, SPColor> colorAttributes;
         map<string, int> integerAttributes;
-        SPNode *m_parent;
+        SPNode *m_parent = nullptr;
         string tagName = "node";
     	string m_id;
     	string m_innerText;

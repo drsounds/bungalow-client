@@ -6,7 +6,7 @@ namespace space {
     class Space;
     class SPObject {
     protected:
-    	Space *m_space;
+    	Space *m_space = nullptr;
     public:
     	void setSpace(Space *space) {
     		this->m_space = space;
