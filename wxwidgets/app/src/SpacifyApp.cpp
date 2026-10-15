@@ -32,8 +32,8 @@
 #include "WxWidgetsGraphicsContext.h"
 #include "ConfigView.h"
 
-#include <boost/json/parse.hpp>
-#include <boost/json/value.hpp>
+#include <nlohmann/json.hpp>
+#include <cstdint>
 
 #include <fstream>
 #include <sstream>
@@ -114,32 +114,31 @@ bool SpacifyApp::OnInit(){
             std::ostringstream ss;
             ss << settingsFile.rdbuf();
             try {
-                boost::json::value jv = boost::json::parse(ss.str());
-                auto& obj = jv.as_object();
+                nlohmann::json obj = nlohmann::json::parse(ss.str());
                 if (obj.contains("tintColor")) {
-                    string hexColor = string(obj.at("tintColor").as_string().c_str());
+                    string hexColor = obj.at("tintColor").get<string>();
                     tintColor = space::SPColor(hexColor);
                 }
                 if (obj.contains("colorScheme"))
-                    colorScheme = static_cast<short>(obj.at("colorScheme").as_int64());
+                    colorScheme = static_cast<short>(obj.at("colorScheme").get<std::int64_t>());
                 if (obj.contains("glossy"))
-                    glossy = obj.at("glossy").as_bool();
+                    glossy = obj.at("glossy").get<bool>();
                 if (obj.contains("developerMode"))
-                    m_developerMode = obj.at("developerMode").as_bool();
+                    m_developerMode = obj.at("developerMode").get<bool>();
                 if (obj.contains("skinType"))
-                    skinType = string(obj.at("skinType").as_string().c_str());
+                    skinType = obj.at("skinType").get<string>();
                 if (obj.contains("fullWidthAddressBar"))
-                    fullWidthAddressBar = obj.at("fullWidthAddressBar").as_bool();
+                    fullWidthAddressBar = obj.at("fullWidthAddressBar").get<bool>();
                 if (obj.contains("aeroHue"))
-                    aeroHue = static_cast<float>(obj.at("aeroHue").as_double());
+                    aeroHue = static_cast<float>(obj.at("aeroHue").get<double>());
                 if (obj.contains("aeroSaturation"))
-                    aeroSaturation = static_cast<float>(obj.at("aeroSaturation").as_double());
+                    aeroSaturation = static_cast<float>(obj.at("aeroSaturation").get<double>());
                 if (obj.contains("aeroLightness"))
-                    aeroLightness = static_cast<float>(obj.at("aeroLightness").as_double());
+                    aeroLightness = static_cast<float>(obj.at("aeroLightness").get<double>());
                 if (obj.contains("aeroHeaderStyle"))
-                    aeroHeaderStyle = static_cast<int>(obj.at("aeroHeaderStyle").as_int64());
+                    aeroHeaderStyle = static_cast<int>(obj.at("aeroHeaderStyle").get<std::int64_t>());
                 if (obj.contains("buttonStyle"))
-                    buttonStyle = static_cast<int>(obj.at("buttonStyle").as_int64());
+                    buttonStyle = static_cast<int>(obj.at("buttonStyle").get<std::int64_t>());
             } catch (...) {}
         }
     }

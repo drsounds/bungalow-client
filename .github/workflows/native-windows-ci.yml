@@ -32,7 +32,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/vcpkg-cache
-          key: vcpkg-${{ runner.os }}-x64-windows-static-md-${{ hashFiles('.github/workflows/native-windows-ci.yml') }}
+          key: vcpkg-${{ runner.os }}-x64-windows-static-md-${{ hashFiles('vcpkg.json', '.github/workflows/native-windows-ci.yml') }}
           restore-keys: |
             vcpkg-${{ runner.os }}-x64-windows-static-md-
 
@@ -44,7 +44,7 @@ jobs:
       - name: Install build dependencies
         shell: pwsh
         run: |
-          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install boost-algorithm boost-json boost-lexical-cast boost-multi-index boost-property-tree boost-range lua libpng expat --triplet x64-windows-static-md
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install --triplet x64-windows-static-md
 
       - name: Set up MSVC environment
         uses: ilammy/msvc-dev-cmd@v1

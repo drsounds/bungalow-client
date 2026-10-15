@@ -1,16 +1,22 @@
 {
 	"name": "bungalow-client",
 	"version-string": "1.0.0",
-    "builtin-baseline": "c52f7bd748185ef0e0daf033d9f2ddfc8a3449ea",
+    "builtin-baseline": "e456309491fd875487bf02b8a0dca76c1b1b00cc",
 	"dependencies": [
-		"boost-headers",
-		"boost-json",
-		"boost-algorithm",
-		"boost-asio",
-		"boost-lexical-cast",
-		"boost-property-tree",
+		"nlohmann-json",
 		"lua",
 		"libpng",
 		"expat"
-	]
+	],
+	"features": {
+		"wxwidgets": {
+			"description": "Dependencies for the wxWidgets UI backend",
+			"dependencies": [
+				{
+					"name": "wxwidgets",
+					"features": ["webview"]
+				}
+			]
+		}
+	}
 }

@@ -31,7 +31,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/vcpkg-cache
-          key: vcpkg-${{ runner.os }}-x64-windows-static-md-${{ hashFiles('.github/workflows/release-wxwidgets.yml') }}
+          key: vcpkg-${{ runner.os }}-x64-windows-static-md-${{ hashFiles('vcpkg.json', '.github/workflows/release-wxwidgets.yml') }}
           restore-keys: |
             vcpkg-${{ runner.os }}-x64-windows-static-md-
 
@@ -43,7 +43,7 @@ jobs:
       - name: Install build dependencies
         shell: pwsh
         run: |
-          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install boost-json lua libpng expat "wxwidgets[webview]" --triplet x64-windows-static-md
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install --triplet x64-windows-static-md --x-feature=wxwidgets
 
       - name: Set up MSVC environment
         uses: ilammy/msvc-dev-cmd@v1
@@ -59,6 +59,7 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache `
             "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static-md `
+            -DVCPKG_MANIFEST_FEATURES=wxwidgets `
             -DBUNGALOW_UI_BACKEND=wxwidgets
           cmake --build build --config Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

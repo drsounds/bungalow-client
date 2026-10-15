@@ -8,7 +8,7 @@ It uses an own written GUI framework called **Space** which is a lightweight abs
 
 Required libraries:
 
-* Boost.JSON
+* nlohmann-json
 * Lua
 * libpng
 * Expat

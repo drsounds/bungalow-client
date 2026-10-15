@@ -7,10 +7,6 @@ endif()
 project(BungalowNative LANGUAGES C CXX)
 include(CTest)
 
-if(POLICY CMP0167)
-    cmake_policy(SET CMP0167 NEW)
-endif()
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -25,7 +21,7 @@ if(NOT BUNGALOW_UI_BACKEND STREQUAL "wxwidgets" AND NOT WIN32)
     message(FATAL_ERROR "The ${BUNGALOW_UI_BACKEND} backend is only supported on Windows")
 endif()
 
-find_package(Boost REQUIRED COMPONENTS json)
+find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Lua REQUIRED)
 find_package(PNG REQUIRED)
 find_package(EXPAT 2.2.8 REQUIRED)
@@ -113,8 +109,7 @@ endif()
 
 target_link_libraries(spacify-client PRIVATE
     ${PLATFORM_LIBRARIES}
-    Boost::headers
-    Boost::json
+    nlohmann_json::nlohmann_json
     PNG::PNG
     EXPAT::EXPAT
     ${LUA_LIBRARIES}
@@ -131,12 +126,15 @@ if(BUILD_TESTING)
         space/tests/SPTemplateTest.cpp
         space/src/SPTemplate.cpp)
     target_include_directories(spacify-template-test PRIVATE
-        ${Boost_INCLUDE_DIRS}
         ${LUA_INCLUDE_DIR}
         space/include
         elua/include)
-    target_link_libraries(spacify-template-test PRIVATE Boost::json elua)
+    target_link_libraries(spacify-template-test PRIVATE nlohmann_json::nlohmann_json elua)
     add_test(NAME spacify-template-test COMMAND spacify-template-test)
+
+    add_executable(spacify-string-test space/tests/SPStringTest.cpp)
+    target_include_directories(spacify-string-test PRIVATE space/include)
+    add_test(NAME spacify-string-test COMMAND spacify-string-test)
 
     add_executable(spacify-xml-parser-test
         space/tests/SPXmlParserTest.cpp

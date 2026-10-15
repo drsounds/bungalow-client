@@ -7,7 +7,7 @@
 #include "Database.h"
 #include "SPBookmarkEventArgs.h"
 #include "Database.h"
-#include <boost/algorithm/string/predicate.hpp>
+#include "SPString.h"
 
 namespace space {
 namespace views {
@@ -46,7 +46,7 @@ AppView::AppView(SPElement* parent, bool showNavBar)
 }
 
 bool AppView::acceptsUri(const string& uri) {
-    return boost::algorithm::starts_with(uri, "spacify:app:");
+    return space::startsWith(uri, "spacify:app:");
 }
 
 void AppView::navigate(const string& uri) {

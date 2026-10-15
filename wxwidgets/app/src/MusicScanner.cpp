@@ -7,8 +7,8 @@
 #include <wx/filename.h>
 #include <wx/stdpaths.h>
 
-#include <boost/json/parse.hpp>
-#include <boost/json/value.hpp>
+#include <nlohmann/json.hpp>
+#include <cstdint>
 
 #include <filesystem>
 #include <fstream>
@@ -461,21 +461,21 @@ bool MusicScannerThread::createFromMBJson(sqlite3* db, const std::string& jsonSt
                                            const AudioMetadata& localMeta,
                                            sqlite3_int64 audioFileId,
                                            sqlite3_int64 playableId) {
-    boost::json::value jv;
-    try { jv = boost::json::parse(jsonStr); } catch (...) { return false; }
+    nlohmann::json jv;
+    try { jv = nlohmann::json::parse(jsonStr); } catch (...) { return false; }
 
-    auto* root = jv.if_object();
+    auto* root = jv.is_object() ? &jv : nullptr;
     if (!root || !root->contains("recordings")) return false;
-    auto* recs = root->at("recordings").if_array();
+    auto* recs = root->at("recordings").is_array() ? &root->at("recordings") : nullptr;
     if (!recs || recs->empty()) return false;
 
-    auto* rec = (*recs)[0].if_object();
-    if (!rec) return false;
+    auto* rec = &(*recs)[0];
+    if (!rec->is_object()) return false;
 
     // Require a minimum confidence score
     if (rec->contains("score")) {
         try {
-            int score = (int)rec->at("score").as_int64();
+            int score = rec->at("score").get<std::int64_t>();
             if (score < 85) return false;
         } catch (...) {}
     }
@@ -483,16 +483,16 @@ bool MusicScannerThread::createFromMBJson(sqlite3* db, const std::string& jsonSt
     // ── Recording identity ──────────────────────────────────────────────────
     std::string mbid, recTitle;
     try {
-        mbid     = std::string(rec->at("id").as_string().c_str());
-        recTitle = std::string(rec->at("title").as_string().c_str());
+        mbid     = rec->at("id").get<std::string>();
+        recTitle = rec->at("title").get<std::string>();
     } catch (...) { return false; }
 
     // Prefer real ISRC; fall back to "mb:<mbid>"
     std::string isrc = "mb:" + mbid;
     if (rec->contains("isrcs")) {
-        auto* isrcs = rec->at("isrcs").if_array();
+        auto* isrcs = rec->at("isrcs").is_array() ? &rec->at("isrcs") : nullptr;
         if (isrcs && !isrcs->empty()) {
-            try { isrc = std::string((*isrcs)[0].as_string().c_str()); } catch (...) {}
+            try { isrc = (*isrcs)[0].get<std::string>(); } catch (...) {}
         }
     }
 
@@ -510,26 +510,27 @@ bool MusicScannerThread::createFromMBJson(sqlite3* db, const std::string& jsonSt
     };
 
     if (rec->contains("artist-credit")) {
-        auto* credits = rec->at("artist-credit").if_array();
+        auto* credits = rec->at("artist-credit").is_array()
+                            ? &rec->at("artist-credit") : nullptr;
         if (credits) {
             int num = 0;
             for (auto& c : *credits) {
-                auto* co = c.if_object();
+                auto* co = c.is_object() ? &c : nullptr;
                 if (!co || !co->contains("artist")) continue;
-                auto* a = co->at("artist").if_object();
+                auto* a = co->at("artist").is_object() ? &co->at("artist") : nullptr;
                 if (!a) continue;
 
                 std::string aId, aName;
                 try {
-                    aId   = "mb:" + std::string(a->at("id").as_string().c_str());
-                    aName = std::string(a->at("name").as_string().c_str());
+                    aId   = "mb:" + a->at("id").get<std::string>();
+                    aName = a->at("name").get<std::string>();
                 } catch (...) { continue; }
 
                 // Prefer ISNI if present
                 if (a->contains("isnis")) {
-                    auto* isnis = a->at("isnis").if_array();
+                    auto* isnis = a->at("isnis").is_array() ? &a->at("isnis") : nullptr;
                     if (isnis && !isnis->empty()) {
-                        try { aId = std::string((*isnis)[0].as_string().c_str()); }
+                        try { aId = (*isnis)[0].get<std::string>(); }
                         catch (...) {}
                     }
                 }
@@ -571,18 +572,18 @@ bool MusicScannerThread::createFromMBJson(sqlite3* db, const std::string& jsonSt
     // ── Release ──────────────────────────────────────────────────────────────
     std::string releaseKey;
     if (rec->contains("releases")) {
-        auto* rels = rec->at("releases").if_array();
+        auto* rels = rec->at("releases").is_array() ? &rec->at("releases") : nullptr;
         if (rels && !rels->empty()) {
-            auto* rel = (*rels)[0].if_object();
-            if (rel) {
+            auto* rel = &(*rels)[0];
+            if (rel->is_object()) {
                 std::string relMbid, relTitle, relDate;
                 try {
-                    relMbid  = std::string(rel->at("id").as_string().c_str());
-                    relTitle = std::string(rel->at("title").as_string().c_str());
+                    relMbid  = rel->at("id").get<std::string>();
+                    relTitle = rel->at("title").get<std::string>();
                 } catch (...) {}
 
                 if (rel->contains("date") && !(*rel)["date"].is_null()) {
-                    try { relDate = std::string(rel->at("date").as_string().c_str()); }
+                    try { relDate = rel->at("date").get<std::string>(); }
                     catch (...) {}
                 }
 
@@ -590,7 +591,7 @@ bool MusicScannerThread::createFromMBJson(sqlite3* db, const std::string& jsonSt
                 releaseKey = "mb:" + relMbid;
                 if (rel->contains("barcode") && !(*rel)["barcode"].is_null()) {
                     try {
-                        std::string bc = std::string(rel->at("barcode").as_string().c_str());
+                        std::string bc = rel->at("barcode").get<std::string>();
                         if (!bc.empty()) releaseKey = bc;
                     } catch (...) {}
                 }
