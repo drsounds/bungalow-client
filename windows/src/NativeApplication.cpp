@@ -63,7 +63,8 @@ namespace space
         RECT client{};
         GetClientRect(windowHandle, &client);
         windowElement->setAbsoluteBounds({0, 0, client.right, client.bottom});
-        windowElement->pack();
+        mainElement->setX(0);
+        mainElement->setWidth((std::max)(0, static_cast<int>(client.right)));
         mainElement->setY(HeaderHeight);
         mainElement->setHeight((std::max)(0, static_cast<int>(client.bottom) - HeaderHeight));
         mainElement->pack();
@@ -77,6 +78,7 @@ namespace space
         RECT client{};
         GetClientRect(windowHandle, &client);
         windowElement->draw(graphics, client.right, client.bottom);
+        graphics->setDeviceContext(nullptr);
     }
 
     void NativeApplication::mouseEvent(const char *name, int x, int y, int button, bool commandDown)

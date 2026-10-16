@@ -825,11 +825,14 @@ namespace space {
 	}
 
 	void SPElement::resizeToText(bool width, bool height) {
+		if (this->getFlex() > 0) {
+			return;
+		}
 		sp_rectangle bounds = this->getTextBounds();
-		if (width) {
+		if (width && this->getWidth() <= 0) {
 			this->setWidth(bounds.width * 4);
 		}
-		if (height) {
+		if (height && this->getHeight() <= 0) {
 			this->setHeight(bounds.height * 2);
 		}
 	}
@@ -942,7 +945,9 @@ namespace space {
 			case sp_size_scale::undefined:
 				break;
 			case sp_size_scale::percent:
-				this->setWidth((int)(this->getUnitWidth().value / this->getParentElement()->getWidth()));
+				if (SPElement *parent = this->getParentElement())
+					this->setWidth(static_cast<int>(
+						parent->getWidth() * this->getUnitWidth().value / 100.0f));
 				break;
 			case sp_size_scale::pixel:
 				this->setWidth(this->getUnitWidth().value);
@@ -954,10 +959,12 @@ namespace space {
 			case sp_size_scale::undefined:
 				break;
 			case sp_size_scale::percent:
-				this->setHeight((int)(this->getUnitHeight().value / this->getParentElement()->getHeight()));
+				if (SPElement *parent = this->getParentElement())
+					this->setHeight(static_cast<int>(
+						parent->getHeight() * this->getUnitHeight().value / 100.0f));
 				break;
 			case sp_size_scale::pixel:
-				this->setWidth(this->getUnitHeight().value);
+				this->setHeight(static_cast<int>(this->getUnitHeight().value));
 				break;
 			}
 		}

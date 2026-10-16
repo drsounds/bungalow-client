@@ -1,133 +1,63 @@
 #include "SPHBoxElement.h"
 
-#include <iostream>
-
-#include "SPElement.h"
-
+#include <algorithm>
+#include <vector>
 
 namespace space {
-	SPHBoxElement::SPHBoxElement(SPElement *parent) : SPElement(parent) {
-		this->setTagName("hbox");
-	}
+    SPHBoxElement::SPHBoxElement(SPElement *parent) : SPElement(parent) {
+        this->setTagName("hbox");
+    }
+
     void SPHBoxElement::pack() {
         SPElement::pack();
-        int flexes = 0;
+        std::vector<SPElement *> children;
         int totalFlex = 0;
-        int statics = 0;
-        int leftWidth = 0;
-        int rightWidth = 0;
-        int side = -1;
-        int gap = this->getGap();
-        // First calculate count of flex
-        for(std::vector<SPNode *>::iterator it = this->getChildNodes().begin(); it != this->getChildNodes().end(); ++it) {
-        	SPElement *child = (SPElement *)*it;
-        	if (!child->isVisible()) {
-        		continue;
-        	}
-            if(child->getFlex() > 0) {
-                flexes++;
-                totalFlex += child->getFlex();
-                side = 0;
-            } else {
-                if(side == 0)
-                    side+=1;
-                if(side > 1)
-                    side = 1;
-                statics++;
-                if(side < 1)
-                    leftWidth += child->getWidth();
-                else if(side > 0)
-                    rightWidth += child->getWidth();
-            }
-        }
-
-        int availableFlexWidth = totalFlex > 0 ? (this->getWidth() - leftWidth - rightWidth) : 0;
-        if (availableFlexWidth < 1)
-        {
-            availableFlexWidth = 1;
-        }
-        for(std::vector<SPNode *>::iterator it = this->getChildNodes().begin(); it != this->getChildNodes().end(); ++it) {
-            SPElement *child = (SPElement *)*it;
-        	if (!child->isVisible()) {
-        		continue;
-        	}
-        	int leftPadding = this->getPadding().left + child->getMargins().left;
-        	int rightPadding = this->getPadding().right + child->getMargins().right;
-            int flex = child->getFlex();
-            if(flex > 0) {
-            	child->setWidth((flex * availableFlexWidth) / totalFlex - leftPadding - rightPadding - gap);
-            } else {
-                statics++;
-            }
-        }
-
-        // Now assign elements
-        int left = 0;
-        int right = 0;
-        side = -1;
-        for(std::vector<SPNode *>::iterator it = this->getChildNodes().begin(); it != this->getChildNodes().end(); ++it) {
-            SPElement *child = (SPElement *)*it;
-        	if (!child->isVisible()) {
-        		continue;
-        	}
-        	int leftPadding = this->getPadding().left + child->getMargins().left;
-        	int topPadding = this->getPadding().top + child->getMargins().top ;
-        	int bottomPadding = this->getPadding().bottom + child->getMargins().bottom;
-            if(child->getFlex() > 0)
-            {
-
-                side = 0;
-            }
-            else
-            {
-                if(side == 0)
-					side = 1;
-            }
-            
-            if(side < 0) {
-                int x = left + leftPadding;
-                if (it != this->getChildNodes().begin()) {
-                    x += gap;
-                }
-                child->setX(x);
-            }
-            else if(side == 0)
-            {
-                int x = leftWidth + leftPadding;
-                if (it != this->getChildNodes().begin()) {
-                    x += gap;
-                }
-                child->setX(x);
-            }
-            else
-            {
-                int x = leftPadding + leftWidth + availableFlexWidth + right;
-                if (it != this->getChildNodes().begin()) {
-                    x += gap;
-                }
-                child->setX(x);
-            }
-            child->setY(topPadding);
-            child->setHeight(this->getHeight() - bottomPadding - topPadding);
-
-			switch(side) {
-            case -1:
-                left += child->getWidth();
-                break;
-            case 0:
-                break;
-			default:
-                break;
-            }
-        }
-
-        // Pack child elements
-        for(std::vector<SPNode *>::iterator it = this->getChildNodes().begin(); it != this->getChildNodes().end(); ++it) {
-            SPElement *child = (SPElement *)*it;
+        int fixedWidth = this->getPadding().left + this->getPadding().right;
+        for (SPNode *node : this->getChildNodes()) {
+            auto *child = static_cast<SPElement *>(node);
             if (!child->isVisible())
                 continue;
-            child->pack();
+            children.push_back(child);
+            const sp_margin margins = child->getMargins();
+            fixedWidth += margins.left + margins.right;
+            if (child->getFlex() > 0)
+                totalFlex += child->getFlex();
+            else
+                fixedWidth += child->getWidth();
         }
-        // cout << "Element: " << this->getType() << " packed to width: " << this->getWidth() << " height: " << this->getHeight() << " flex: " << this->getIntegerAttribute("flex", 0) << endl;
+
+        const int gap = this->getGap();
+        if (children.size() > 1)
+            fixedWidth += gap * static_cast<int>(children.size() - 1);
+        const int flexWidth = (std::max)(0, this->getWidth() - fixedWidth);
+        int cumulativeFlex = 0;
+        int assignedFlexWidth = 0;
+        int x = this->getPadding().left;
+        const int contentHeight = (std::max)(
+            0, this->getHeight() - this->getPadding().top - this->getPadding().bottom);
+
+        for (size_t i = 0; i < children.size(); ++i) {
+            SPElement *child = children[i];
+            const sp_margin margins = child->getMargins();
+            child->setX(x + margins.left);
+            child->setY(this->getPadding().top + margins.top);
+            child->setHeight((std::max)(0, contentHeight - margins.top - margins.bottom));
+
+            if (child->getFlex() > 0) {
+                cumulativeFlex += child->getFlex();
+                const int nextAssignedWidth = totalFlex > 0
+                    ? static_cast<int>((static_cast<long long>(flexWidth) * cumulativeFlex) / totalFlex)
+                    : assignedFlexWidth;
+                child->setWidth(nextAssignedWidth - assignedFlexWidth);
+                assignedFlexWidth = nextAssignedWidth;
+            }
+
+            x += margins.left + child->getWidth() + margins.right;
+            if (i + 1 < children.size())
+                x += gap;
+        }
+
+        for (SPElement *child : children)
+            child->pack();
     }
 }
