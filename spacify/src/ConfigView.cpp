@@ -329,6 +329,14 @@ void ConfigView::navigate(const string& uri) {
     this->setUri(uri);
 }
 
+void ConfigView::setVisible(bool value) {
+    SPViewElement::setVisible(value);
+    // Refresh pending values from disk so saving here doesn't overwrite
+    // colour changes made elsewhere (e.g. the PlayerView sliders).
+    if (value)
+        loadSettings();
+}
+
 // ── Settings path ─────────────────────────────────────────────────────────────
 
 string ConfigView::getSettingsPath() {

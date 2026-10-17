@@ -71,8 +71,8 @@ PlayerView::PlayerView(SPElement* parent) : SPViewElement(parent) {
         m_hue = v;
         syncSliderContext();
         applyLive();
+        saveSettings();
     };
-    m_hueSlider->onRelease = [this]() { saveSettings(); };
 
     // Saturation
     auto* satLabel = new SPTextElement(colorBar);
@@ -87,8 +87,8 @@ PlayerView::PlayerView(SPElement* parent) : SPViewElement(parent) {
         m_saturation = v;
         syncSliderContext();
         applyLive();
+        saveSettings();
     };
-    m_saturationSlider->onRelease = [this]() { saveSettings(); };
 
     // Lightness
     auto* lightnessLabel = new SPTextElement(colorBar);
@@ -104,8 +104,8 @@ PlayerView::PlayerView(SPElement* parent) : SPViewElement(parent) {
         m_lightness = v;
         syncSliderContext();
         applyLive();
+        saveSettings();
     };
-    m_lightnessSlider->onRelease = [this]() { saveSettings(); };
 
     loadSettings();
 }
@@ -127,6 +127,9 @@ void PlayerView::setVisible(bool value) {
     SPViewElement::setVisible(value);
     if (m_canvas)
         m_canvas->setVisible(value);
+    // Settings may have been changed from ConfigView since we last loaded.
+    if (value)
+        loadSettings();
 }
 
 void PlayerView::navigate(const std::string& uri) {
@@ -180,19 +183,24 @@ void PlayerView::loadSettings() {
 }
 
 void PlayerView::saveSettings() {
+    // Merge into the current file rather than rewriting it from our cached
+    // copy, which may be stale (ConfigView saves to the same file) and does
+    // not cover every key (e.g. buttonStyle).
     nlohmann::json obj = nlohmann::json::object();
-    obj["colorScheme"]         = m_scheme;
-    obj["glossy"]              = m_glossy;
-    obj["skinType"]            = m_skinType;
-    obj["aeroHeaderStyle"]     = static_cast<int>(m_headerStyle);
-    obj["aeroHue"]             = static_cast<double>(m_hue);
-    obj["aeroSaturation"]      = static_cast<double>(m_saturation);
-    obj["aeroLightness"]       = static_cast<double>(m_lightness);
-    obj["developerMode"]       = m_developerMode;
-    obj["fullWidthAddressBar"] = m_fullWidthAddressBar;
-    if (!m_tintColor.empty())      obj["tintColor"]       = m_tintColor;
-    if (!m_downloadsFolder.empty()) obj["downloadsFolder"] = m_downloadsFolder;
-    if (!m_musicFolder.empty())     obj["musicFolder"]     = m_musicFolder;
+    {
+        std::ifstream in(views::ConfigView::getSettingsPath());
+        if (in.is_open()) {
+            std::ostringstream ss;
+            ss << in.rdbuf();
+            try {
+                nlohmann::json existing = nlohmann::json::parse(ss.str());
+                if (existing.is_object()) obj = std::move(existing);
+            } catch (...) {}
+        }
+    }
+    obj["aeroHue"]        = static_cast<double>(m_hue);
+    obj["aeroSaturation"] = static_cast<double>(m_saturation);
+    obj["aeroLightness"]  = static_cast<double>(m_lightness);
 
     std::ofstream file(views::ConfigView::getSettingsPath());
     if (file.is_open())

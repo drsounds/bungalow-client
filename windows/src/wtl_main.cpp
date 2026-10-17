@@ -101,6 +101,8 @@ public:
 	MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBackground)
 	MESSAGE_HANDLER(WM_NCCALCSIZE, OnNcCalcSize)
 	MESSAGE_HANDLER(WM_NCHITTEST, OnNcHitTest)
+	MESSAGE_HANDLER(WM_NCACTIVATE, OnNcActivate)
+	MESSAGE_HANDLER(WM_NCPAINT, OnNcPaint)
 	MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
 	MESSAGE_HANDLER(WM_COMMAND, OnCommand)
 	MESSAGE_HANDLER(WM_SYSCOMMAND, OnSysCommand)
@@ -186,6 +188,18 @@ public:
 		}
 		return 0;
 	}
+
+	// SetWindowRgn disables the DWM frame, so DefWindowProc would paint the
+	// classic 3D border over the client area when focus changes. lParam = -1
+	// keeps the activation bookkeeping but skips the non-client repaint.
+	LRESULT OnNcActivate(UINT message, WPARAM wParam, LPARAM, BOOL &) {
+		const LRESULT result = DefWindowProc(message, wParam, -1);
+		Invalidate(FALSE);
+		return result;
+	}
+
+	// The client area covers the whole window; there is no frame to paint.
+	LRESULT OnNcPaint(UINT, WPARAM, LPARAM, BOOL &) { return 0; }
 
 	LRESULT OnNcHitTest(UINT, WPARAM, LPARAM lParam, BOOL &) {
 		const POINT point{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};

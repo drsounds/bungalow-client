@@ -26,6 +26,7 @@ public:
 
     bool acceptsUri(const string& uri) override;
     void navigate(const string& uri) override;
+    void setVisible(bool value) override;
 
     static string getSettingsPath();
     void loadSettings();
