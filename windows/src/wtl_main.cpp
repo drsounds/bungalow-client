@@ -27,7 +27,10 @@ constexpr int FileAboutCommandId = 1101;
 constexpr int FileExitCommandId = 1102;
 class MainFrame : public CFrameWindowImpl<MainFrame> {
 public:
-	DECLARE_FRAME_WND_CLASS_EX(_T("BungalowNativeWtlWindow"), 0, CS_DROPSHADOW,
+	// Keep WTL's default class styles; CS_DROPSHADOW only shows when the system
+	// "Show shadows under windows" setting (SPI_GETDROPSHADOW) is on.
+	DECLARE_FRAME_WND_CLASS_EX(_T("BungalowNativeWtlWindow"), 0,
+							   CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS | CS_DROPSHADOW,
 							   COLOR_WINDOW)
 
 	space::NativeApplication app;
