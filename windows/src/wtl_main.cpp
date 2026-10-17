@@ -512,9 +512,9 @@ private:
 			const wchar_t *glyph;
 			const wchar_t *fallback;
 		} buttons[] = {
-			{CaptionItem::Minimize, L"", L"—"},
-			{CaptionItem::Maximize, zoomed ? L"" : L"", zoomed ? L"❐" : L"□"},
-			{CaptionItem::Close, L"", L"✕"},
+			{CaptionItem::Minimize, L"\xE921", L"\x2014"},
+			{CaptionItem::Maximize, zoomed ? L"\xE923" : L"\xE922", zoomed ? L"\x2750" : L"\x25A1"},
+			{CaptionItem::Close, L"\xE8BB", L"\x2715"},
 		};
 		for (const auto &button : buttons) {
 			RECT rect = CaptionItemRect(button.item);
