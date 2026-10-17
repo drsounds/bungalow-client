@@ -504,15 +504,12 @@ void ConfigView::saveSettings() {
     auto *win = this->getWindowElement();
     if (!win) return;
 
-    win->setTintColor(SPColor(color));
+    win->setTintColor(SPColor::fromHSL(m_pendingAeroHue, m_pendingAeroSaturation, m_pendingAeroLightness));
     win->setColorScheme(m_pendingScheme);
 
     SPSkin* newSkin = nullptr;
     if (m_pendingSkinType == "frutiger-aero") {
         auto* aero = new SPFrutigerAeroSkin();
-        aero->setHue(m_pendingAeroHue);
-        aero->setSaturation(m_pendingAeroSaturation);
-        aero->setLightness(m_pendingAeroLightness);
         aero->setHeaderStyle(m_pendingAeroHeaderStyle);
         aero->setGlossy(m_pendingGlossy);
         aero->setButtonStyle(m_pendingButtonStyle);
@@ -526,6 +523,10 @@ void ConfigView::saveSettings() {
         newSkin->setGlossy(m_pendingGlossy);
         newSkin->setButtonStyle(m_pendingButtonStyle);
     }
+    // Hue/saturation/lightness apply to every skin (same as at startup).
+    newSkin->setHue(m_pendingAeroHue);
+    newSkin->setSaturation(m_pendingAeroSaturation);
+    newSkin->setLightness(m_pendingAeroLightness);
     win->setSkin(newSkin);
 
     if (auto* a = SpacifyApp::current()) {

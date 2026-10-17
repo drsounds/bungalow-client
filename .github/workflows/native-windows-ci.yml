@@ -1,8 +1,9 @@
 name: Native Windows CI
 
 on:
-  push:
-  pull_request:
+  # Automatic triggers disabled for now; run manually from the Actions tab.
+  # push:
+  # pull_request:
   workflow_dispatch:
 
 permissions:

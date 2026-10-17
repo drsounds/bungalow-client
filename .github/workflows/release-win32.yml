@@ -1,9 +1,10 @@
 name: Release Win32 build
 
 on:
-  push:
-    tags:
-      - 'v*'
+  # Automatic triggers disabled for now; run manually from the Actions tab.
+  # push:
+  #   tags:
+  #     - 'v*'
   workflow_dispatch:
     inputs:
       tag:

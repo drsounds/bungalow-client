@@ -148,9 +148,6 @@ space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::S
     space::SPSkin* activeSkin = nullptr;
     if (skinType == "frutiger-aero") {
         auto* aero = new space::SPFrutigerAeroSkin();
-        aero->setHue(aeroHue);
-        aero->setSaturation(aeroSaturation);
-        aero->setLightness(aeroLightness);
         aero->setHeaderStyle(static_cast<space::AeroHeaderStyle>(aeroHeaderStyle));
         aero->setGlossy(glossy);
         aero->setButtonStyle(static_cast<space::SPButtonStyle>(buttonStyle));
@@ -164,13 +161,15 @@ space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::S
         activeSkin->setGlossy(glossy);
         activeSkin->setButtonStyle(static_cast<space::SPButtonStyle>(buttonStyle));
     }
+    // The Now Playing colour sliders drive hue/saturation/lightness for every
+    // skin, so restore them regardless of skin type.
+    activeSkin->setHue(aeroHue);
+    activeSkin->setSaturation(aeroSaturation);
+    activeSkin->setLightness(aeroLightness);
     m_windowElement->setSkin(activeSkin);
 
     m_windowElement->setColorScheme(colorScheme);
-    if (skinType == "frutiger-aero")
-        m_windowElement->setTintColor(space::SPColor::fromHSL(aeroHue, aeroSaturation, aeroLightness));
-    else
-        m_windowElement->setTintColor(space::SPColor(tintColor));
+    m_windowElement->setTintColor(space::SPColor::fromHSL(aeroHue, aeroSaturation, aeroLightness));
     m_main->setFullWidthAddressBar(fullWidthAddressBar);
     m_windowElement->appendChild(m_main);
     return m_main;
