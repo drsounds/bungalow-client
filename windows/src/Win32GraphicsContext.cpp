@@ -183,6 +183,8 @@ namespace space
         clearCache();
         if (cacheDc)
             DeleteDC(cacheDc);
+        if (inputFont)
+            DeleteObject(inputFont);
     }
 
     void Win32GraphicsContext::themeChanged()
@@ -329,6 +331,22 @@ namespace space
     void Win32GraphicsContext::setDeviceContext(HDC dc)
     {
         this->dc = dc;
+    }
+
+    void Win32GraphicsContext::beginPaint()
+    {
+        paintedInputs.clear();
+    }
+
+    void Win32GraphicsContext::endPaint()
+    {
+        // Hidden elements (or hidden ancestors) skip paint, so their inputs are never drawn.
+        for (const auto& entry : inputElements)
+        {
+            const bool painted = paintedInputs.count(entry.first) > 0;
+            if (painted != (IsWindowVisible(entry.first) != FALSE))
+                ShowWindow(entry.first, painted ? SW_SHOWNA : SW_HIDE);
+        }
     }
 
     bool Win32GraphicsContext::handleCommand(WPARAM wParam, LPARAM lParam)
@@ -731,17 +749,22 @@ namespace space
         }
         if (!control && window)
         {
-            control = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
-                WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL | WS_TABSTOP,
+            control = CreateWindowExW(0, L"EDIT", L"",
+                WS_CHILD | ES_AUTOHSCROLL | WS_TABSTOP,
                 x, y, width, height, window, nullptr, GetModuleHandleW(nullptr), nullptr);
             if (control)
             {
+                if (!inputFont)
+                    inputFont = CreateFontW(-11, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                        OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Tahoma");
+                SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(inputFont), FALSE);
                 inputElements.emplace(control, element);
                 SetWindowSubclass(control, inputEditProcedure, 1, reinterpret_cast<DWORD_PTR>(element));
             }
         }
         if (!control)
             return;
+        paintedInputs.insert(control);
         SetWindowPos(control, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
         if (GetFocus() != control)
             SetWindowTextW(control, toWide(element->getStringAttribute("value", "")).c_str());

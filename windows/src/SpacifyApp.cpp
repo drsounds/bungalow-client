@@ -74,18 +74,18 @@ space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::S
     GetModuleFileNameW(nullptr, exePath, static_cast<DWORD>(sizeof(exePath) / sizeof(exePath[0])));
     namespace fs = std::filesystem;
     fs::path exeDir = fs::path(exePath).parent_path();
-    fs::path resourcesDir = exeDir / "resources";
+    fs::path resourcesDir = exeDir;
     for (fs::path dir = exeDir; dir.has_parent_path(); dir = dir.parent_path()) {
-        if (fs::exists(dir / "resources" / "app" / "views" / "app.xml")) {
-            resourcesDir = dir / "resources";
+        if (fs::exists(dir / "views" / "app.xml")) {
+            resourcesDir = dir;
             break;
         }
         if (dir == dir.parent_path()) break;
     }
     resourcesDir = resourcesDir.lexically_normal();
 
-    // Relative XUL paths resolve against the resources parent.
-    SetCurrentDirectoryW(resourcesDir.parent_path().c_str());
+    // Relative XUL paths resolve against the resources directory.
+    SetCurrentDirectoryW(resourcesDir.c_str());
 
     // Use an existing bundled database, otherwise create one in the user data dir.
     fs::path dbPath = resourcesDir / "spacify.db";

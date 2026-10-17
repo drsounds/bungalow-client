@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <cstdint>
 #include <map>
+#include <set>
 #include <tuple>
 #include <vector>
 
@@ -16,6 +17,9 @@ namespace space
         explicit Win32GraphicsContext(HWND window);
         ~Win32GraphicsContext() override;
         void setDeviceContext(HDC dc);
+        // Bracket a full paint of the element tree; inputs not drawn in between get hidden.
+        void beginPaint();
+        void endPaint();
         void themeChanged() override;
         bool handleCommand(WPARAM wParam, LPARAM lParam);
 
@@ -79,5 +83,7 @@ namespace space
         POINT origin{0, 0};
         bool frozen = false;
         std::map<HWND, SPElement *> inputElements;
+        std::set<HWND> paintedInputs;
+        HFONT inputFont = nullptr;
     };
 }

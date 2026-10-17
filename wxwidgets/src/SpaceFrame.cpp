@@ -11,6 +11,7 @@
 #include <wx/dirdlg.h>
 #include <wx/filename.h>
 #include <wx/stdpaths.h>
+#include <wx/display.h>
 #include <stdlib.h>
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -116,6 +117,14 @@ SpaceFrame::SpaceFrame(wxApp *app, space::Space *space)
 #endif
 
     SetMenuBar(buildMenuBar());
+
+    // Start at 80% of the current display's work area, centered on it.
+    const int displayIndex = wxDisplay::GetFromPoint(wxGetMousePosition());
+    const wxRect workArea = wxDisplay(displayIndex == wxNOT_FOUND ? 0u : static_cast<unsigned>(displayIndex)).GetClientArea();
+    const wxSize initialSize(workArea.width * 8 / 10, workArea.height * 8 / 10);
+    SetSize(wxRect(workArea.x + (workArea.width - initialSize.x) / 2,
+                   workArea.y + (workArea.height - initialSize.y) / 2,
+                   initialSize.x, initialSize.y));
 
     this->Bind(wxEVT_SIZE,         &SpaceFrame::OnSize,  this);
     this->Bind(wxEVT_CLOSE_WINDOW, &SpaceFrame::OnClose, this);

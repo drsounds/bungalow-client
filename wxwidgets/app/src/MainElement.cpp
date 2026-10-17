@@ -246,6 +246,12 @@ namespace space {
         // ── MAIN ─────────────────────────────────────────────────────────────
         treeView->addSection("MAIN");
 
+
+        auto* start = new SPTreeItem(new SPUri("spacify:start"));
+        start->setText("Start");
+        start->setIconPath("icons/NowPlaying.svg");
+        treeView->addItem(start);
+
         auto* itemNowPlaying = new SPTreeItem(new SPUri("spacify:player"));
         itemNowPlaying->setText("Now Playing");
         itemNowPlaying->setIconPath("icons/NowPlaying.svg");
@@ -278,31 +284,33 @@ namespace space {
         itemDownloads->setText("Downloads");
         itemDownloads->setIconPath("icons/Downloads.svg");
         treeView->addItem(itemDownloads);
+        
+        if (false) {
+            // ── APPS ─────────────────────────────────────────────────────────────
+            treeView->addSection("APPS");
 
-        // ── APPS ─────────────────────────────────────────────────────────────
-        treeView->addSection("APPS");
+            auto* itemAppFinder = new SPTreeItem(new SPUri("spacify:app:finder"));
+            itemAppFinder->setText("App Finder");
+            itemAppFinder->setIconPath(resolveIcon("spacify:app:finder", "icons/App.svg"));
+            treeView->addItem(itemAppFinder);
 
-        auto* itemAppFinder = new SPTreeItem(new SPUri("spacify:app:finder"));
-        itemAppFinder->setText("App Finder");
-        itemAppFinder->setIconPath(resolveIcon("spacify:app:finder", "icons/App.svg"));
-        treeView->addItem(itemAppFinder);
+            addBookmarkSection("spacify:app:",  "icons/App.svg");
 
-        addBookmarkSection("spacify:app:",  "icons/App.svg");
+            // ── CURATORS ──────────────────────────────────────────────────────────
+            treeView->addSection("CURATORS");
 
-        // ── CURATORS ──────────────────────────────────────────────────────────
-        treeView->addSection("CURATORS");
+            addBookmarkSection("spacify:curator:", "icons/WebPage.svg");
 
-        addBookmarkSection("spacify:curator:", "icons/WebPage.svg");
+            // ── STORE ─────────────────────────────────────────────────────────────
+            treeView->addSection("STORE");
 
-        // ── STORE ─────────────────────────────────────────────────────────────
-        treeView->addSection("STORE");
+            addBookmarkSection("spacify:store:", "icons/WebPage.svg");
 
-        addBookmarkSection("spacify:store:", "icons/WebPage.svg");
+            // ── WEB SITES ─────────────────────────────────────────────────────────
+            treeView->addSection("WEB SITES");
 
-        // ── WEB SITES ─────────────────────────────────────────────────────────
-        treeView->addSection("WEB SITES");
-
-        addBookmarkSection("spacify:site:", "icons/WebPage.svg");
+            addBookmarkSection("spacify:site:", "icons/WebPage.svg");
+        }
     }
 
     // ── createElement ─────────────────────────────────────────────────────────
@@ -427,13 +435,13 @@ namespace space {
         footer->setHeight(32);
         footer->setId("footer");
 
-        this->navigate("spacify:player");
+        this->navigate("spacify:start");
     }
 
     MainElement::MainElement(SPElement *parent) : SPVBoxElement(parent)
     {
         m_faviconCache = new FaviconCache();
-        this->loadXUL("resources/app/views/app.xml");
+        this->loadXUL("views/app.xml");
         this->layout();
         this->addEventListener("load", SPCallback(&MainElement::onLoad), this, this);
         this->getWindowElement()->addEventListener("navigate",         static_cast<SPCallback>(&MainElement::onNavigate),       this, this);

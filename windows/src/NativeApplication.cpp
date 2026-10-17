@@ -75,9 +75,11 @@ namespace space
         if (!windowElement)
             return;
         graphics->setDeviceContext(dc);
+        graphics->beginPaint();
         RECT client{};
         GetClientRect(windowHandle, &client);
         windowElement->draw(graphics, client.right, client.bottom);
+        graphics->endPaint();
         graphics->setDeviceContext(nullptr);
     }
 

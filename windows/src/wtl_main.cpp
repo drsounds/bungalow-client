@@ -26,6 +26,21 @@ constexpr int CaptionButtonWidth = 46;
 
 enum class CaptionItem { None, File, Minimize, Maximize, Close };
 
+// 80% of the work area of the monitor under the cursor, centered on it.
+RECT InitialWindowBounds() {
+	POINT cursor{};
+	::GetCursorPos(&cursor);
+	MONITORINFO info{sizeof(info)};
+	::GetMonitorInfoW(::MonitorFromPoint(cursor, MONITOR_DEFAULTTOPRIMARY),
+					  &info);
+	const RECT &work = info.rcWork;
+	const LONG width = (work.right - work.left) * 8 / 10;
+	const LONG height = (work.bottom - work.top) * 8 / 10;
+	const LONG left = work.left + (work.right - work.left - width) / 2;
+	const LONG top = work.top + (work.bottom - work.top - height) / 2;
+	return RECT{left, top, left + width, top + height};
+}
+
 // Returns the installed font's own LOGFONT so its charset matches; icon fonts are
 // otherwise substituted by the font mapper.
 bool FindFontFamily(const wchar_t *name, LOGFONTW &result) {
@@ -597,10 +612,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
 	int result = 1;
 	{
 		MainFrame frame;
+		RECT bounds = InitialWindowBounds();
 		const DWORD style = WS_POPUP | WS_THICKFRAME | WS_SYSMENU |
 							WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CLIPCHILDREN |
 							WS_CLIPSIBLINGS;
-		if (frame.CreateEx(nullptr, nullptr, style, WS_EX_APPWINDOW) ==
+		if (frame.CreateEx(nullptr, bounds, style, WS_EX_APPWINDOW) ==
 			nullptr) {
 			::MessageBoxW(
 				nullptr,

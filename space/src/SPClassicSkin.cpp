@@ -140,13 +140,14 @@ bool SPClassicSkin::drawElement(SPGraphicsContext* g, SPElement *elm, const stri
         // double-tinting from the outer bgColor computation at the top.
         SPColor bgColor = elm->getBackgroundColor();
         if (elm->getColorScheme() == SP_COLOR_SCHEME_DARK)
-            bgColor = bgColor.lighten(0.2);
+            bgColor = bgColor.lighten(2);
         SPGradient gradient(bgColor.lighten(0.1), bgColor.lighten(-0.1), 0);
         g->drawLinearGradient({ bounds.x, bounds.y, bounds.width, bounds.height }, gradient);
     	if (this->m_glossy && state != "active") {
     		SPGradient gradient2(bgColor.lighten(0.2), bgColor.lighten(0), 0);
     		g->drawLinearGradient({ bounds.x, bounds.y + 1, bounds.width, bounds.height / 2 }, gradient2);
     	}
+        g->drawLine(bounds.x, bounds.y + bounds.height - 1, bounds.x + bounds.width, bounds.y + bounds.height - 1, bgColor.lighten(-0.5f));
     }
     if (elm->getType() == "appfooter")
     {
@@ -369,7 +370,7 @@ void SPClassicSkin::drawTabBar(
         shadowColor = tintColor.value().lighten(-0);
     }
 	if (tabBar->getColorScheme() == SP_COLOR_SCHEME_DARK) {
-		bgColor = bgColor.lighten(0.2);
+		bgColor = bgColor.lighten(0.5);
 		shadowColor = shadowColor.lighten(-0.5);
 	}
     SPGradient gradient(
