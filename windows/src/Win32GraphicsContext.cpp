@@ -1,3 +1,17 @@
+// GDI+ goes first: Space headers pull in `using namespace std`, which makes
+// the SDK's `byte` ambiguous with std::byte.
+#include <algorithm>
+#include <Windows.h>
+#include <objidl.h>
+
+// gdiplus.h relies on min/max, which NOMINMAX removes.
+namespace Gdiplus
+{
+    using std::min;
+    using std::max;
+}
+#include <gdiplus.h>
+
 #include "Win32GraphicsContext.h"
 
 #include <algorithm>
@@ -63,18 +77,81 @@ namespace space
             return RGB(color.getR(), color.getG(), color.getB());
         }
 
-        TRIVERTEX vertex(int x, int y, SPColor color)
+        Gdiplus::Color gdiplusColor(SPColor color)
         {
-            return {x, y,
-                static_cast<COLOR16>(color.getR() * 257),
-                static_cast<COLOR16>(color.getG() * 257),
-                static_cast<COLOR16>(color.getB() * 257),
-                0xffff};
+            auto clamp = [](short value) { return static_cast<BYTE>(std::clamp<int>(value, 0, 255)); };
+            return Gdiplus::Color(clamp(color.getA()), clamp(color.getR()), clamp(color.getG()), clamp(color.getB()));
         }
+
+        // GDI+ honours the HDC's clip region and viewport origin. Pixel centres sit at .5
+        // so integer rectangles land exactly on pixel boundaries, like plain GDI.
+        void prepare(Gdiplus::Graphics& graphics, bool antiAlias)
+        {
+            graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+            graphics.SetSmoothingMode(antiAlias ? Gdiplus::SmoothingModeAntiAlias : Gdiplus::SmoothingModeNone);
+        }
+
+        // Clamps the radius so short elements become pills instead of the
+        // overlapping-arc artifacts GDI RoundRect produces.
+        void roundedRectanglePath(Gdiplus::GraphicsPath& path, Gdiplus::REAL x, Gdiplus::REAL y,
+                                  Gdiplus::REAL width, Gdiplus::REAL height, Gdiplus::REAL radius)
+        {
+            radius = std::min(radius, std::min(width, height) / 2.0f);
+            if (radius <= 0.5f)
+            {
+                path.AddRectangle(Gdiplus::RectF(x, y, width, height));
+                return;
+            }
+            const Gdiplus::REAL d = radius * 2.0f;
+            path.AddArc(x, y, d, d, 180.0f, 90.0f);
+            path.AddArc(x + width - d, y, d, d, 270.0f, 90.0f);
+            path.AddArc(x + width - d, y + height - d, d, d, 0.0f, 90.0f);
+            path.AddArc(x, y + height - d, d, d, 90.0f, 90.0f);
+            path.CloseFigure();
+        }
+
+        void fillGradient(Gdiplus::Graphics& graphics, const Gdiplus::GraphicsPath *path,
+                          int x, int y, int width, int height, const SPGradient& gradient)
+        {
+            if (width <= 0 || height <= 0)
+                return;
+            const bool horizontal = gradient.getDirection() != 0;
+            // Pad the brush by a pixel; GDI+ otherwise wraps the end colour onto the first row.
+            const Gdiplus::RectF brushRect(
+                static_cast<Gdiplus::REAL>(horizontal ? x - 1 : x),
+                static_cast<Gdiplus::REAL>(horizontal ? y : y - 1),
+                static_cast<Gdiplus::REAL>(horizontal ? width + 2 : width),
+                static_cast<Gdiplus::REAL>(horizontal ? height : height + 2));
+            Gdiplus::LinearGradientBrush brush(brushRect, gdiplusColor(gradient.getStart()), gdiplusColor(gradient.getEnd()),
+                horizontal ? Gdiplus::LinearGradientModeHorizontal : Gdiplus::LinearGradientModeVertical);
+            brush.SetWrapMode(Gdiplus::WrapModeTileFlipXY);
+            if (path)
+                graphics.FillPath(&brush, path);
+            else
+                graphics.FillRectangle(&brush, x, y, width, height);
+        }
+
+        class GdiplusSession
+        {
+        public:
+            GdiplusSession()
+            {
+                Gdiplus::GdiplusStartupInput input;
+                Gdiplus::GdiplusStartup(&token, &input, nullptr);
+            }
+            ~GdiplusSession()
+            {
+                if (token)
+                    Gdiplus::GdiplusShutdown(token);
+            }
+        private:
+            ULONG_PTR token = 0;
+        };
     }
 
     Win32GraphicsContext::Win32GraphicsContext(HWND window) : window(window)
     {
+        static GdiplusSession session;
     }
 
     void Win32GraphicsContext::setDeviceContext(HDC dc)
@@ -268,76 +345,73 @@ namespace space
     {
         if (!dc)
             return;
-        HPEN pen = CreatePen(PS_SOLID, 1, nativeColor(color));
-        HGDIOBJ old = SelectObject(dc, pen);
-        MoveToEx(dc, x1, y1, nullptr);
-        LineTo(dc, x2, y2);
-        SelectObject(dc, old);
-        DeleteObject(pen);
+        Gdiplus::Graphics graphics(dc);
+        // Axis-aligned lines stay crisp; diagonal ones get smoothed.
+        prepare(graphics, x1 != x2 && y1 != y2);
+        Gdiplus::Pen pen(gdiplusColor(color), 1.0f);
+        // Stroke through pixel centres so a 1px line covers exactly one row/column.
+        graphics.DrawLine(&pen, x1 + 0.5f, y1 + 0.5f, x2 + 0.5f, y2 + 0.5f);
     }
 
     void Win32GraphicsContext::drawRectangle(int x, int y, int width, int height, SPColor color)
     {
-        if (!dc)
+        if (!dc || width <= 0 || height <= 0)
             return;
-        HPEN pen = CreatePen(PS_SOLID, 1, nativeColor(color));
-        HGDIOBJ oldPen = SelectObject(dc, pen);
-        HGDIOBJ oldBrush = SelectObject(dc, GetStockObject(HOLLOW_BRUSH));
-        Rectangle(dc, x, y, x + width, y + height);
-        SelectObject(dc, oldBrush);
-        SelectObject(dc, oldPen);
-        DeleteObject(pen);
+        Gdiplus::Graphics graphics(dc);
+        prepare(graphics, false);
+        Gdiplus::Pen pen(gdiplusColor(color), 1.0f);
+        graphics.DrawRectangle(&pen, x + 0.5f, y + 0.5f, width - 1.0f, height - 1.0f);
     }
 
     void Win32GraphicsContext::fillRectangle(int x, int y, int width, int height, SPColor color)
     {
-        if (!dc)
+        if (!dc || width <= 0 || height <= 0)
             return;
-        RECT rect{x, y, x + width, y + height};
-        HBRUSH brush = CreateSolidBrush(nativeColor(color));
-        FillRect(dc, &rect, brush);
-        DeleteObject(brush);
+        Gdiplus::Graphics graphics(dc);
+        prepare(graphics, false);
+        Gdiplus::SolidBrush brush(gdiplusColor(color));
+        graphics.FillRectangle(&brush, x, y, width, height);
     }
 
     void Win32GraphicsContext::fillRoundedRectangle(int x, int y, int width, int height, int radius, SPColor color)
     {
-        if (!dc)
+        if (!dc || width <= 0 || height <= 0)
             return;
-        HBRUSH brush = CreateSolidBrush(nativeColor(color));
-        HGDIOBJ oldBrush = SelectObject(dc, brush);
-        HGDIOBJ oldPen = SelectObject(dc, GetStockObject(NULL_PEN));
-        RoundRect(dc, x, y, x + width, y + height, radius * 2, radius * 2);
-        SelectObject(dc, oldPen);
-        SelectObject(dc, oldBrush);
-        DeleteObject(brush);
+        Gdiplus::Graphics graphics(dc);
+        prepare(graphics, true);
+        Gdiplus::GraphicsPath path;
+        roundedRectanglePath(path, static_cast<Gdiplus::REAL>(x), static_cast<Gdiplus::REAL>(y),
+                             static_cast<Gdiplus::REAL>(width), static_cast<Gdiplus::REAL>(height),
+                             static_cast<Gdiplus::REAL>(radius));
+        Gdiplus::SolidBrush brush(gdiplusColor(color));
+        graphics.FillPath(&brush, &path);
     }
 
     void Win32GraphicsContext::drawRoundedRectangle(int x, int y, int width, int height, int radius, SPColor color)
     {
-        if (!dc)
+        if (!dc || width <= 1 || height <= 1)
             return;
-        HPEN pen = CreatePen(PS_SOLID, 1, nativeColor(color));
-        HGDIOBJ oldPen = SelectObject(dc, pen);
-        HGDIOBJ oldBrush = SelectObject(dc, GetStockObject(HOLLOW_BRUSH));
-        RoundRect(dc, x, y, x + width, y + height, radius * 2, radius * 2);
-        SelectObject(dc, oldBrush);
-        SelectObject(dc, oldPen);
-        DeleteObject(pen);
+        Gdiplus::Graphics graphics(dc);
+        prepare(graphics, true);
+        Gdiplus::GraphicsPath path;
+        roundedRectanglePath(path, x + 0.5f, y + 0.5f, width - 1.0f, height - 1.0f,
+                             static_cast<Gdiplus::REAL>(radius));
+        Gdiplus::Pen pen(gdiplusColor(color), 1.0f);
+        graphics.DrawPath(&pen, &path);
     }
 
     void Win32GraphicsContext::fillRoundedLinearGradientRectangle(int x, int y, int width, int height,
         int radius, int direction, const SPGradient& gradient)
     {
-        if (!dc)
+        if (!dc || width <= 0 || height <= 0)
             return;
-        // Clip to the rounded shape, then paint a vertical gradient like the wx backend.
-        const int state = SaveDC(dc);
-        BeginPath(dc);
-        RoundRect(dc, x, y, x + width, y + height, radius * 2, radius * 2);
-        EndPath(dc);
-        SelectClipPath(dc, RGN_AND);
-        drawLinearGradient({x, y, width, height}, gradient);
-        RestoreDC(dc, state);
+        Gdiplus::Graphics graphics(dc);
+        prepare(graphics, radius > 0);
+        Gdiplus::GraphicsPath path;
+        roundedRectanglePath(path, static_cast<Gdiplus::REAL>(x), static_cast<Gdiplus::REAL>(y),
+                             static_cast<Gdiplus::REAL>(width), static_cast<Gdiplus::REAL>(height),
+                             static_cast<Gdiplus::REAL>(radius));
+        fillGradient(graphics, &path, x, y, width, height, gradient);
     }
 
     void Win32GraphicsContext::drawImage(SPImage *image, int x, int y, int width, int height)
@@ -392,12 +466,9 @@ namespace space
     {
         if (!dc)
             return;
-        TRIVERTEX vertices[2] = {
-            vertex(rect.x, rect.y, gradient.getStart()),
-            vertex(rect.x + rect.width, rect.y + rect.height, gradient.getEnd())
-        };
-        GRADIENT_RECT gradientRect{0, 1};
-        GradientFill(dc, vertices, 2, &gradientRect, 1, gradient.getDirection() == 0 ? GRADIENT_FILL_RECT_V : GRADIENT_FILL_RECT_H);
+        Gdiplus::Graphics graphics(dc);
+        prepare(graphics, false);
+        fillGradient(graphics, nullptr, rect.x, rect.y, rect.width, rect.height, gradient);
     }
 
     SPImage *Win32GraphicsContext::loadImage(const string& bitmap)

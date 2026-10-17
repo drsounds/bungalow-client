@@ -38,7 +38,7 @@ namespace space {
         x += this->getX() ;
         y += this->getY();
         this->absoluteBounds = {
-	        x + this->getMargins().left, y + this->getMargins().top, this->getWidth(), this->getHeight()
+	        x, y, this->getWidth(), this->getHeight()
         };
 
         int width =  this->getWidth();

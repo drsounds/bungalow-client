@@ -13,8 +13,8 @@ SPSeekBarElement::SPSeekBarElement(SPElement* parent) : SPElement(parent) {
 // ── Rendering ─────────────────────────────────────────────────────────────────
 
 void SPSeekBarElement::paint(int x, int y, SPGraphicsContext* g) {
-    const int absX = x + getX() + getMargins().left;
-    const int absY = y + getY() + getMargins().top;
+    const int absX = x + getX();
+    const int absY = y + getY();
     const int w    = getWidth();
     const int h    = getHeight();
 

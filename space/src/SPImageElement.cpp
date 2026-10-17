@@ -10,7 +10,10 @@ SPImageElement::SPImageElement(SPElement *parent)
     //ctor
 }
 void SPImageElement::paint(int x, int y, SPGraphicsContext *g) {
-    g->drawImage(m_image, x, y, this->getWidth(), this->getHeight());
+    const int absX = x + this->getX();
+    const int absY = y + this->getY();
+    this->absoluteBounds = { absX, absY, this->getWidth(), this->getHeight() };
+    g->drawImage(m_image, absX, absY, this->getWidth(), this->getHeight());
 }
 SPImageElement::~SPImageElement()
 {

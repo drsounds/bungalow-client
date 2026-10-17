@@ -52,8 +52,8 @@ void SPAeroColorSlider::setValue(float v)
 
 void SPAeroColorSlider::paint(int px, int py, SPGraphicsContext* g)
 {
-    const int absX = px + getX() + getMargins().left;
-    const int absY = py + getY() + getMargins().top;
+    const int absX = px + getX();
+    const int absY = py + getY();
     const int w    = getWidth();
     const int h    = getHeight();
     absoluteBounds = { absX, absY, w, h };

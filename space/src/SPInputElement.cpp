@@ -20,8 +20,7 @@ SPInputElement::SPInputElement(SPElement *parent)
 
 void SPInputElement::paint(int x, int y, SPGraphicsContext *g) {
     SPElement::paint(x, y, g);
-	int width = this->getWidth();
-	int height = this->getHeight();
-    g->drawInputElement(this, x, y, width, height);
+    const sp_rectangle bounds = this->getAbsoluteBounds();
+    g->drawInputElement(this, bounds.x, bounds.y, bounds.width, bounds.height);
 }
 }

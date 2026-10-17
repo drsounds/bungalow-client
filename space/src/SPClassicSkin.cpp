@@ -140,7 +140,7 @@ bool SPClassicSkin::drawElement(SPGraphicsContext* g, SPElement *elm, const stri
         // double-tinting from the outer bgColor computation at the top.
         SPColor bgColor = elm->getBackgroundColor();
         if (elm->getColorScheme() == SP_COLOR_SCHEME_DARK)
-            bgColor = bgColor.lighten(2);
+            bgColor = bgColor.lighten(0.2);
         SPGradient gradient(bgColor.lighten(0.1), bgColor.lighten(-0.1), 0);
         g->drawLinearGradient({ bounds.x, bounds.y, bounds.width, bounds.height }, gradient);
     	if (this->m_glossy && state != "active") {
@@ -255,7 +255,7 @@ void SPClassicSkin::drawTableHeader(SPGraphicsContext* g, SPTableElement *table,
     if (auto tintColor = table->getTintColor(); tintColor.has_value())
         bgColor = bgColor.tint(tintColor.value());
     if (table->getColorScheme() == SP_COLOR_SCHEME_DARK)
-        bgColor = bgColor.lighten(2);
+        bgColor = bgColor.lighten(0.2);
 
     int colCount = (table->dataSource && table->dataSource->getColumnCount() > 0)
         ? table->dataSource->getColumnCount() : 1;
@@ -279,8 +279,8 @@ void SPClassicSkin::drawTableHeader(SPGraphicsContext* g, SPTableElement *table,
         }
 
         // Column divider (shadow line on right edge, light line inset)
-        SPColor divider = bgColor.lighten(-1.5);
-        SPColor dividerLight = bgColor.lighten(1.3);
+        SPColor divider = bgColor.lighten(-0.5);
+        SPColor dividerLight = bgColor.lighten(0.3);
         if (col < colCount - 1) {
             g->drawLine(cx + cw - 1, y, cx + cw - 1, y + height - 1, divider);
             //g->drawLine(cx + cw,     y, cx + cw,     y + height - 1, dividerLight);
@@ -299,7 +299,7 @@ void SPClassicSkin::drawTabBarToolButton(SPGraphicsContext* g, SPTabBarElement* 
     if (tintColor.has_value())
         bgColor = bgColor.tint(tintColor.value());
     if (tabBar->getColorScheme() == SP_COLOR_SCHEME_DARK)
-        bgColor = bgColor.lighten(2);
+        bgColor = bgColor.lighten(0.2);
 
     // Subtle inset button appearance matching the tab bar style
     SPGradient grad(bgColor.lighten(0.05f), bgColor.lighten(-0.15f), 0);
@@ -329,8 +329,8 @@ void SPClassicSkin::drawTabBarTab(SPGraphicsContext* g, SPTabBarElement *tabBar,
         lColor = lColor.tint(tintColor.value()).lighten(0.5);
     }
 	if (tabBar->getColorScheme() == SP_COLOR_SCHEME_DARK) {
-		bgColor = bgColor.lighten(2);
-		shadowColor = shadowColor.lighten(-1.7);
+		bgColor = bgColor.lighten(0.2);
+		shadowColor = shadowColor.lighten(-0.5);
 	}
     if (active)
     {
@@ -338,9 +338,6 @@ void SPClassicSkin::drawTabBarTab(SPGraphicsContext* g, SPTabBarElement *tabBar,
         if (index > 0)
         {
             g->drawLine(x, y, x, y + height - 1,shadowColor);
-        } else {
-
-            g->drawLine(x + width - 1, y, x + width - 1, y + height - 1,shadowColor);
         }
     }
     else
@@ -372,7 +369,7 @@ void SPClassicSkin::drawTabBar(
         shadowColor = tintColor.value().lighten(-0);
     }
 	if (tabBar->getColorScheme() == SP_COLOR_SCHEME_DARK) {
-		bgColor = bgColor.lighten(2);
+		bgColor = bgColor.lighten(0.2);
 		shadowColor = shadowColor.lighten(-0.5);
 	}
     SPGradient gradient(
