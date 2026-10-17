@@ -63,6 +63,8 @@ namespace space {
 		virtual int getWidth() { return 0; }
 		virtual int getHeight() { return 0; }
 		virtual void declipRect() { }
+		// Called when the skin, colour scheme or tint changes so backends can drop pre-rendered assets.
+		virtual void themeChanged() { }
 		void setFontStyle(space::SPFontStyle *fs) {
 			this->fontStyle = fs;
 		}

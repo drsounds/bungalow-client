@@ -73,6 +73,17 @@ namespace space {
 	void SPElement::setTintColor(const std::optional<SPColor>& value)
 	{
 		this->m_tintColor = value;
+		this->notifyThemeChanged();
+	}
+
+	void SPElement::notifyThemeChanged()
+	{
+		// Only a root (window) change is a theme switch; per-element tweaks don't flush the cache.
+		if (this->getParentNode() != nullptr)
+			return;
+		if (Space *space = this->getSpace())
+			if (SPGraphicsContext *graphics = space->getGraphicsContext())
+				graphics->themeChanged();
 	}
 
 	string SPElement::getId() {
@@ -202,6 +213,7 @@ namespace space {
 	void SPElement::setSkin(SPSkin *value) {
 		this->m_skin = value;
 		this->applySkin();
+		this->notifyThemeChanged();
 	}
 
 	void SPElement::onClick(int mouseButton, int x, int y) {
@@ -639,6 +651,7 @@ namespace space {
 	void SPElement::setColorScheme(short value)
 	{
 		this->m_colorScheme	= value;
+		this->notifyThemeChanged();
 	}
 
 	void SPElement::setId(const string &value) {

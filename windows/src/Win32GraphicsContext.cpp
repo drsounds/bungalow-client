@@ -110,7 +110,7 @@ namespace space
             path.CloseFigure();
         }
 
-        void fillGradient(Gdiplus::Graphics& graphics, const Gdiplus::GraphicsPath *path,
+        void fillGradient(Gdiplus::Graphics& graphics, const Gdiplus::GraphicsPath& path,
                           int x, int y, int width, int height, const SPGradient& gradient)
         {
             if (width <= 0 || height <= 0)
@@ -125,10 +125,7 @@ namespace space
             Gdiplus::LinearGradientBrush brush(brushRect, gdiplusColor(gradient.getStart()), gdiplusColor(gradient.getEnd()),
                 horizontal ? Gdiplus::LinearGradientModeHorizontal : Gdiplus::LinearGradientModeVertical);
             brush.SetWrapMode(Gdiplus::WrapModeTileFlipXY);
-            if (path)
-                graphics.FillPath(&brush, path);
-            else
-                graphics.FillRectangle(&brush, x, y, width, height);
+            graphics.FillPath(&brush, &path);
         }
 
         class GdiplusSession
@@ -147,11 +144,186 @@ namespace space
         private:
             ULONG_PTR token = 0;
         };
+
+        // Bounds the cache when sizes or colours churn (window resizes, live colour sliders).
+        constexpr size_t kMaxCachedBitmaps = 512;
+        constexpr size_t kMaxCachedBytes = 64 * 1024 * 1024;
+
+        std::uint32_t packColor(SPColor color)
+        {
+            auto clamp = [](short value) { return static_cast<std::uint32_t>(std::clamp<int>(value, 0, 255)); };
+            return clamp(color.getA()) << 24 | clamp(color.getR()) << 16 | clamp(color.getG()) << 8 | clamp(color.getB());
+        }
+
+        // Top-down 32bpp DIB; pixels are premultiplied BGRA as AlphaBlend expects.
+        HBITMAP createDib(int width, int height, void **bits)
+        {
+            BITMAPINFO info{};
+            info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+            info.bmiHeader.biWidth = width;
+            info.bmiHeader.biHeight = -height;
+            info.bmiHeader.biPlanes = 1;
+            info.bmiHeader.biBitCount = 32;
+            info.bmiHeader.biCompression = BI_RGB;
+            HBITMAP bitmap = CreateDIBSection(nullptr, &info, DIB_RGB_COLORS, bits, nullptr, 0);
+            if (bitmap && *bits)
+                memset(*bits, 0, static_cast<size_t>(width) * height * 4);
+            return bitmap;
+        }
     }
 
     Win32GraphicsContext::Win32GraphicsContext(HWND window) : window(window)
     {
         static GdiplusSession session;
+        cacheDc = CreateCompatibleDC(nullptr);
+    }
+
+    Win32GraphicsContext::~Win32GraphicsContext()
+    {
+        clearCache();
+        if (cacheDc)
+            DeleteDC(cacheDc);
+    }
+
+    void Win32GraphicsContext::themeChanged()
+    {
+        clearCache();
+    }
+
+    void Win32GraphicsContext::clearCache()
+    {
+        for (auto& entry : cache)
+            DeleteObject(entry.second.bitmap);
+        cache.clear();
+        cacheBytes = 0;
+    }
+
+
+    void Win32GraphicsContext::storeBudget(size_t bytes)
+    {
+        if (cache.size() >= kMaxCachedBitmaps || cacheBytes + bytes > kMaxCachedBytes)
+            clearCache();
+        cacheBytes += bytes;
+    }
+
+    const Win32GraphicsContext::CachedBitmap *Win32GraphicsContext::cachedStrip(
+        SPColor start, SPColor end, bool horizontal, int length)
+    {
+        if (length <= 0)
+            return nullptr;
+        const CacheKey key{static_cast<int>(CachedKind::Strip), packColor(start), packColor(end),
+                           horizontal ? 1 : 0, length, 0, 0};
+        if (const auto found = cache.find(key); found != cache.end())
+            return &found->second;
+
+        void *bits = nullptr;
+        const int width = horizontal ? length : 1;
+        const int height = horizontal ? 1 : length;
+        HBITMAP bitmap = createDib(width, height, &bits);
+        if (!bitmap || !bits)
+        {
+            if (bitmap)
+                DeleteObject(bitmap);
+            return nullptr;
+        }
+        // Interpolate once into a 1px strip; drawing stretches it across the other axis.
+        auto *pixels = static_cast<std::uint8_t *>(bits);
+        const std::uint32_t a = packColor(start);
+        const std::uint32_t b = packColor(end);
+        auto channel = [](std::uint32_t color, int shift) { return static_cast<int>((color >> shift) & 0xff); };
+        for (int i = 0; i < length; ++i)
+        {
+            const float t = length > 1 ? static_cast<float>(i) / (length - 1) : 0.0f;
+            auto mix = [&](int shift) {
+                return channel(a, shift) + (channel(b, shift) - channel(a, shift)) * t;
+            };
+            const float alpha = mix(24);
+            pixels[i * 4] = static_cast<std::uint8_t>(mix(0) * alpha / 255.0f + 0.5f);
+            pixels[i * 4 + 1] = static_cast<std::uint8_t>(mix(8) * alpha / 255.0f + 0.5f);
+            pixels[i * 4 + 2] = static_cast<std::uint8_t>(mix(16) * alpha / 255.0f + 0.5f);
+            pixels[i * 4 + 3] = static_cast<std::uint8_t>(alpha + 0.5f);
+        }
+        storeBudget(static_cast<size_t>(length) * 4);
+        const bool opaque = (a >> 24) == 0xff && (b >> 24) == 0xff;
+        return &cache.emplace(key, CachedBitmap{bitmap, width, height, opaque}).first->second;
+    }
+
+    const Win32GraphicsContext::CachedBitmap *Win32GraphicsContext::cachedRoundedShape(
+        CachedKind kind, const SPGradient& gradient, int width, int height, int radius)
+    {
+        if (width <= 0 || height <= 0)
+            return nullptr;
+        const CacheKey key{static_cast<int>(kind), packColor(gradient.getStart()), packColor(gradient.getEnd()),
+                           gradient.getDirection() != 0 ? 1 : 0, width, height, radius};
+        if (const auto found = cache.find(key); found != cache.end())
+            return &found->second;
+
+        void *bits = nullptr;
+        HBITMAP bitmap = createDib(width, height, &bits);
+        if (!bitmap || !bits)
+        {
+            if (bitmap)
+                DeleteObject(bitmap);
+            return nullptr;
+        }
+        {
+            // GDI+ rasterises the anti-aliased shape straight into the DIB's memory, once.
+            Gdiplus::Bitmap target(width, height, width * 4, PixelFormat32bppPARGB, static_cast<BYTE *>(bits));
+            Gdiplus::Graphics graphics(&target);
+            prepare(graphics, true);
+            Gdiplus::GraphicsPath path;
+            if (kind == CachedKind::RoundedStroke)
+            {
+                roundedRectanglePath(path, 0.5f, 0.5f, width - 1.0f, height - 1.0f, static_cast<Gdiplus::REAL>(radius));
+                Gdiplus::Pen pen(gdiplusColor(gradient.getStart()), 1.0f);
+                graphics.DrawPath(&pen, &path);
+            }
+            else
+            {
+                roundedRectanglePath(path, 0.0f, 0.0f, static_cast<Gdiplus::REAL>(width),
+                                     static_cast<Gdiplus::REAL>(height), static_cast<Gdiplus::REAL>(radius));
+                fillGradient(graphics, path, 0, 0, width, height, gradient);
+            }
+        }
+        storeBudget(static_cast<size_t>(width) * height * 4);
+        return &cache.emplace(key, CachedBitmap{bitmap, width, height, false}).first->second;
+    }
+
+    void Win32GraphicsContext::blit(const CachedBitmap& cached, int x, int y, int width, int height)
+    {
+        HGDIOBJ old = SelectObject(cacheDc, cached.bitmap);
+        if (cached.opaque && cached.width == width && cached.height == height)
+        {
+            BitBlt(dc, x, y, width, height, cacheDc, 0, 0, SRCCOPY);
+        }
+        else if (cached.opaque)
+        {
+            // Strips only ever stretch across the 1px axis, so pixel duplication is exact.
+            const int oldMode = SetStretchBltMode(dc, COLORONCOLOR);
+            StretchBlt(dc, x, y, width, height, cacheDc, 0, 0, cached.width, cached.height, SRCCOPY);
+            SetStretchBltMode(dc, oldMode);
+        }
+        else
+        {
+            const BLENDFUNCTION blend{AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+            AlphaBlend(dc, x, y, width, height, cacheDc, 0, 0, cached.width, cached.height, blend);
+        }
+        SelectObject(cacheDc, old);
+    }
+
+    void Win32GraphicsContext::fillSolid(int x, int y, int width, int height, SPColor color)
+    {
+        if (!dc || width <= 0 || height <= 0 || color.getA() <= 0)
+            return;
+        if (color.getA() >= 255)
+        {
+            const RECT rect{x, y, x + width, y + height};
+            SetDCBrushColor(dc, nativeColor(color));
+            FillRect(dc, &rect, static_cast<HBRUSH>(GetStockObject(DC_BRUSH)));
+            return;
+        }
+        if (const CachedBitmap *pixel = cachedStrip(color, color, false, 1))
+            blit(*pixel, x, y, width, height);
     }
 
     void Win32GraphicsContext::setDeviceContext(HDC dc)
@@ -345,11 +517,15 @@ namespace space
     {
         if (!dc)
             return;
+        // Axis-aligned lines (nearly all of them) are 1px solid fills.
+        if (x1 == x2 || y1 == y2)
+        {
+            fillSolid(std::min(x1, x2), std::min(y1, y2), std::abs(x2 - x1) + 1, std::abs(y2 - y1) + 1, color);
+            return;
+        }
         Gdiplus::Graphics graphics(dc);
-        // Axis-aligned lines stay crisp; diagonal ones get smoothed.
-        prepare(graphics, x1 != x2 && y1 != y2);
+        prepare(graphics, true);
         Gdiplus::Pen pen(gdiplusColor(color), 1.0f);
-        // Stroke through pixel centres so a 1px line covers exactly one row/column.
         graphics.DrawLine(&pen, x1 + 0.5f, y1 + 0.5f, x2 + 0.5f, y2 + 0.5f);
     }
 
@@ -357,47 +533,48 @@ namespace space
     {
         if (!dc || width <= 0 || height <= 0)
             return;
-        Gdiplus::Graphics graphics(dc);
-        prepare(graphics, false);
-        Gdiplus::Pen pen(gdiplusColor(color), 1.0f);
-        graphics.DrawRectangle(&pen, x + 0.5f, y + 0.5f, width - 1.0f, height - 1.0f);
+        fillSolid(x, y, width, 1, color);
+        if (height > 1)
+            fillSolid(x, y + height - 1, width, 1, color);
+        if (height > 2)
+        {
+            fillSolid(x, y + 1, 1, height - 2, color);
+            if (width > 1)
+                fillSolid(x + width - 1, y + 1, 1, height - 2, color);
+        }
     }
 
     void Win32GraphicsContext::fillRectangle(int x, int y, int width, int height, SPColor color)
     {
-        if (!dc || width <= 0 || height <= 0)
-            return;
-        Gdiplus::Graphics graphics(dc);
-        prepare(graphics, false);
-        Gdiplus::SolidBrush brush(gdiplusColor(color));
-        graphics.FillRectangle(&brush, x, y, width, height);
+        fillSolid(x, y, width, height, color);
     }
 
     void Win32GraphicsContext::fillRoundedRectangle(int x, int y, int width, int height, int radius, SPColor color)
     {
         if (!dc || width <= 0 || height <= 0)
             return;
-        Gdiplus::Graphics graphics(dc);
-        prepare(graphics, true);
-        Gdiplus::GraphicsPath path;
-        roundedRectanglePath(path, static_cast<Gdiplus::REAL>(x), static_cast<Gdiplus::REAL>(y),
-                             static_cast<Gdiplus::REAL>(width), static_cast<Gdiplus::REAL>(height),
-                             static_cast<Gdiplus::REAL>(radius));
-        Gdiplus::SolidBrush brush(gdiplusColor(color));
-        graphics.FillPath(&brush, &path);
+        if (radius <= 0)
+        {
+            fillSolid(x, y, width, height, color);
+            return;
+        }
+        if (const CachedBitmap *shape = cachedRoundedShape(CachedKind::RoundedFill, SPGradient(color, color, 0),
+                                                           width, height, radius))
+            blit(*shape, x, y, width, height);
     }
 
     void Win32GraphicsContext::drawRoundedRectangle(int x, int y, int width, int height, int radius, SPColor color)
     {
         if (!dc || width <= 1 || height <= 1)
             return;
-        Gdiplus::Graphics graphics(dc);
-        prepare(graphics, true);
-        Gdiplus::GraphicsPath path;
-        roundedRectanglePath(path, x + 0.5f, y + 0.5f, width - 1.0f, height - 1.0f,
-                             static_cast<Gdiplus::REAL>(radius));
-        Gdiplus::Pen pen(gdiplusColor(color), 1.0f);
-        graphics.DrawPath(&pen, &path);
+        if (radius <= 0)
+        {
+            drawRectangle(x, y, width, height, color);
+            return;
+        }
+        if (const CachedBitmap *shape = cachedRoundedShape(CachedKind::RoundedStroke, SPGradient(color, color, 0),
+                                                           width, height, radius))
+            blit(*shape, x, y, width, height);
     }
 
     void Win32GraphicsContext::fillRoundedLinearGradientRectangle(int x, int y, int width, int height,
@@ -405,13 +582,13 @@ namespace space
     {
         if (!dc || width <= 0 || height <= 0)
             return;
-        Gdiplus::Graphics graphics(dc);
-        prepare(graphics, radius > 0);
-        Gdiplus::GraphicsPath path;
-        roundedRectanglePath(path, static_cast<Gdiplus::REAL>(x), static_cast<Gdiplus::REAL>(y),
-                             static_cast<Gdiplus::REAL>(width), static_cast<Gdiplus::REAL>(height),
-                             static_cast<Gdiplus::REAL>(radius));
-        fillGradient(graphics, &path, x, y, width, height, gradient);
+        if (radius <= 0)
+        {
+            drawLinearGradient({x, y, width, height}, gradient);
+            return;
+        }
+        if (const CachedBitmap *shape = cachedRoundedShape(CachedKind::RoundedFill, gradient, width, height, radius))
+            blit(*shape, x, y, width, height);
     }
 
     void Win32GraphicsContext::drawImage(SPImage *image, int x, int y, int width, int height)
@@ -466,9 +643,12 @@ namespace space
     {
         if (!dc)
             return;
-        Gdiplus::Graphics graphics(dc);
-        prepare(graphics, false);
-        fillGradient(graphics, nullptr, rect.x, rect.y, rect.width, rect.height, gradient);
+        if (rect.width <= 0 || rect.height <= 0)
+            return;
+        const bool horizontal = gradient.getDirection() != 0;
+        if (const CachedBitmap *strip = cachedStrip(gradient.getStart(), gradient.getEnd(), horizontal,
+                                                    horizontal ? rect.width : rect.height))
+            blit(*strip, rect.x, rect.y, rect.width, rect.height);
     }
 
     SPImage *Win32GraphicsContext::loadImage(const string& bitmap)

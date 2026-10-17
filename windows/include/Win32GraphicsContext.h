@@ -1,7 +1,9 @@
 #pragma once
 
 #include <Windows.h>
+#include <cstdint>
 #include <map>
+#include <tuple>
 #include <vector>
 
 #include "SPGraphicsContext.h"
@@ -12,7 +14,9 @@ namespace space
     {
     public:
         explicit Win32GraphicsContext(HWND window);
+        ~Win32GraphicsContext() override;
         void setDeviceContext(HDC dc);
+        void themeChanged() override;
         bool handleCommand(WPARAM wParam, LPARAM lParam);
 
         void setControlAttribute(SPElement *element, const string& name, const string& value) override;
@@ -45,7 +49,30 @@ namespace space
         void restoreOrigo() override;
 
     private:
+        // Pre-rendered, premultiplied 32bpp bitmaps for gradients and rounded shapes, so painting
+        // is a blit instead of a GDI+ rasterisation. Keyed by kind, colours, direction and geometry.
+        enum class CachedKind : int { Strip, RoundedFill, RoundedStroke };
+        using CacheKey = std::tuple<int, std::uint32_t, std::uint32_t, int, int, int, int>;
+        struct CachedBitmap
+        {
+            HBITMAP bitmap = nullptr;
+            int width = 0;
+            int height = 0;
+            bool opaque = false;
+        };
+
+        const CachedBitmap *cachedStrip(SPColor start, SPColor end, bool horizontal, int length);
+        const CachedBitmap *cachedRoundedShape(CachedKind kind, const SPGradient& gradient,
+                                               int width, int height, int radius);
+        void blit(const CachedBitmap& cached, int x, int y, int width, int height);
+        void fillSolid(int x, int y, int width, int height, SPColor color);
+        void storeBudget(size_t bytes);
+        void clearCache();
+
         HWND window;
+        HDC cacheDc = nullptr;
+        std::map<CacheKey, CachedBitmap> cache;
+        size_t cacheBytes = 0;
         HDC dc = nullptr;
         int savedDc = 0;
         std::vector<int> savedClipStates;

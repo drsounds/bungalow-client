@@ -197,6 +197,7 @@ namespace space {
         virtual void scroll(int x, int y);
         void scrollTo(int x, int y);
     	void applySkin();
+    	void notifyThemeChanged();
         virtual void scroll(int scrollX, int scrollY, int x, int y);
         void applyColorAttributeFromSkin (string attr, string skin);
         void applyImageAttributeFromSkin (string attr, string skin);
