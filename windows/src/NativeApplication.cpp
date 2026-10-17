@@ -65,8 +65,8 @@ namespace space
         windowElement->setAbsoluteBounds({0, 0, client.right, client.bottom});
         mainElement->setX(0);
         mainElement->setWidth((std::max)(0, static_cast<int>(client.right)));
-        mainElement->setY(HeaderHeight);
-        mainElement->setHeight((std::max)(0, static_cast<int>(client.bottom) - HeaderHeight));
+        mainElement->setY(0);
+        mainElement->setHeight((std::max)(0, static_cast<int>(client.bottom)));
         mainElement->pack();
     }
 

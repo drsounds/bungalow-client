@@ -9,6 +9,7 @@
 #include <windowsx.h>
 
 #include <algorithm>
+#include <cwctype>
 namespace WTL {
 using ::CPoint;
 using ::CSize;
@@ -19,12 +20,62 @@ using namespace WTL;
 CAppModule _Module;
 
 namespace {
-constexpr int FileMenuButtonId = 1001;
-constexpr int MinimizeButtonId = 1002;
-constexpr int MaximizeButtonId = 1003;
-constexpr int CloseButtonId = 1004;
 constexpr int FileAboutCommandId = 1101;
 constexpr int FileExitCommandId = 1102;
+constexpr int CaptionButtonWidth = 46;
+
+enum class CaptionItem { None, File, Minimize, Maximize, Close };
+
+// Returns the installed font's own LOGFONT so its charset matches; icon fonts are
+// otherwise substituted by the font mapper.
+bool FindFontFamily(const wchar_t *name, LOGFONTW &result) {
+	LOGFONTW query{};
+	query.lfCharSet = DEFAULT_CHARSET;
+	wcscpy_s(query.lfFaceName, name);
+	result = {};
+	HDC screen = ::GetDC(nullptr);
+	EnumFontFamiliesExW(
+		screen, &query,
+		[](const LOGFONTW *font, const TEXTMETRICW *, DWORD, LPARAM found) -> int {
+			*reinterpret_cast<LOGFONTW *>(found) = *font;
+			return 0;
+		},
+		reinterpret_cast<LPARAM>(&result), 0);
+	::ReleaseDC(nullptr, screen);
+	return result.lfFaceName[0] != L'\0';
+}
+
+// Blends a translucent colour over the buffer (hover/pressed states on top of app content).
+void FillTranslucent(HDC dc, const RECT &rect, COLORREF color, BYTE alpha) {
+	BITMAPINFO info{};
+	info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	info.bmiHeader.biWidth = 1;
+	info.bmiHeader.biHeight = 1;
+	info.bmiHeader.biPlanes = 1;
+	info.bmiHeader.biBitCount = 32;
+	info.bmiHeader.biCompression = BI_RGB;
+	void *bits = nullptr;
+	HBITMAP pixel = CreateDIBSection(nullptr, &info, DIB_RGB_COLORS, &bits, nullptr, 0);
+	if (!pixel || !bits) {
+		if (pixel)
+			DeleteObject(pixel);
+		return;
+	}
+	auto *bgra = static_cast<BYTE *>(bits);
+	bgra[0] = static_cast<BYTE>(GetBValue(color) * alpha / 255);
+	bgra[1] = static_cast<BYTE>(GetGValue(color) * alpha / 255);
+	bgra[2] = static_cast<BYTE>(GetRValue(color) * alpha / 255);
+	bgra[3] = alpha;
+	HDC source = CreateCompatibleDC(dc);
+	HGDIOBJ old = SelectObject(source, pixel);
+	const BLENDFUNCTION blend{AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+	AlphaBlend(dc, rect.left, rect.top, rect.right - rect.left,
+			   rect.bottom - rect.top, source, 0, 0, 1, 1, blend);
+	SelectObject(source, old);
+	DeleteDC(source);
+	DeleteObject(pixel);
+}
+
 class MainFrame : public CFrameWindowImpl<MainFrame> {
 public:
 	// Keep WTL's default class styles; CS_DROPSHADOW only shows when the system
@@ -40,6 +91,7 @@ public:
 	~MainFrame() {
 		if (fileMenu)
 			DestroyMenu(fileMenu);
+		DestroyCaptionFonts();
 	}
 
 	BEGIN_MSG_MAP(MainFrame)
@@ -51,6 +103,9 @@ public:
 	MESSAGE_HANDLER(WM_NCHITTEST, OnNcHitTest)
 	MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
 	MESSAGE_HANDLER(WM_COMMAND, OnCommand)
+	MESSAGE_HANDLER(WM_SYSCOMMAND, OnSysCommand)
+	MESSAGE_HANDLER(WM_SETTINGCHANGE, OnSettingChange)
+	MESSAGE_HANDLER(WM_MOUSELEAVE, OnMouseLeave)
 	MSG_WM_LBUTTONDOWN(OnLeftButtonDown)
 	MSG_WM_LBUTTONUP(OnLeftButtonUp)
 	MSG_WM_RBUTTONDOWN(OnRightButtonDown)
@@ -68,27 +123,20 @@ public:
 			return -1;
 		}
 
-		fileMenuButton = CreateHeaderButton(L"&File", FileMenuButtonId);
-		minimizeButton = CreateHeaderButton(L"\u2014", MinimizeButtonId);
-		maximizeButton = CreateHeaderButton(L"\u25A1", MaximizeButtonId);
-		closeButton = CreateHeaderButton(L"\u00D7", CloseButtonId);
 		fileMenu = CreatePopupMenu();
-		if (!fileMenuButton || !minimizeButton || !maximizeButton ||
-			!closeButton || !fileMenu) {
+		if (!fileMenu) {
 			initializationFailed = true;
 			return -1;
 		}
-
 		AppendMenuW(fileMenu, MF_STRING, FileAboutCommandId, L"&About Spacify");
 		AppendMenuW(fileMenu, MF_SEPARATOR, 0, nullptr);
 		AppendMenuW(fileMenu, MF_STRING, FileExitCommandId, L"E&xit");
-		PositionHeaderButtons();
+		CreateCaptionFonts();
 		return 0;
 	}
 
 	void OnSize(UINT, CSize) {
 		app.resize();
-		PositionHeaderButtons();
 		UpdateWindowRegion();
 		Invalidate(FALSE);
 	}
@@ -111,23 +159,7 @@ public:
 		IntersectClipRect(dc, paint.rcPaint.left, paint.rcPaint.top,
 						  paint.rcPaint.right, paint.rcPaint.bottom);
 		app.paint(dc);
-		RECT header{0, 0, client.right, space::NativeApplication::HeaderHeight};
-		HBRUSH background = CreateSolidBrush(RGB(38, 43, 54));
-		FillRect(dc, &header, background);
-		DeleteObject(background);
-
-		HPEN separator = CreatePen(PS_SOLID, 1, RGB(54, 60, 72));
-		HGDIOBJ oldPen = SelectObject(dc, separator);
-		MoveToEx(dc, 0, header.bottom - 1, nullptr);
-		LineTo(dc, client.right, header.bottom - 1);
-		SelectObject(dc, oldPen);
-		DeleteObject(separator);
-
-		SetBkMode(dc, TRANSPARENT);
-		SetTextColor(dc, RGB(238, 240, 245));
-		RECT title = header;
-		DrawTextW(dc, L"Spacify", -1, &title,
-				  DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+		PaintCaption(dc, client);
 
 		SelectClipRgn(dc, nullptr);
 		BitBlt(windowDc, paint.rcPaint.left, paint.rcPaint.top,
@@ -157,45 +189,42 @@ public:
 
 	LRESULT OnNcHitTest(UINT, WPARAM, LPARAM lParam, BOOL &) {
 		const POINT point{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
-		if (IsZoomed()) {
-			POINT clientPoint = point;
-			ScreenToClient(&clientPoint);
-			if (clientPoint.y < space::NativeApplication::HeaderHeight &&
-				!IsHeaderButtonAt(clientPoint))
-				return HTCAPTION;
-			return HTCLIENT;
-		}
-
-		RECT window{};
-		GetWindowRect(&window);
-		const int border = GetSystemMetrics(SM_CXSIZEFRAME) +
-						   GetSystemMetrics(SM_CXPADDEDBORDER);
-		const bool left = point.x < window.left + border;
-		const bool right = point.x >= window.right - border;
-		const bool top = point.y < window.top + border;
-		const bool bottom = point.y >= window.bottom - border;
-
-		if (top && left)
-			return HTTOPLEFT;
-		if (top && right)
-			return HTTOPRIGHT;
-		if (bottom && left)
-			return HTBOTTOMLEFT;
-		if (bottom && right)
-			return HTBOTTOMRIGHT;
-		if (left)
-			return HTLEFT;
-		if (right)
-			return HTRIGHT;
-		if (top)
-			return HTTOP;
-		if (bottom)
-			return HTBOTTOM;
-
 		POINT clientPoint = point;
 		ScreenToClient(&clientPoint);
-		if (clientPoint.y < space::NativeApplication::HeaderHeight &&
-			!IsHeaderButtonAt(clientPoint))
+
+		if (!IsZoomed()) {
+			RECT window{};
+			GetWindowRect(&window);
+			const int border = GetSystemMetrics(SM_CXSIZEFRAME) +
+							   GetSystemMetrics(SM_CXPADDEDBORDER);
+			const bool left = point.x < window.left + border;
+			const bool right = point.x >= window.right - border;
+			const bool top = point.y < window.top + border;
+			const bool bottom = point.y >= window.bottom - border;
+
+			// The close button reaches the top-right corner; keep it clickable there.
+			if (!(top && right && CaptionItemAt(clientPoint) == CaptionItem::Close)) {
+				if (top && left)
+					return HTTOPLEFT;
+				if (top && right)
+					return HTTOPRIGHT;
+				if (bottom && left)
+					return HTBOTTOMLEFT;
+				if (bottom && right)
+					return HTBOTTOMRIGHT;
+				if (left)
+					return HTLEFT;
+				if (right)
+					return HTRIGHT;
+				if (top)
+					return HTTOP;
+				if (bottom)
+					return HTBOTTOM;
+			}
+		}
+
+		if (clientPoint.y < space::NativeApplication::CaptionHeight &&
+			CaptionItemAt(clientPoint) == CaptionItem::None)
 			return HTCAPTION;
 		return HTCLIENT;
 	}
@@ -208,6 +237,16 @@ public:
 	}
 
 	void OnLeftButtonDown(UINT, CPoint point) {
+		const CaptionItem item = CaptionItemAt(point);
+		if (item == CaptionItem::File) {
+			ShowFileMenu();
+			return;
+		}
+		if (item != CaptionItem::None) {
+			SetPressedItem(item);
+			SetCapture();
+			return;
+		}
 		SetFocus();
 		SetCapture();
 		app.mouseEvent("mousedown", point.x, point.y, 0, IsCommandDown());
@@ -216,11 +255,28 @@ public:
 	void OnLeftButtonUp(UINT, CPoint point) {
 		if (GetCapture() == m_hWnd)
 			ReleaseCapture();
+		if (pressedItem != CaptionItem::None) {
+			const CaptionItem pressed = pressedItem;
+			SetPressedItem(CaptionItem::None);
+			if (CaptionItemAt(point) == pressed)
+				ActivateCaptionItem(pressed);
+			return;
+		}
 		app.mouseEvent("mouseup", point.x, point.y, 0, IsCommandDown());
 	}
 
 	void OnMouseMove(UINT, CPoint point) {
+		const CaptionItem item = CaptionItemAt(point);
+		SetHoveredItem(item);
+		if (item != CaptionItem::None || pressedItem != CaptionItem::None)
+			return;
 		app.mouseEvent("mousemove", point.x, point.y, 0, IsCommandDown());
+	}
+
+	LRESULT OnMouseLeave(UINT, WPARAM, LPARAM, BOOL &) {
+		trackingMouse = false;
+		SetHoveredItem(CaptionItem::None);
+		return 0;
 	}
 
 	void OnRightButtonDown(UINT, CPoint point) {
@@ -248,22 +304,6 @@ public:
 	}
 
 	LRESULT OnCommand(UINT, WPARAM wParam, LPARAM lParam, BOOL &) {
-		if (HIWORD(wParam) == BN_CLICKED) {
-			switch (LOWORD(wParam)) {
-			case FileMenuButtonId:
-				ShowFileMenu();
-				return 0;
-			case MinimizeButtonId:
-				ShowWindow(SW_MINIMIZE);
-				return 0;
-			case MaximizeButtonId:
-				ShowWindow(IsZoomed() ? SW_RESTORE : SW_MAXIMIZE);
-				return 0;
-			case CloseButtonId:
-				PostMessage(WM_CLOSE);
-				return 0;
-			}
-		}
 		switch (LOWORD(wParam)) {
 		case FileAboutCommandId:
 			::MessageBoxW(m_hWnd, L"Spacify Client", L"About Spacify",
@@ -278,63 +318,225 @@ public:
 		}
 	}
 
+	// Alt+F opens the File menu, like a native menu bar.
+	LRESULT OnSysCommand(UINT, WPARAM wParam, LPARAM lParam, BOOL &handled) {
+		if ((wParam & 0xFFF0) == SC_KEYMENU && std::towlower(static_cast<wint_t>(lParam)) == L'f') {
+			ShowFileMenu();
+			return 0;
+		}
+		handled = FALSE;
+		return 0;
+	}
+
+	LRESULT OnSettingChange(UINT, WPARAM, LPARAM, BOOL &handled) {
+		CreateCaptionFonts();
+		Invalidate(FALSE);
+		handled = FALSE;
+		return 0;
+	}
+
 private:
-	HWND fileMenuButton = nullptr;
-	HWND minimizeButton = nullptr;
-	HWND maximizeButton = nullptr;
-	HWND closeButton = nullptr;
 	HMENU fileMenu = nullptr;
+	HFONT titleFont = nullptr;
+	HFONT menuFont = nullptr;
+	HFONT glyphFont = nullptr;
+	bool hasGlyphFont = false;
+	CaptionItem hoveredItem = CaptionItem::None;
+	CaptionItem pressedItem = CaptionItem::None;
+	bool menuOpen = false;
+	bool trackingMouse = false;
 	bool initializationFailed = false;
 
-	HWND CreateHeaderButton(const wchar_t *text, int id) {
-		return CreateWindowExW(
-			0, L"BUTTON", text, WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_FLAT, 0,
-			0, 0, 0, m_hWnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),
-			_Module.GetModuleInstance(), nullptr);
+	void CreateCaptionFonts() {
+		DestroyCaptionFonts();
+		// Use the same fonts Windows uses for real title bars and menus.
+		NONCLIENTMETRICSW metrics{sizeof(metrics)};
+		if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(metrics), &metrics, 0)) {
+			titleFont = CreateFontIndirectW(&metrics.lfCaptionFont);
+			menuFont = CreateFontIndirectW(&metrics.lfMenuFont);
+		}
+		LOGFONTW icons{};
+		hasGlyphFont = FindFontFamily(L"Segoe Fluent Icons", icons) ||
+					   FindFontFamily(L"Segoe MDL2 Assets", icons);
+		if (hasGlyphFont) {
+			icons.lfHeight = -10;
+			icons.lfWidth = 0;
+			icons.lfWeight = FW_NORMAL;
+			icons.lfQuality = CLEARTYPE_QUALITY;
+			glyphFont = CreateFontIndirectW(&icons);
+			hasGlyphFont = glyphFont != nullptr;
+		}
 	}
 
-	void PositionHeaderButtons() {
-		if (!fileMenuButton)
-			return;
+	void DestroyCaptionFonts() {
+		for (HFONT *font : {&titleFont, &menuFont, &glyphFont}) {
+			if (*font)
+				DeleteObject(*font);
+			*font = nullptr;
+		}
+	}
+
+	RECT CaptionItemRect(CaptionItem item) const {
+		RECT client{};
+		::GetClientRect(m_hWnd, &client);
+		const int height = space::NativeApplication::CaptionHeight;
+		switch (item) {
+		case CaptionItem::File: {
+			int textWidth = 24;
+			if (HDC screen = ::GetDC(m_hWnd)) {
+				HGDIOBJ old = SelectObject(screen, menuFont ? menuFont : GetStockObject(DEFAULT_GUI_FONT));
+				SIZE size{};
+				if (GetTextExtentPoint32W(screen, L"File", 4, &size))
+					textWidth = size.cx;
+				SelectObject(screen, old);
+				::ReleaseDC(m_hWnd, screen);
+			}
+			return {4, 0, 4 + textWidth + 16, height};
+		}
+		case CaptionItem::Close:
+			return {client.right - CaptionButtonWidth, 0, client.right, height};
+		case CaptionItem::Maximize:
+			return {client.right - CaptionButtonWidth * 2, 0, client.right - CaptionButtonWidth, height};
+		case CaptionItem::Minimize:
+			return {client.right - CaptionButtonWidth * 3, 0, client.right - CaptionButtonWidth * 2, height};
+		default:
+			return {};
+		}
+	}
+
+	CaptionItem CaptionItemAt(POINT point) const {
+		if (point.y < 0 || point.y >= space::NativeApplication::CaptionHeight)
+			return CaptionItem::None;
+		for (CaptionItem item : {CaptionItem::File, CaptionItem::Minimize,
+								 CaptionItem::Maximize, CaptionItem::Close}) {
+			const RECT rect = CaptionItemRect(item);
+			if (PtInRect(&rect, point))
+				return item;
+		}
+		return CaptionItem::None;
+	}
+
+	void InvalidateCaption() {
 		RECT client{};
 		GetClientRect(&client);
-		const int headerHeight = space::NativeApplication::HeaderHeight;
-		const int buttonHeight = headerHeight - 8;
-		const int buttonWidth = 44;
-		::MoveWindow(fileMenuButton, 8, 4, 56, buttonHeight, TRUE);
-		::MoveWindow(closeButton, client.right - buttonWidth - 4, 4, buttonWidth,
-					 buttonHeight, TRUE);
-		::MoveWindow(maximizeButton, client.right - buttonWidth * 2 - 4, 4,
-					 buttonWidth, buttonHeight, TRUE);
-		::MoveWindow(minimizeButton, client.right - buttonWidth * 3 - 4, 4,
-					 buttonWidth, buttonHeight, TRUE);
+		RECT caption{0, 0, client.right, space::NativeApplication::CaptionHeight};
+		InvalidateRect(&caption, FALSE);
 	}
 
-	bool IsHeaderButtonAt(POINT point) const {
-		const HWND buttons[] = {fileMenuButton, minimizeButton, maximizeButton,
-								closeButton};
-		for (HWND button : buttons) {
-			if (!button)
-				continue;
-			RECT bounds{};
-			::GetWindowRect(button, &bounds);
-			POINT topLeft{bounds.left, bounds.top};
-			POINT bottomRight{bounds.right, bounds.bottom};
-			ScreenToClient(&topLeft);
-			ScreenToClient(&bottomRight);
-			RECT clientBounds{topLeft.x, topLeft.y, bottomRight.x,
-							  bottomRight.y};
-			if (PtInRect(&clientBounds, point))
-				return true;
+	void SetHoveredItem(CaptionItem item) {
+		if (item != CaptionItem::None && !trackingMouse) {
+			TRACKMOUSEEVENT track{sizeof(track), TME_LEAVE, m_hWnd, 0};
+			trackingMouse = TrackMouseEvent(&track) != FALSE;
 		}
-		return false;
+		if (item == hoveredItem)
+			return;
+		hoveredItem = item;
+		InvalidateCaption();
+	}
+
+	void SetPressedItem(CaptionItem item) {
+		if (item == pressedItem)
+			return;
+		pressedItem = item;
+		InvalidateCaption();
+	}
+
+	void ActivateCaptionItem(CaptionItem item) {
+		switch (item) {
+		case CaptionItem::File:
+			ShowFileMenu();
+			break;
+		case CaptionItem::Minimize:
+			ShowWindow(SW_MINIMIZE);
+			break;
+		case CaptionItem::Maximize:
+			ShowWindow(IsZoomed() ? SW_RESTORE : SW_MAXIMIZE);
+			break;
+		case CaptionItem::Close:
+			PostMessage(WM_CLOSE);
+			break;
+		default:
+			break;
+		}
+	}
+
+	// Picks light or dark caption text from whatever the app painted underneath.
+	COLORREF CaptionTextColor(HDC dc, const RECT &client) const {
+		const int y = space::NativeApplication::CaptionHeight / 2;
+		int total = 0;
+		int samples = 0;
+		for (int i = 1; i <= 8; ++i) {
+			const COLORREF pixel = GetPixel(dc, client.right * i / 9, y);
+			if (pixel == CLR_INVALID)
+				continue;
+			total += (GetRValue(pixel) * 299 + GetGValue(pixel) * 587 + GetBValue(pixel) * 114) / 1000;
+			++samples;
+		}
+		const bool lightBackground = samples > 0 && total / samples > 150;
+		return lightBackground ? RGB(24, 24, 24) : RGB(242, 242, 242);
+	}
+
+	void PaintCaption(HDC dc, const RECT &client) {
+		const int height = space::NativeApplication::CaptionHeight;
+		const COLORREF textColor = CaptionTextColor(dc, client);
+		const bool lightText = GetRValue(textColor) > 128;
+		SetBkMode(dc, TRANSPARENT);
+
+		// Transparent items: only hover/pressed states draw a translucent wash.
+		for (CaptionItem item : {CaptionItem::File, CaptionItem::Minimize,
+								 CaptionItem::Maximize, CaptionItem::Close}) {
+			const bool active = item == pressedItem || (item == CaptionItem::File && menuOpen);
+			if (item != hoveredItem && !active)
+				continue;
+			const RECT rect = CaptionItemRect(item);
+			if (item == CaptionItem::Close)
+				FillTranslucent(dc, rect, RGB(196, 43, 28), active ? 200 : 255);
+			else
+				FillTranslucent(dc, rect, lightText ? RGB(255, 255, 255) : RGB(0, 0, 0), active ? 48 : 28);
+		}
+
+		HGDIOBJ oldFont = SelectObject(dc, titleFont ? titleFont : GetStockObject(DEFAULT_GUI_FONT));
+		SetTextColor(dc, textColor);
+		RECT title{0, 0, client.right, height};
+		DrawTextW(dc, L"Spacify", -1, &title, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+
+		SelectObject(dc, menuFont ? menuFont : GetStockObject(DEFAULT_GUI_FONT));
+		RECT file = CaptionItemRect(CaptionItem::File);
+		DrawTextW(dc, L"File", -1, &file, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+
+		if (glyphFont)
+			SelectObject(dc, glyphFont);
+		const bool zoomed = IsZoomed() != FALSE;
+		const struct {
+			CaptionItem item;
+			const wchar_t *glyph;
+			const wchar_t *fallback;
+		} buttons[] = {
+			{CaptionItem::Minimize, L"", L"—"},
+			{CaptionItem::Maximize, zoomed ? L"" : L"", zoomed ? L"❐" : L"□"},
+			{CaptionItem::Close, L"", L"✕"},
+		};
+		for (const auto &button : buttons) {
+			RECT rect = CaptionItemRect(button.item);
+			SetTextColor(dc, button.item == CaptionItem::Close && button.item == hoveredItem
+								 ? RGB(255, 255, 255) : textColor);
+			DrawTextW(dc, hasGlyphFont ? button.glyph : button.fallback, -1, &rect,
+					  DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+		}
+		SelectObject(dc, oldFont);
 	}
 
 	void ShowFileMenu() {
-		RECT button{};
-		::GetWindowRect(fileMenuButton, &button);
+		RECT item = CaptionItemRect(CaptionItem::File);
+		POINT anchor{item.left, item.bottom};
+		ClientToScreen(&anchor);
+		menuOpen = true;
+		InvalidateCaption();
 		TrackPopupMenu(fileMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON,
-					   button.left, button.bottom, 0, m_hWnd, nullptr);
+					   anchor.x, anchor.y, 0, m_hWnd, nullptr);
+		menuOpen = false;
+		SetHoveredItem(CaptionItem::None);
+		InvalidateCaption();
 	}
 
 	void UpdateWindowRegion() {
