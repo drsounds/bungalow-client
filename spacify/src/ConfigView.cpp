@@ -90,14 +90,13 @@ ConfigView::ConfigView(SPElement *parent) : SPViewElement(parent) {
         this, m_darkButton
     );
 
-    /*
+    
     m_glossyButton = makeButton(this, "Glossy: On", 110, 28);
     m_glossyButton->addEventListener(
         "click",
         reinterpret_cast<SPCallback>(&ConfigView::onGlossyClicked),
         this, m_glossyButton
     );
-    */
 
     // ── Button Style section ───────────────────────────────────────────────
     // makeLabel(this, "Button Style", 20);

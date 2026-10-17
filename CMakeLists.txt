@@ -87,7 +87,6 @@ else()
             windows/src/UiDispatcher.cpp
             wxwidgets/app/src/MainElement.cpp
             wxwidgets/app/src/AppView.cpp
-            wxwidgets/app/src/ConfigView.cpp
             wxwidgets/app/src/LibraryView.cpp
             wxwidgets/app/src/LocalFilesView.cpp
             wxwidgets/app/src/PlayQueueView.cpp
