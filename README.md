@@ -1,6 +1,6 @@
-# Spacify Client
+# Bungalow Client
 
-Spacify Client is a C++ desktop application that interacts with spacify.se services.
+BungalownClient is a C++ desktop application.
 
 It uses an own written GUI framework called **Space** which is a lightweight abstract GUI framework that aims to create an alternate protocol for serving content over the internet
 
