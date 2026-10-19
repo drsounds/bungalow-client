@@ -10,10 +10,15 @@ namespace space {
     struct SPAppBundle;
     class SPElement;
 
+    /// Identifier of the bundle with the shared Apps JavaScript API
+    /// (Apps/import). Every app browser also serves it at sp://import/, and
+    /// its files may be read cross-origin (sp.require() uses XHR).
+    inline constexpr char kSharedApiBundle[] = "import";
+
     /// A native browser that hosts one HTML5 app bundle (a bundle with an
-    /// index.html) and serves it from sp://<bundle>/. Each instance has its
-    /// own isolated storage. Backend-neutral; backends provide
-    /// createEmbeddedAppBrowser().
+    /// index.html) and serves it from sp://<bundle>/, plus the shared API
+    /// bundle (kSharedApiBundle). Each instance has its own isolated storage.
+    /// Backend-neutral; backends provide createEmbeddedAppBrowser().
     ///
     /// All methods must be called on the UI thread, and all callbacks are
     /// delivered on the UI thread. Callbacks stop once the browser is

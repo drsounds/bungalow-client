@@ -15,6 +15,8 @@
 #include "SPVBoxElement.h"
 
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 #endif
 
 namespace space {
@@ -59,6 +61,19 @@ string appUri(const string& appId, const string& path) {
 bool hasIndexHtml(const SPAppBundle& bundle) {
     std::error_code ec;
     return std::filesystem::is_regular_file(std::filesystem::u8path(bundle.path) / "index.html", ec);
+}
+
+// The Apps API bootstrap (getSpotifyApi, sp.require) from the shared API
+// bundle, run in every app page. Read per app browser, so edits apply to apps
+// opened afterwards. Empty if the bundle is not installed.
+string sharedApiScript() {
+    const SPAppBundle* shared = SPAppManager::instance().findBundle(kSharedApiBundle);
+    if (!shared) return {};
+    std::ifstream in(std::filesystem::u8path(shared->path) / "scripts" / "sp.js", std::ios::binary);
+    if (!in) return {};
+    std::ostringstream script;
+    script << in.rdbuf();
+    return script.str();
 }
 
 } // namespace
@@ -267,6 +282,9 @@ AppView::LocalApp* AppView::localAppFor(const SPAppBundle& bundle) {
         "(function(apply){if(document.documentElement){apply();return;}"
         "new MutationObserver(function(_,o){if(document.documentElement){o.disconnect();apply();}})"
         ".observe(document,{childList:true});})(function(){" + themeScript() + "});";
+    // The shared bundle itself has no app pages to bootstrap.
+    if (appId != kSharedApiBundle)
+        options.startupScript += "\n" + sharedApiScript();
     // Besides spacify.se, apps may fetch from the https hosts their manifest
     // lists under AllowedHosts, once the user has accepted each of them.
     options.allowedHosts.insert("spacify.se");

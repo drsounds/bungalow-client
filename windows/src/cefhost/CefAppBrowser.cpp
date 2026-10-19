@@ -6,6 +6,7 @@
 #include "SpSchemeHandler.h"
 
 #include "SPAppBundle.h"
+#include "SPAppManager.h"
 #include "SPElement.h"
 #include "UiDispatcher.h"
 #include "Win32GraphicsContext.h"
@@ -35,9 +36,14 @@ bool isSpacifyUri(const std::string& uri) {
            startsWith(uri, "bungalow:") || startsWith(uri, "musik:");
 }
 
+// "sp://import/": the shared API bundle every app may load from.
+std::string sharedApiOrigin() {
+    return std::string(kAppScheme) + "://" + kSharedApiBundle + "/";
+}
+
 // CEF-side handlers of one app browser. Keeps the app inside its bundle:
-// documents may only come from sp://<app>/, other requests only from data:,
-// blob: and the allowed https/wss hosts.
+// documents may only come from sp://<app>/, other requests only from the
+// shared API bundle, data:, blob: and the allowed https/wss hosts.
 class AppClient : public CefClient,
                   public BrowserLifeSpanHandler,
                   public CefDisplayHandler,
@@ -175,8 +181,8 @@ private:
     }
 
     bool isAllowedResource(const std::string& url) const {
-        if (startsWith(url, m_origin) || startsWith(url, "data:") || startsWith(url, "blob:") ||
-            startsWith(url, "devtools:"))
+        if (startsWith(url, m_origin) || startsWith(url, sharedApiOrigin()) || startsWith(url, "data:") ||
+            startsWith(url, "blob:") || startsWith(url, "devtools:"))
             return true;
         if (!startsWith(url, "https://") && !startsWith(url, "wss://"))
             return false;
@@ -253,6 +259,11 @@ private:
         CefRefPtr<CefRequestContext> context =
             CefRequestContext::CreateContext(contextSettings, new ColorSchemeContextHandler(m_window.state()));
         context->RegisterSchemeHandlerFactory(kAppScheme, m_appId, new SpSchemeHandlerFactory(m_bundleRoot));
+        if (m_appId != kSharedApiBundle) {
+            if (const SPAppBundle* shared = SPAppManager::instance().findBundle(kSharedApiBundle))
+                context->RegisterSchemeHandlerFactory(kAppScheme, kSharedApiBundle,
+                                                      new SpSchemeHandlerFactory(shared->path, true));
+        }
 
         CefRefPtr<CefDictionaryValue> extraInfo = CefDictionaryValue::Create();
         extraInfo->SetString(kStartupScriptKey, m_options.startupScript);

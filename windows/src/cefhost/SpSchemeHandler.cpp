@@ -44,8 +44,9 @@ fs::path findFile(const std::string& bundleRoot, const std::string& relativePath
 
 } // namespace
 
-SpSchemeHandlerFactory::SpSchemeHandlerFactory(std::string bundleRoot)
-    : m_bundleRoot(std::move(bundleRoot)) {}
+SpSchemeHandlerFactory::SpSchemeHandlerFactory(std::string bundleRoot, bool allowAnyOrigin)
+    : m_bundleRoot(std::move(bundleRoot))
+    , m_allowAnyOrigin(allowAnyOrigin) {}
 
 CefRefPtr<CefResourceHandler> SpSchemeHandlerFactory::Create(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame>,
                                                              const CefString&,
@@ -75,6 +76,8 @@ CefRefPtr<CefResourceHandler> SpSchemeHandlerFactory::Create(CefRefPtr<CefBrowse
 
     CefResponse::HeaderMap headers;
     headers.emplace("Cache-Control", "no-cache");
+    if (m_allowAnyOrigin)
+        headers.emplace("Access-Control-Allow-Origin", "*");
     return new CefStreamResourceHandler(200, "OK", mimeType, headers, stream);
 }
 

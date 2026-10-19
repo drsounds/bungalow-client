@@ -154,7 +154,9 @@
 .sp-track-field-star,
 .sp-track-field-share {
     width: 22px;
+    padding: 0 !important;
     text-align: center;
+    text-overflow: clip !important;
     cursor: pointer;
 }
 .sp-track .sp-track-field-star::before {
