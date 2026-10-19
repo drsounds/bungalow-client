@@ -6,6 +6,10 @@
 
 #include "NativeApplication.h"
 
+#ifdef BUNGALOW_CEF
+#include "cefhost/CefRuntime.h"
+#endif
+
 #include <windowsx.h>
 
 #include <algorithm>
@@ -601,6 +605,15 @@ private:
 } // namespace
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
+#ifdef BUNGALOW_CEF
+	// CEF relaunches this executable for its renderer and GPU processes.
+	const int subprocessExitCode = space::cefhost::executeSubprocess(instance);
+	if (subprocessExitCode >= 0)
+		return subprocessExitCode;
+	// On failure app bundles show an error view; the rest of the UI still works.
+	space::cefhost::initialize(instance);
+#endif
+
 	if (FAILED(_Module.Init(nullptr, instance))) {
 		::MessageBoxW(nullptr, L"Unable to initialize the WTL application.",
 					  L"Spacify", MB_OK | MB_ICONERROR);
@@ -633,5 +646,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
 	}
 	_Module.RemoveMessageLoop();
 	_Module.Term();
+#ifdef BUNGALOW_CEF
+	space::cefhost::shutdown();
+#endif
 	return result;
 }

@@ -4,6 +4,12 @@ if(CMAKE_HOST_WIN32)
     set(VCPKG_TARGET_TRIPLET "x64-windows-static-md" CACHE STRING "vcpkg target triplet")
 endif()
 
+# Must be decided before project(), which runs the vcpkg manifest install.
+option(BUNGALOW_ENABLE_CEF "Run local HTML5 app bundles in Chromium Embedded Framework (wtl backend only)" OFF)
+if(BUNGALOW_ENABLE_CEF)
+    list(APPEND VCPKG_MANIFEST_FEATURES "cef")
+endif()
+
 project(BungalowNative LANGUAGES C CXX)
 include(CTest)
 
@@ -102,6 +108,26 @@ else()
     endif()
 endif()
 
+if(BUNGALOW_ENABLE_CEF)
+    if(NOT BUNGALOW_UI_BACKEND STREQUAL "wtl")
+        message(FATAL_ERROR "BUNGALOW_ENABLE_CEF currently requires BUNGALOW_UI_BACKEND=wtl")
+    endif()
+    find_package(cef CONFIG REQUIRED)
+
+    # CEF headers need C++20, so the CEF host is its own library and the
+    # client only sees the CEF-free SPEmbeddedBrowser / CefRuntime headers.
+    file(GLOB CEF_HOST_SOURCES CONFIGURE_DEPENDS "windows/src/cefhost/*.cpp" "windows/src/cefhost/*.h")
+    file(GLOB CEF_HOST_HEADERS CONFIGURE_DEPENDS "windows/include/cefhost/*.h")
+    add_library(bungalow-cef STATIC ${CEF_HOST_SOURCES} ${CEF_HOST_HEADERS} space/include/SPEmbeddedBrowser.h)
+    set_target_properties(bungalow-cef PROPERTIES CXX_STANDARD 20)
+    target_include_directories(bungalow-cef PRIVATE
+        space/include
+        windows/include
+        wxwidgets/app/include)
+    target_compile_definitions(bungalow-cef PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0A00 UNICODE _UNICODE)
+    target_link_libraries(bungalow-cef PUBLIC cef::cef PRIVATE nlohmann_json::nlohmann_json SQLite::SQLite3)
+endif()
+
 if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets" AND wxWidgets_USE_FILE)
     include(${wxWidgets_USE_FILE})
 endif()
@@ -147,6 +173,17 @@ target_link_libraries(spacify-client PRIVATE
 
 if(WIN32)
     set_target_properties(spacify-client PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
+
+if(BUNGALOW_ENABLE_CEF)
+    target_compile_definitions(spacify-client PRIVATE BUNGALOW_CEF)
+    target_link_libraries(spacify-client PRIVATE bungalow-cef)
+    # Chromium needs the Windows 10 compatibility manifest and, since this exe
+    # also runs CEF's renderer processes, an 8 MiB main-thread stack.
+    target_sources(spacify-client PRIVATE windows/spacify-client.manifest)
+    target_link_options(spacify-client PRIVATE /STACK:0x800000)
+    cef_copy_runtime(spacify-client)
+    cef_install_runtime(.)
 endif()
 
 install(TARGETS spacify-client RUNTIME DESTINATION .)

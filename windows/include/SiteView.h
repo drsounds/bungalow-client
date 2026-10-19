@@ -35,6 +35,13 @@ protected:
     void updateBookmarkButton(const string& uri);
     void setNavBarVisible(bool visible);
     const string& getCurrentUri() const { return m_currentUri; }
+    void setCurrentUri(const string& uri) { m_currentUri = uri; }
+    int getNavOffset() const { return m_navOffset; }
+
+    bool isDomainAllowed(const string& url) const;
+    bool showThirdPartyWarning(const string& hostname);
+    // Opens url in the system browser after the third-party consent check.
+    void openExternalUrl(const string& url);
 
     // No embedded web view on this backend; kept for API parity.
     void runScript(const std::string& js);
@@ -67,8 +74,6 @@ private:
 
     static string normalizeUrl(const string& url);
     static string extractHostname(const string& url);
-    bool isDomainAllowed(const string& url) const;
-    bool showThirdPartyWarning(const string& hostname);
 
     static SiteView* s_activeInstance;
 };

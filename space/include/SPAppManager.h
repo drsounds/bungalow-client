@@ -41,6 +41,10 @@ namespace space {
         /// empty string if the bundle is unknown or the path escapes it.
         std::string resolve(const std::string& uri) const;
 
+        /// Resolves a path relative to a bundle directory. Returns an empty
+        /// string if the path escapes the bundle. Thread-safe.
+        static std::string resolveInBundle(const std::string& bundleRoot, const std::string& relativePath);
+
         /// Creates the skin for a skin type. Accepts a skin extension
         /// identifier ("modern.skin") or its short form ("modern"). Returns
         /// nullptr if no such skin bundle is installed or it fails to load.

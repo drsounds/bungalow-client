@@ -9,6 +9,7 @@
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "BUNGALOW_UI_BACKEND": "wtl",
+        "BUNGALOW_ENABLE_CEF": "ON",
         "CMAKE_BUILD_TYPE": "Debug",
         "WTL_INCLUDE_DIR": "${sourceDir}/vcpkg_installed/include",
         "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"

@@ -199,9 +199,12 @@ namespace space {
 
         const SPAppBundle* bundle = findBundle(host);
         if (!bundle) return {};
+        return resolveInBundle(bundle->path, rest);
+    }
 
-        const fs::path root = fs::u8path(bundle->path);
-        const fs::path target = (root / fs::u8path(rest)).lexically_normal();
+    std::string SPAppManager::resolveInBundle(const std::string& bundleRoot, const std::string& relativePath) {
+        const fs::path root = fs::u8path(bundleRoot).lexically_normal();
+        const fs::path target = (root / fs::u8path(relativePath)).lexically_normal();
         // Reject paths that climb out of the bundle (sp://app/../../secret).
         const fs::path rel = target.lexically_relative(root);
         if (rel.empty() || *rel.begin() == "..")

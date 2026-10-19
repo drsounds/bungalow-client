@@ -238,6 +238,11 @@ void SiteView::loadUrl(const string& url) {
     ShellExecuteW(nullptr, L"open", widen(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
+void SiteView::openExternalUrl(const string& url) {
+    if (!isDomainAllowed(url) && !showThirdPartyWarning(extractHostname(url))) return;
+    ShellExecuteW(nullptr, L"open", widen(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+}
+
 void SiteView::navigateBack(const string& uri) {
     string url = uriToUrl(uri);
     if (!url.empty()) {
