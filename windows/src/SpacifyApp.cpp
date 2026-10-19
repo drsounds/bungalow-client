@@ -116,7 +116,7 @@ space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::S
     std::string skinType       = "modern";
     bool  fullWidthAddressBar  = true;
     float aeroHue              = 200.0f;
-    float aeroSaturation       = 0.70f;
+    float aeroSaturation       = 0.0f;
     float aeroLightness        = 0.50f;
     int   aeroHeaderStyle      = static_cast<int>(space::kAeroHeaderGlossy);
     int   buttonStyle          = static_cast<int>(space::kButtonAqua);

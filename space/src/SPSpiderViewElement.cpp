@@ -18,7 +18,7 @@ namespace space {
 
 	}
 	bool SPSpiderViewElement::acceptsUri(const string& uri) {
-		return false;
+		return SPTabBarViewElement::acceptsUri(uri);
 	}
 	void SPSpiderViewElement::navigate(const string &uri) {
 		vector<string> parts = split(uri, ':');

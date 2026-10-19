@@ -2,6 +2,7 @@
 
 #include "SPElement.h"
 #include "SPSectionElement.h"
+#include "SPPageElement.h"
 #include "SPViewElement.h"
 #include "SPTabBarElement.h"
 #include "SPUri.h"
@@ -92,14 +93,14 @@ namespace space {
 	    SPNodeTreeEventArgs *args = (SPNodeTreeEventArgs *)e;
     	if (args->getAction() == "remove") {
     		SPElement *elm = dynamic_cast<SPElement *>(args->getNode());
-    		if (elm->getTagName() == "section") {
+    		if (elm->getTagName() == "page") {
     			SPViewElement *view = dynamic_cast<SPViewElement *>(elm);
     			this->tabBar->remove(view->getUri());
     		}
     	} else if (args->getAction() == "append") {
 		    SPElement *elm = dynamic_cast<SPElement *>(args->getNode());
-	    	if (elm->getTagName() == "section") {
-	    		auto *view = dynamic_cast<SPSectionElement *>(elm);
+	    	if (elm->getTagName() == "page") {
+	    		auto *view = dynamic_cast<SPPageElement *>(elm);
 	    		if (view == nullptr) return;
 	    		string viewUri = uri + "#" + view->getId();
 	    		view->setUri(viewUri);

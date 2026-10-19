@@ -18,12 +18,18 @@ namespace space {
     /// A skin described by a skin.xml stylesheet inside an app bundle
     /// (<app>/skins/<name>/skin.xml).
     ///
-    /// <resources> declares sprite images (<image src="sp://app/..." id="skin"/>)
-    /// and named colors with per-mode states. Each <selector match="sp-button"
-    /// state="active"> holds <property> entries:
+    /// <resources> declares sprite images (<image src="sp://app/..." id="skin"/>,
+    /// optionally brightness="0.4" for a darker variant of the same sheet) and
+    /// named colors with per-mode states. Each <selector match="sp-button"
+    /// state="active" mode="dark"> holds <property> entries:
     ///   name="background" value="$color" | "#rrggbb"     → solid fill
     ///   name="skin"/"background" value="url(#imageId)"
     ///        slice="x1,y1;x2,y2" nine-patch="l,t,r,b"   → nine-patch sprite
+    ///   name="padding" value="l,t,r,b"                  → content inset (getContentBounds)
+    ///   name="color" value="$color.foreground" | "#hex" → label colour (buttons, checkboxes)
+    ///   name="radius" value="6"                         → rounds solid backgrounds
+    /// A selector with mode="dark"/"light" wins over one without a mode in
+    /// that colour scheme and is ignored in the other.
     ///
     /// Sprites and colors are colorized by the skin's hue/saturation/lightness
     /// so the HSL sliders tint the whole skin. Anything the stylesheet does not
@@ -43,7 +49,17 @@ namespace space {
         std::optional<SPColor> resolveColor(const std::string& value, short scheme, bool foreground = false) const;
 
         bool drawElement(SPGraphicsContext* gc, SPElement* elm, const string& state, const sp_rectangle& bounds) override;
+        /// Insets bounds by the matched selector's padding="l,t,r,b" property.
+        sp_rectangle getContentBounds(SPElement* elm, const sp_rectangle& bounds) override;
+        /// The matched selector's color property.
+        std::optional<SPColor> getTextColor(SPElement* elm, const string& state) override;
         void drawTabBar(SPGraphicsContext* g, SPTabBarElement* tabBar, int x, int y, int width, int height) override;
+        /// sp-table-row with state "selected", "odd" or "even".
+        void drawTableRow(SPGraphicsContext* g, SPTableElement* table, int i, int x, int y, int width, int height, int row) override;
+        /// sp-table-header.
+        void drawTableHeader(SPGraphicsContext* g, SPTableElement* table, int x, int y, int width, int height) override;
+        /// sp-treeitem with state "selected" or "hover".
+        void drawTreeItem(SPGraphicsContext* g, SPTreeViewElement* treeView, SPTreeItem* item, int itemHeight, int x, int y, int width, int height) override;
         void drawTabBarTab(SPGraphicsContext* g, SPTabBarElement* tabBar, SPTab* tab, int index, bool active, int x, int y, int width, int height) override;
 
     private:
@@ -57,9 +73,10 @@ namespace space {
             float tintSaturation = 0.12f;
         };
         struct ImageResource {
-            std::unique_ptr<SPImage> image;
+            std::shared_ptr<SPImage> image;  ///< shared by resources with the same src
             bool tint = true;
             float tintSaturation = 0.35f;
+            float brightness = 1.0f;         ///< multiplies sprite lightness
         };
         struct Property {
             std::string name;
@@ -73,17 +90,20 @@ namespace space {
         struct Rule {
             std::string match;
             std::string state;
+            std::string mode;  ///< "dark", "light" or "" for both
             std::vector<std::unique_ptr<Property>> properties;
         };
 
         void parseResources(const SPXmlNode& node, const std::string& baseDir);
         void parseSelector(const SPXmlNode& node);
         void refreshTint();
-        SPColor tintColor(const SPColor& color, float saturationFloor) const;
+        SPColor tintColor(const SPColor& color, float saturationFloor, float brightness = 1.0f) const;
         const Rule* findRule(const std::vector<std::string>& selectors,
-                             const std::vector<std::string>& states, bool& matched) const;
+                             const std::vector<std::string>& states, short scheme, bool& matched) const;
+        const Rule* findRule(SPElement* elm, const string& state, bool& matched) const;
         std::vector<std::string> selectorsFor(SPElement* elm) const;
         void drawRule(SPGraphicsContext* g, const Rule& rule, short scheme, const sp_rectangle& bounds);
+        void drawLabel(SPGraphicsContext* g, SPElement* elm, const Rule& rule, const sp_rectangle& bounds) const;
         void drawNinePatch(SPGraphicsContext* g, const Property& p, const sp_rectangle& bounds) const;
 
         std::string m_name;

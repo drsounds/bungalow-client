@@ -87,12 +87,15 @@ namespace space {
             int emptyY   = rowY + dataSource->getRowCount() * rowH;
             int ghostRow = dataSource->getRowCount();
             if (gradientView) {
-                // Draw a gradient in the empty area instead of zebra stripes
-                SPGradient gradient(
-                    this->getBackgroundColor().lighten(0.5), this->getBackgroundColor().lighten(0),
-                    0
-                );
-                g->fillRoundedLinearGradientRectangle(x, emptyY, width, parentBottom - emptyY, 0, 0, gradient);
+                // Let the skin fill the empty area; otherwise draw a gradient instead of zebra stripes
+                const sp_rectangle empty { x, emptyY, width, parentBottom - emptyY, 0 };
+                if (!this->getSkin()->drawElement(g, this, "", empty)) {
+                    SPGradient gradient(
+                        this->getBackgroundColor().lighten(0.5), this->getBackgroundColor().lighten(0),
+                        0
+                    );
+                    g->fillRoundedLinearGradientRectangle(x, emptyY, width, parentBottom - emptyY, 0, 0, gradient);
+                }
             } else {
                 while (emptyY < parentBottom) {
                     this->getSkin()->drawTableRow(g, this, ghostRow, x, emptyY, width, rowH, ghostRow);

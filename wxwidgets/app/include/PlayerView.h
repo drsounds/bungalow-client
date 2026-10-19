@@ -43,7 +43,7 @@ private:
     std::string     m_skinType            = "frutiger-aero";
     AeroHeaderStyle m_headerStyle         = kAeroHeaderGlossy;
     float           m_hue                 = 200.0f;
-    float           m_saturation          = 0.70f;
+    float           m_saturation          = 0.0f;
     float           m_lightness           = 0.50f;
     bool            m_developerMode       = false;
     bool            m_fullWidthAddressBar = true;

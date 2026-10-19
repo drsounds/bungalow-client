@@ -9,6 +9,7 @@
 
 #include "SPAppManager.h"
 #include "SPElement.h"
+#include "SPFontStyle.h"
 #include "SPGraphicsContext.h"
 #include "SPImage.h"
 #include "SPTabBarElement.h"
@@ -130,6 +131,8 @@ namespace space {
     }
 
     void SPXmlSkin::parseResources(const SPXmlNode& node, const std::string& baseDir) {
+        // Variants of one sheet (e.g. a darker copy) decode the file once.
+        std::map<std::string, std::shared_ptr<SPImage>> loaded;
         for (const SPXmlNode& child : node.children) {
             if (child.textNode) continue;
             if (child.name == "image") {
@@ -140,14 +143,21 @@ namespace space {
                 if (path.empty())
                     path = (fs::u8path(baseDir) / fs::u8path(src)).u8string();
                 ImageResource res;
-                try {
-                    res.image.reset(new SPImage(path));
-                } catch (const std::exception& e) {
-                    std::cerr << "Skin image " << src << " failed to load: " << e.what() << std::endl;
-                    continue;
+                auto cached = loaded.find(path);
+                if (cached != loaded.end()) {
+                    res.image = cached->second;
+                } else {
+                    try {
+                        res.image = std::make_shared<SPImage>(path);
+                    } catch (const std::exception& e) {
+                        std::cerr << "Skin image " << src << " failed to load: " << e.what() << std::endl;
+                        continue;
+                    }
+                    loaded[path] = res.image;
                 }
                 res.tint = boolAttr(child, "tint", true);
                 res.tintSaturation = floatAttr(child, "tint-saturation", res.tintSaturation);
+                res.brightness = floatAttr(child, "brightness", res.brightness);
                 m_images[id] = std::move(res);
             } else if (child.name == "color") {
                 const std::string name = attr(child, "name");
@@ -171,6 +181,7 @@ namespace space {
         auto rule = std::make_unique<Rule>();
         rule->match = attr(node, "match");
         rule->state = attr(node, "state");
+        rule->mode = attr(node, "mode");
         if (rule->match.empty()) return;
 
         for (const SPXmlNode& child : node.children) {
@@ -216,11 +227,11 @@ namespace space {
         m_rules.push_back(std::move(rule));
     }
 
-    SPColor SPXmlSkin::tintColor(const SPColor& color, float saturationFloor) const {
+    SPColor SPXmlSkin::tintColor(const SPColor& color, float saturationFloor, float brightness) const {
         float h, s, l;
         color.toHSL(h, s, l);
         const float sat = std::max(s, saturationFloor) * getSaturation();
-        const float light = std::clamp(l + (getLightness() - 0.5f) * kLightnessRange, 0.0f, 1.0f);
+        const float light = std::clamp(l * brightness + (getLightness() - 0.5f) * kLightnessRange, 0.0f, 1.0f);
         SPColor copy = color;
         return SPColor::fromHSL(getHue(), sat, light, copy.getA());
     }
@@ -241,11 +252,18 @@ namespace space {
                 auto* out = new SPImage(src.width, src.height);
                 for (int i = 0; i < src.numPixels; ++i) {
                     const pixel& p = src.pixels[i];
-                    if (!res.tint || p.a == 0) {
+                    if (p.a == 0 || (!res.tint && res.brightness == 1.0f)) {
                         out->pixels[i] = p;
                         continue;
                     }
-                    SPColor c = tintColor(SPColor(p.r, p.g, p.b, p.a), res.tintSaturation);
+                    SPColor c(p.r, p.g, p.b, p.a);
+                    if (res.tint) {
+                        c = tintColor(c, res.tintSaturation, res.brightness);
+                    } else {
+                        float h, s, l;
+                        c.toHSL(h, s, l);
+                        c = SPColor::fromHSL(h, s, std::clamp(l * res.brightness, 0.0f, 1.0f), p.a);
+                    }
                     out->pixels[i] = { static_cast<unsigned char>(c.getR()), static_cast<unsigned char>(c.getG()),
                                        static_cast<unsigned char>(c.getB()), p.a };
                 }
@@ -287,20 +305,35 @@ namespace space {
     }
 
     const SPXmlSkin::Rule* SPXmlSkin::findRule(const std::vector<std::string>& selectors,
-                                               const std::vector<std::string>& states, bool& matched) const {
+                                               const std::vector<std::string>& states, short scheme,
+                                               bool& matched) const {
         matched = false;
+        const std::string mode = scheme == SP_COLOR_SCHEME_DARK ? "dark" : "light";
         // Later selectors in the list are more specific (#id beats sp-type).
         for (auto sel = selectors.rbegin(); sel != selectors.rend(); ++sel) {
             for (const std::string& state : states) {
+                const Rule* anyMode = nullptr;
                 for (const auto& rule : m_rules) {
                     if (rule->match != *sel) continue;
+                    if (!rule->mode.empty() && rule->mode != mode) continue;
                     matched = true;
-                    if (rule->state == state) return rule.get();
+                    if (rule->state != state) continue;
+                    // A rule for this colour scheme beats one for both.
+                    if (rule->mode == mode) return rule.get();
+                    if (!anyMode) anyMode = rule.get();
                 }
+                if (anyMode) return anyMode;
             }
             if (matched) return nullptr;
         }
         return nullptr;
+    }
+
+    const SPXmlSkin::Rule* SPXmlSkin::findRule(SPElement* elm, const string& state, bool& matched) const {
+        const std::vector<std::string> states = state.empty()
+            ? std::vector<std::string>{ "" }
+            : std::vector<std::string>{ state, "" };
+        return findRule(selectorsFor(elm), states, elm->getColorScheme(), matched);
     }
 
     void SPXmlSkin::drawNinePatch(SPGraphicsContext* g, const Property& p, const sp_rectangle& b) const {
@@ -329,10 +362,20 @@ namespace space {
 
     void SPXmlSkin::drawRule(SPGraphicsContext* g, const Rule& rule, short scheme, const sp_rectangle& bounds) {
         refreshTint();
+        int radius = 0;
+        for (const auto& prop : rule.properties) {
+            if (prop->name != "radius") continue;
+            std::vector<int> r = parseInts(prop->value);
+            if (!r.empty()) radius = r[0];
+        }
         // Solid backgrounds first so sprites can layer on top of them.
         for (const auto& prop : rule.properties) {
             if (prop->name != "background" || !prop->imageId.empty()) continue;
-            if (auto color = resolveColor(prop->value, scheme))
+            auto color = resolveColor(prop->value, scheme);
+            if (!color) continue;
+            if (radius > 0)
+                g->fillRoundedRectangle(bounds.x, bounds.y, bounds.width, bounds.height, radius, *color);
+            else
                 g->fillRectangle(bounds.x, bounds.y, bounds.width, bounds.height, *color);
         }
         for (const auto& prop : rule.properties) {
@@ -341,22 +384,63 @@ namespace space {
         }
     }
 
+    void SPXmlSkin::drawLabel(SPGraphicsContext* g, SPElement* elm, const Rule& rule, const sp_rectangle& bounds) const {
+        const std::string text = elm->getInnerText();
+        if (text.empty()) return;
+        std::optional<SPColor> color;
+        for (const auto& prop : rule.properties)
+            if (prop->name == "color") color = resolveColor(prop->value, elm->getColorScheme(), true);
+        const SPFontStyle font = elm->getFontStyle();
+        const sp_rectangle size = g->measureString(text, font);
+        g->drawString(text, font, color.value_or(elm->getForegroundColor()),
+                      bounds.x + (bounds.width - size.width) / 2, bounds.y + (bounds.height - size.height) / 2,
+                      size.width, size.height);
+    }
+
     bool SPXmlSkin::drawElement(SPGraphicsContext* g, SPElement* elm, const string& state, const sp_rectangle& bounds) {
         bool matched = false;
-        const std::vector<std::string> states = state.empty()
-            ? std::vector<std::string>{ "" }
-            : std::vector<std::string>{ state, "" };
-        const Rule* rule = findRule(selectorsFor(elm), states, matched);
+        const Rule* rule = findRule(elm, state, matched);
         if (!matched)
             return SPModernSkin::drawElement(g, elm, state, bounds);
-        if (rule)
+        if (rule) {
             drawRule(g, *rule, elm->getColorScheme(), bounds);
+            // Buttons leave their label to the skin.
+            if (elm->getType() == "button")
+                drawLabel(g, elm, *rule, bounds);
+        }
         return true;
+    }
+
+    sp_rectangle SPXmlSkin::getContentBounds(SPElement* elm, const sp_rectangle& bounds) {
+        bool matched = false;
+        const Rule* rule = findRule(elm, "", matched);
+        if (!rule) return SPModernSkin::getContentBounds(elm, bounds);
+        for (const auto& prop : rule->properties) {
+            if (prop->name != "padding") continue;
+            std::vector<int> p = parseInts(prop->value);
+            if (p.size() != 4) break;
+            sp_rectangle inner = bounds;
+            inner.x += p[0];
+            inner.y += p[1];
+            inner.width = std::max(0, bounds.width - p[0] - p[2]);
+            inner.height = std::max(0, bounds.height - p[1] - p[3]);
+            return inner;
+        }
+        return bounds;
+    }
+
+    std::optional<SPColor> SPXmlSkin::getTextColor(SPElement* elm, const string& state) {
+        bool matched = false;
+        const Rule* rule = findRule(elm, state, matched);
+        if (!rule) return std::nullopt;
+        for (const auto& prop : rule->properties)
+            if (prop->name == "color") return resolveColor(prop->value, elm->getColorScheme(), true);
+        return std::nullopt;
     }
 
     void SPXmlSkin::drawTabBar(SPGraphicsContext* g, SPTabBarElement* tabBar, int x, int y, int width, int height) {
         bool matched = false;
-        const Rule* rule = findRule(selectorsFor(tabBar), { "" }, matched);
+        const Rule* rule = findRule(tabBar, "", matched);
         if (!matched) {
             SPModernSkin::drawTabBar(g, tabBar, x, y, width, height);
             return;
@@ -365,13 +449,58 @@ namespace space {
             drawRule(g, *rule, tabBar->getColorScheme(), { x, y, width, height, 0 });
     }
 
+    void SPXmlSkin::drawTableRow(SPGraphicsContext* g, SPTableElement* table, int i, int x, int y, int width,
+                                 int height, int row) {
+        bool matched = false;
+        std::vector<std::string> states;
+        if (table->isRowSelected(row)) states.push_back("selected");
+        states.push_back(row % 2 == 0 ? "even" : "odd");
+        states.push_back("");
+        const Rule* rule = findRule({ "sp-table-row" }, states, table->getColorScheme(), matched);
+        if (!matched) {
+            SPModernSkin::drawTableRow(g, table, i, x, y, width, height, row);
+            return;
+        }
+        if (rule)
+            drawRule(g, *rule, table->getColorScheme(), { x, y, width, height, 0 });
+    }
+
+    void SPXmlSkin::drawTableHeader(SPGraphicsContext* g, SPTableElement* table, int x, int y, int width, int height) {
+        bool matched = false;
+        const Rule* rule = findRule({ "sp-table-header" }, { "" }, table->getColorScheme(), matched);
+        if (!matched) {
+            SPModernSkin::drawTableHeader(g, table, x, y, width, height);
+            return;
+        }
+        if (rule)
+            drawRule(g, *rule, table->getColorScheme(), { x, y, width, height, 0 });
+    }
+
+    void SPXmlSkin::drawTreeItem(SPGraphicsContext* g, SPTreeViewElement* treeView, SPTreeItem* item, int itemHeight,
+                                 int x, int y, int width, int height) {
+        bool matched = false;
+        std::vector<std::string> states;
+        if (item->isSelected()) states.push_back("selected");
+        if (item->isHighlighted()) states.push_back("hover");
+        states.push_back("");
+        const Rule* rule = findRule({ "sp-treeitem" }, states, treeView->getColorScheme(), matched);
+        if (!matched) {
+            SPModernSkin::drawTreeItem(g, treeView, item, itemHeight, x, y, width, height);
+            return;
+        }
+        // Same inset pill footprint as the procedural modern skin.
+        if (rule)
+            drawRule(g, *rule, treeView->getColorScheme(),
+                     { x + 4, y + 2, treeView->getWidth() - 8, itemHeight - 4, 0 });
+    }
+
     void SPXmlSkin::drawTabBarTab(SPGraphicsContext* g, SPTabBarElement* tabBar, SPTab* tab, int index, bool active,
                                   int x, int y, int width, int height) {
         bool matched = false;
         const std::vector<std::string> states = active
             ? std::vector<std::string>{ "selected", "active", "" }
             : std::vector<std::string>{ "" };
-        const Rule* rule = findRule({ "sp-tabbar-tab" }, states, matched);
+        const Rule* rule = findRule({ "sp-tabbar-tab" }, states, tabBar->getColorScheme(), matched);
         if (!matched) {
             SPModernSkin::drawTabBarTab(g, tabBar, tab, index, active, x, y, width, height);
             return;

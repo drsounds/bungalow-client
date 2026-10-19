@@ -107,7 +107,7 @@ private:
 
     // Aero-specific pending values
     float           m_pendingAeroHue         = 200.0f;
-    float           m_pendingAeroSaturation  = 0.70f;
+    float           m_pendingAeroSaturation  = 0.0f;
     float           m_pendingAeroLightness   = 0.50f;
     AeroHeaderStyle m_pendingAeroHeaderStyle = kAeroHeaderGlossy;
 

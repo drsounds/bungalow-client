@@ -13,6 +13,7 @@
 #include "SPObservable.h"
 #include "SPMouseEventArgs.h"
 #include "SPGraphicsContext.h"
+#include "SPPageElement.h"
 #include "SPHBoxElement.h"
 #include "SPSkin.h"
 #include "SPSplitterElement.h"
@@ -21,6 +22,7 @@
 #include "SPFontStyle.h"
 #include "SPImageElement.h"
 #include "SPInputElement.h"
+#include "SPCheckBoxElement.h"
 #include "SPSectionElement.h"
 #include "SPViewStackElement.h"
 #include "SPTabBarViewElement.h"
@@ -399,7 +401,7 @@ namespace space {
 	void SPElement::request(const string& method, const string &uri, const string &data) {
 		const string prefix = "spacify:";
 		if (uri.rfind(prefix, 0) != 0) {
-			this->loadXUL("./resources/app/views/error.xml");
+			this->loadXUL("./views/error.xml");
 			return;
 		}
 
@@ -408,14 +410,14 @@ namespace space {
 		if (separator != string::npos)
 			route.resize(separator);
 		if (route != "start" && route != "artist") {
-			this->loadXUL("./resources/app/views/error.xml");
+			this->loadXUL("./views/error.xml");
 			return;
 		}
 
-		const string filename = "./resources/app/views/" + route + ".xml";
+		const string filename = "./views/" + route + ".xml";
 		std::ifstream templateFile(filename, std::ios::binary);
 		if (!templateFile) {
-			this->loadXUL("./resources/app/views/error.xml");
+			this->loadXUL("./views/error.xml");
 			return;
 		}
 
@@ -453,7 +455,7 @@ namespace space {
 		} catch (const std::exception& error) {
 			if (s_xulErrorHandler)
 				s_xulErrorHandler(error.what());
-			this->loadXUL("./resources/app/views/error.xml");
+			this->loadXUL("./views/error.xml");
 		}
 	}
 
@@ -477,7 +479,7 @@ namespace space {
 			this->loadXULFromXMLDoc(root);
 		} else {
 			// Avoid infinite recursion if the error view can't be loaded either.
-			const std::string kErrorViewPath = "./resources/app/views/error.xml";
+			const std::string kErrorViewPath = "./views/error.xml";
 			if (filename != kErrorViewPath) {
 				if (s_xulErrorHandler)
 					s_xulErrorHandler("An error occurred");
@@ -1111,6 +1113,8 @@ namespace space {
 			elm = new SPButtonElement(parent);
 		} else if (tagName == "input") {
 			elm = new SPInputElement(parent);
+		} else if (tagName == "checkbox") {
+			elm = new SPCheckBoxElement(parent);
 		} else if (tagName == "view") {
 			elm = new SPTabBarViewElement(parent);
 		} else if (tagName == "vbox") {
@@ -1121,6 +1125,8 @@ namespace space {
 			elm = new SPHBoxElement(parent);
 		} else if (tagName == "section") {
 			elm = new SPSectionElement(parent);
+		} else if (tagName == "page") {
+			elm = new SPPageElement(parent);
 		} else {
 			elm = new SPElement(parent);
 		}

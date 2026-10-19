@@ -6,10 +6,13 @@
     nine-patch="l,t,r,b"       fixed borders; the centre stretches
     value="$name"              named colour, resolved for dark/light mode
     value="url(#id)"           image resource
+    name="color"               label colour for buttons and checkboxes
 
-    Images and colours are colorized by the hue/saturation/lightness sliders.
-    Opt out per resource with tint="false", or adjust the minimum saturation
-    with tint-saturation="0.35".
+    Painted sprites (buttons, header, footer, tab bar, ...) look the same in
+    dark and light mode; only the hue/saturation/lightness sliders colorize
+    them. Dark/light mode only switches the named background colours of
+    content areas. Opt a resource out of tinting with tint="false", or adjust
+    the minimum saturation with tint-saturation="0.35".
 -->
 <skin>
     <name>Modern Skin</name>
@@ -17,6 +20,27 @@
     <author>Alexander Forselius</author>
     <resources>
         <image src="sp://modern/skins/modern/images/skin.png" id="skin" />
+        <!-- Labels on painted sprites look the same in both modes. -->
+        <color name="button">
+            <state mode="dark" foreground="#1a1a1a" />
+            <state mode="light" foreground="#1a1a1a" />
+        </color>
+        <color name="button-active">
+            <state mode="dark" foreground="#f4f4f4" />
+            <state mode="light" foreground="#f4f4f4" />
+        </color>
+        <color name="selection">
+            <state mode="dark" background="#1b7fa0" />
+            <state mode="light" background="#4fc3e8" />
+        </color>
+        <color name="row-alt">
+            <state mode="dark" background="#3d3d3d" />
+            <state mode="light" background="#f0f0f0" />
+        </color>
+        <color name="label">
+            <state mode="dark" foreground="#dddddd" />
+            <state mode="light" foreground="#222222" />
+        </color>
         <color name="primary">
             <state mode="dark" background="#00eeff" foreground="#0088aa" />
             <state mode="light" background="#00eeff" foreground="#0088aa" />
@@ -66,21 +90,86 @@
     <selector match="#leftSidebar">
         <property name="background" value="$sidebar" />
     </selector>
+    <!-- Lists: zebra table rows and pill-shaped tree selection. -->
+    <selector match="sp-table-row" state="even">
+        <property name="background" value="$viewstack" />
+    </selector>
+    <selector match="sp-table-row" state="odd">
+        <property name="background" value="$row-alt" />
+    </selector>
+    <selector match="sp-table-row" state="selected">
+        <property name="background" value="$selection" />
+    </selector>
+    <!-- Empty area below the last row of a table. -->
+    <selector match="sp-table">
+        <property name="background" value="$viewstack" />
+    </selector>
+    <selector match="sp-table-header">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="32,64;80,80"
+            nine-patch="1,1,1,1"
+        />
+    </selector>
+    <selector match="sp-treeitem" state="selected">
+        <property name="background" value="$selection" />
+        <property name="radius" value="6" />
+    </selector>
+    <selector match="sp-treeitem" state="hover">
+        <property name="background" value="$row-alt" />
+        <property name="radius" value="6" />
+    </selector>
+    <!-- Pill button: 46x14 sprite. Like Android nine-patch, the 5x4 corners are
+         drawn 1:1, the edges only stretch along their length and the centre
+         takes up the rest. -->
     <selector match="sp-button">
         <property
             name="skin"
             value="url(#skin)"
-            slice="32,80;80,96"
-            nine-patch="7,7,7,7"
+            slice="33,81;79,95"
+            nine-patch="5,4,5,4"
         />
+        <property name="color" value="$button" />
     </selector>
     <selector match="sp-button" state="active">
         <property
             name="skin"
             value="url(#skin)"
-            slice="32,96;80,112"
-            nine-patch="7,7,7,7"
+            slice="33,97;79,111"
+            nine-patch="5,4,5,4"
         />
+        <property name="color" value="$button-active" />
+    </selector>
+    <!-- Text field: 2px border + inner shadow on top/left, 1px highlight on
+         bottom/right. padding insets the native edit control so the bevel shows. -->
+    <selector match="sp-input">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="96,80;128,96"
+            nine-patch="3,4,1,1"
+        />
+        <property name="padding" value="3,4,1,1" />
+    </selector>
+    <!-- Checkbox: 16x16 box drawn at the left of the element. -->
+    <selector match="sp-checkbox">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="80,80;96,96"
+            nine-patch="2,2,1,1"
+        />
+        <property name="color" value="$label" />
+    </selector>
+    <selector match="sp-checkbox" state="checked">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="80,96;96,112"
+            nine-patch="2,2,1,1"
+        />
+        <property name="color" value="$label" />
     </selector>
     <selector match="sp-appheader">
         <property

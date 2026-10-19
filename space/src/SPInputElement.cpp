@@ -1,4 +1,5 @@
 #include "SPInputElement.h"
+#include "SPSkin.h"
 namespace space {
 SPInputElement::SPInputElement()
 {
@@ -20,7 +21,8 @@ SPInputElement::SPInputElement(SPElement *parent)
 
 void SPInputElement::paint(int x, int y, SPGraphicsContext *g) {
     SPElement::paint(x, y, g);
-    const sp_rectangle bounds = this->getAbsoluteBounds();
+    // The native control sits inside the skin's frame so its bevel stays visible.
+    const sp_rectangle bounds = this->getSkin()->getContentBounds(this, this->getAbsoluteBounds());
     g->drawInputElement(this, bounds.x, bounds.y, bounds.width, bounds.height);
 }
 }

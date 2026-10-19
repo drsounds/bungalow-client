@@ -1,7 +1,10 @@
 #ifndef SKIN_H
 #define SKIN_H
 #include <map>
+#include <optional>
 #include <string>
+
+#include "SPColor.h"
 
 #include "SPTabBarElement.h"
 #include "SPTableElement.h"
@@ -94,6 +97,11 @@ class SPSkin
         SPColor getColor(string selector, string def);
         SPImage *getImage(string selector, string def);
         virtual bool drawElement(SPGraphicsContext *gc, SPElement *, const string& state, const sp_rectangle& bounds) { return false; }
+        /// The part of an element's bounds left for its content once the
+        /// skin's frame is drawn, e.g. where a native edit control goes.
+        virtual sp_rectangle getContentBounds(SPElement *, const sp_rectangle& bounds) { return bounds; }
+        /// Label colour the skin wants for an element in a state, if any.
+        virtual std::optional<SPColor> getTextColor(SPElement *, const string& state) { return std::nullopt; }
         virtual void drawTableRow(SPGraphicsContext* g, SPTableElement* table, int i, int x, int y, int width, int height, int row) {}
         virtual void drawTableHeader(SPGraphicsContext* g, SPTableElement* table, int x, int y, int width, int height) {}
         virtual void drawTabBarTab(SPGraphicsContext* g, SPTabBarElement *tabBar, SPTab *tab, int index, bool active, int x, int y, int width, int height) {}

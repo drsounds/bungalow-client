@@ -112,7 +112,8 @@ add_executable(spacify-client
     ${BACKEND_SOURCES}
     ${SPACE_HEADERS}
     ${SPACIFY_HEADERS}
-    ${BACKEND_HEADERS})
+    ${BACKEND_HEADERS}
+    space/src/SPPageElement.h)
 
 target_include_directories(spacify-client PRIVATE
     ${LUA_INCLUDE_DIR}

@@ -485,8 +485,7 @@ namespace space
                                                      int x, int y,
                                                      int w, int h)
             {
-                auto b = elm->getAbsoluteBounds();
-                drawControl("EDIT", elm, b.x - this->origo->x, b.y - this->origo->y, b.width, b.height);
+                drawControl("EDIT", elm, x - this->origo->x, y - this->origo->y, w, h);
             }
 
             void WxWidgetsGraphicsContext::setFontStyle(space::SPFontStyle* fs) const
