@@ -155,5 +155,9 @@ std::string homeDir() {
     return knownFolder(FOLDERID_Profile);
 }
 
+std::string documentsDir() {
+    return knownFolder(FOLDERID_Documents);
+}
+
 } // namespace platform
 } // namespace space

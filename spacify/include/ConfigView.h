@@ -10,6 +10,8 @@
 #include "SPVBoxElement.h"
 #include "SPFrutigerAeroSkin.h"
 #include <string>
+#include <utility>
+#include <vector>
 
 using namespace std;
 
@@ -42,6 +44,7 @@ public:
     int onClassicSkinClicked(SPObject* sender, SPEventArgs* e);
     int onModernSkinClicked(SPObject* sender, SPEventArgs* e);
     int onFrutigerAeroSkinClicked(SPObject* sender, SPEventArgs* e);
+    int onBundleSkinClicked(SPObject* sender, SPEventArgs* e);
     int onFullWidthAddressBarClicked(SPObject* sender, SPEventArgs* e);
 
     // Aero header-style callbacks
@@ -71,6 +74,8 @@ private:
     SPButtonElement* m_classicSkinButton      = nullptr;
     SPButtonElement* m_modernSkinButton       = nullptr;
     SPButtonElement* m_frutigerAeroSkinButton = nullptr;
+    // Skins from app bundles other than the default modern skin, with their skin type.
+    std::vector<std::pair<SPButtonElement*, string>> m_bundleSkinButtons;
     SPButtonElement* m_fullWidthAddressBarButton = nullptr;
 
     // Aero header style buttons
@@ -97,7 +102,7 @@ private:
     short  m_pendingScheme             = SP_COLOR_SCHEME_LIGHT;
     bool   m_pendingGlossy             = false;
     bool   m_pendingDeveloperMode      = false;
-    string m_pendingSkinType           = "frutiger-aero";
+    string m_pendingSkinType           = "modern";
     bool   m_pendingFullWidthAddressBar = true;
 
     // Aero-specific pending values

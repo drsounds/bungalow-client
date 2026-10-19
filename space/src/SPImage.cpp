@@ -1,5 +1,6 @@
 #include "SPImage.h"
 #include <stdio.h>
+#include <algorithm>
 #include <iostream>
 #include <cstdlib>
 #include <stdexcept>
@@ -76,12 +77,23 @@ SPImage::SPImage(const string& fileName) {
     width = png_get_image_width(png_ptr, info_ptr);
     height = png_get_image_height(png_ptr, info_ptr);
     this->numPixels = width * height;
-    this->pixels = (pixel *)malloc(sizeof(pixel) * numPixels);
+    this->pixels = new pixel[numPixels];
     color_type = png_get_color_type(png_ptr, info_ptr);
     bit_depth = png_get_bit_depth(png_ptr, info_ptr);
 
     number_of_passes = png_set_interlace_handling(png_ptr);
-    if (color_type == PNG_COLOR_TYPE_RGB)
+    // Normalise every PNG flavour to 8-bit RGBA.
+    if (color_type == PNG_COLOR_TYPE_PALETTE)
+        png_set_palette_to_rgb(png_ptr);
+    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
+        png_set_expand_gray_1_2_4_to_8(png_ptr);
+    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
+        png_set_tRNS_to_alpha(png_ptr);
+    if (bit_depth == 16)
+        png_set_strip_16(png_ptr);
+    if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+        png_set_gray_to_rgb(png_ptr);
+    if (!(color_type & PNG_COLOR_MASK_ALPHA) && !png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
         png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
     png_read_update_info(png_ptr, info_ptr);
 
@@ -129,38 +141,32 @@ SPImage::SPImage(const string& fileName) {
                 i++;
             }
     }
+
+    for (y = 0; y < height; y++)
+        delete[] row_pointers[y];
+    delete[] row_pointers;
+    row_pointers = nullptr;
+    png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
     this->handle = NULL;
 }
 SPImage::SPImage(unsigned int width, unsigned int height) {
-    this->pixels = new pixel[width * height];
+    this->pixels = new pixel[width * height]();
     this->width = width;
     this->height = height;
     this->numPixels = width * height;
     this->handle = NULL;
 }
 SPImage *SPImage::sliceImage(unsigned int x, unsigned int y, unsigned int width, unsigned int height, int leftBorder, int topBorder, int bottomBorder, int rightBorder) {
-    unsigned int startPos = x + (y * width);
-    cout << "Start pos: " << startPos << "\r\n";
+    // Clip the region to this image.
+    if (x > this->width) x = this->width;
+    if (y > this->height) y = this->height;
+    if (width > this->width - x) width = this->width - x;
+    if (height > this->height - y) height = this->height - y;
+
     SPImage *image = new SPImage(width, height);
-    unsigned int length = width * height;
-
-
-    for (unsigned int w = 0, h = 0, pos = 0, i = startPos; h < height; pos++, i++, w++) {
-        pixel pix = {0};
-
-        pix.r = this->pixels[i].r;
-        pix.g = this->pixels[i].g;
-        pix.b = this->pixels[i].b;
-        pix.a = this->pixels[i].a;
-        //cout << "Num pixels: " << image->numPixels << " pos: " << i << "\r\n";
-        image->pixels[pos] = pix;
-        if (w >= width) {
-            h += 1;
-            // cout << "Subliminal width: " << this->width - width << endl;
-            i += this->width - width;
-            w = 0;
-            // cout << "W: " << w << "H:" << h << "\r\n";
-        }
+    for (unsigned int row = 0; row < height; row++) {
+        const pixel *src = this->pixels + (y + row) * this->width + x;
+        std::copy(src, src + width, image->pixels + row * width);
     }
     image->leftBorder = leftBorder;
     image->topBorder = topBorder;
@@ -184,5 +190,6 @@ SPImage::~SPImage()
 {
     if (handle && handleDeleter)
         handleDeleter(handle);
+    delete[] pixels;
 }
 }

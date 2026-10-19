@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Modern skin stylesheet.
+
+    slice="x1,y1;x2,y2"        sprite corners in skin.png (end exclusive)
+    nine-patch="l,t,r,b"       fixed borders; the centre stretches
+    value="$name"              named colour, resolved for dark/light mode
+    value="url(#id)"           image resource
+
+    Images and colours are colorized by the hue/saturation/lightness sliders.
+    Opt out per resource with tint="false", or adjust the minimum saturation
+    with tint-saturation="0.35".
+-->
+<skin>
+    <name>Modern Skin</name>
+    <description>A modern skin for the application.</description>
+    <author>Alexander Forselius</author>
+    <resources>
+        <image src="sp://modern/skins/modern/images/skin.png" id="skin" />
+        <color name="primary">
+            <state mode="dark" background="#00eeff" foreground="#0088aa" />
+            <state mode="light" background="#00eeff" foreground="#0088aa" />
+        </color>
+        <color name="viewstack">
+            <state mode="dark" foreground="#aaaaaa" background="#363636" />
+            <state mode="light" background="#fafafa" foreground="#000000" />
+        </color>
+        <color name="sidebar">
+            <state mode="dark" foreground="#bbbbbb" background="#363636" />
+            <state mode="light" background="#fafafa" foreground="#000000" />
+        </color>
+    </resources>
+    <selector match="sp-viewstack">
+        <property name="background" value="$viewstack" />
+    </selector>
+    <selector match="sp-view">
+        <property name="background" value="$viewstack" />
+    </selector>
+    <selector match="sp-tabbarview">
+        <property name="background" value="$viewstack" />
+    </selector>
+    <selector match="sp-appview">
+        <property name="background" value="$viewstack" />
+    </selector>
+    <selector match="sp-spiderview">
+        <property name="background" value="$viewstack" />
+    </selector>
+    <selector match="sp-spaceview">
+        <property name="background" value="$viewstack" />
+    </selector>
+    <selector match="sp-tabstack">
+        <property name="background" value="$viewstack" />
+    </selector>
+    <selector match="#body">
+        <property name="background" value="$sidebar" />
+    </selector>
+    <selector match="sp-sidebar">
+        <property name="background" value="$sidebar" />
+    </selector>
+    <selector match="sp-nowplayingbar">
+        <property name="background" value="$sidebar" />
+    </selector>
+    <selector match="sp-nowplayingbarheader">
+        <property name="background" value="$sidebar" />
+    </selector>
+    <selector match="#leftSidebar">
+        <property name="background" value="$sidebar" />
+    </selector>
+    <selector match="sp-button">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="32,80;80,96"
+            nine-patch="7,7,7,7"
+        />
+    </selector>
+    <selector match="sp-button" state="active">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="32,96;80,112"
+            nine-patch="7,7,7,7"
+        />
+    </selector>
+    <selector match="sp-appheader">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="32,0;128,64"
+            nine-patch="2,2,2,2"
+        />
+    </selector>
+    <selector match="sp-appfooter">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="128,0;184,32"
+            nine-patch="2,2,2,2"
+        />
+    </selector>
+    <selector match="sp-tabbar">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="32,64;80,80"
+            nine-patch="1,1,1,1"
+        />
+    </selector>
+    <!-- Unselected tabs have no sprite and show the tab bar through. -->
+    <selector match="sp-tabbar-tab" state="selected">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="80,64;128,80"
+            nine-patch="1,1,1,1"
+        />
+    </selector>
+</skin>

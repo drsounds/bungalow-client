@@ -25,5 +25,8 @@ std::string userDataDir();
 
 std::string homeDir();
 
+// The user's Documents folder.
+std::string documentsDir();
+
 } // namespace platform
 } // namespace space

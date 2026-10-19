@@ -57,5 +57,9 @@ std::string homeDir() {
     return wxGetHomeDir().ToStdString();
 }
 
+std::string documentsDir() {
+    return wxStandardPaths::Get().GetDocumentsDir().ToStdString();
+}
+
 } // namespace platform
 } // namespace space

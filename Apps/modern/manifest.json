@@ -1,0 +1,10 @@
+{
+    "BundleType": "Application",
+    "BundleIdentifier": "modern",
+    "AppName": {
+        "en": "Modern Theme"
+    },
+    "AppDescription": {
+        "en": "A modern theme for the application."
+    }
+}

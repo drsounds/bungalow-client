@@ -67,6 +67,8 @@ jobs:
           cmake --install build --config Release --prefix package
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item resources package/resources -Recurse
+          Copy-Item Apps package/Apps -Recurse
+          Get-ChildItem package/Apps -Recurse -Filter *.xcf | Remove-Item
           Compress-Archive -Path package/* -DestinationPath bungalow-native-wxwidgets-windows-x64.zip
 
       - uses: actions/upload-artifact@v4.6.2

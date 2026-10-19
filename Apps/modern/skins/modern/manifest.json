@@ -1,0 +1,10 @@
+{
+    "BundleType": "Skin",
+    "BundleIdentifier": "modern.skin",
+    "SkinName": {
+        "en": "Modern Skin"
+    },
+    "SkinDescription": {
+        "en": "A modern skin for the application."
+    }
+}

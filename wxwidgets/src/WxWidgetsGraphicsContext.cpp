@@ -23,6 +23,32 @@ namespace space
     {
         namespace wxwidgets
         {
+            namespace
+            {
+                // Images decoded by space itself (e.g. skin sprites) only have
+                // pixels; build the wxBitmap on first draw and cache it.
+                wxBitmap* bitmapFor(SPImage* image)
+                {
+                    if (image->handle)
+                        return static_cast<wxBitmap*>(image->handle);
+                    if (!image->pixels || image->width == 0 || image->height == 0)
+                        return nullptr;
+                    wxImage img(image->width, image->height, false);
+                    img.InitAlpha();
+                    unsigned char* rgb = img.GetData();
+                    unsigned char* alpha = img.GetAlpha();
+                    for (int i = 0; i < image->numPixels; ++i) {
+                        rgb[i * 3]     = image->pixels[i].r;
+                        rgb[i * 3 + 1] = image->pixels[i].g;
+                        rgb[i * 3 + 2] = image->pixels[i].b;
+                        alpha[i]       = image->pixels[i].a;
+                    }
+                    image->handle = new wxBitmap(img);
+                    image->handleDeleter = [](void* h) { delete static_cast<wxBitmap*>(h); };
+                    return static_cast<wxBitmap*>(image->handle);
+                }
+            }
+
             void WxWidgetsGraphicsContext::request(const string& method,
                                                     const string& url,
                                                     const string& data,
@@ -281,9 +307,10 @@ namespace space
                                                 int x, int y,
                                                 int width, int height)
             {
-                if (!image || !image->handle) return;
+                if (!image) return;
 
-                wxBitmap* bmp = static_cast<wxBitmap*>(image->handle);
+                wxBitmap* bmp = bitmapFor(image);
+                if (!bmp) return;
 
                 // Scale to requested size if needed
                 if (bmp->GetWidth() != width || bmp->GetHeight() != height) {
@@ -307,11 +334,14 @@ namespace space
                                                     int sx, int sy,
                                                     int sw, int sh)
             {
-                if (!image || !image->handle) return;
+                if (!image || width <= 0 || height <= 0 || sw <= 0 || sh <= 0) return;
 
-                wxBitmap* bmp = static_cast<wxBitmap*>(image->handle);
+                wxBitmap* bmp = bitmapFor(image);
+                if (!bmp) return;
 
                 wxBitmap sub = bmp->GetSubBitmap(wxRect(sx, sy, sw, sh));
+                if (sw != width || sh != height)
+                    sub = wxBitmap(sub.ConvertToImage().Scale(width, height, wxIMAGE_QUALITY_NEAREST));
                 this->getPaintDC()->DrawBitmap(sub, wxPoint(left - this->origo->x, top - this->origo->y), true);
             }
 

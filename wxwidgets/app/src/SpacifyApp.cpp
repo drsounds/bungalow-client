@@ -31,6 +31,8 @@
 #include "SPFrutigerAeroSkin.h"
 #include "WxWidgetsGraphicsContext.h"
 #include "ConfigView.h"
+#include "PlatformUi.h"
+#include "SPAppManager.h"
 
 #include <nlohmann/json.hpp>
 #include <cstdint>
@@ -78,6 +80,13 @@ bool SpacifyApp::OnInit(){
     // Set CWD to the resources parent so relative XUL paths work from anywhere.
     wxSetWorkingDirectory(resourcesDir.GetPathWithSep() + "..");
 
+    // Discover app bundles (Apps/, ~/Bungalow/Apps, ~/Documents/Bungalow/Apps)
+    // before creating the skin, which may come from one of them.
+    auto& apps = space::SPAppManager::instance();
+    apps.addDefaultSearchPaths(std::string(wxGetCwd().ToUTF8()), space::platform::homeDir(),
+                               space::platform::documentsDir());
+    apps.scan();
+
     // Open (or create) the local SQLite database next to the resources directory.
     m_databasePath = resourcesDir.GetPath().ToStdString() + "/spacify.db";
     m_database = std::make_unique<Database>(m_databasePath);
@@ -101,7 +110,7 @@ bool SpacifyApp::OnInit(){
     space::SPColor tintColor(100, 127, 255, 127);
     short colorScheme          = SP_COLOR_SCHEME_DARK;
     bool  glossy               = false;
-    std::string skinType       = "classic";   // default on first run
+    std::string skinType       = "modern";    // default on first run
     bool  fullWidthAddressBar  = true;
     float aeroHue              = 200.0f;
     float aeroSaturation       = 0.70f;
@@ -154,22 +163,29 @@ bool SpacifyApp::OnInit(){
         aero->setGlossy(glossy);
         aero->setButtonStyle(static_cast<space::SPButtonStyle>(buttonStyle));
         activeSkin = aero;
-    } else if (skinType == "modern") {
-        activeSkin = new space::SPModernSkin();
-        activeSkin->setGlossy(glossy);
-        activeSkin->setButtonStyle(static_cast<space::SPButtonStyle>(buttonStyle));
-    } else {
+    } else if (skinType == "classic") {
         activeSkin = new space::SPClassicSkin();
         activeSkin->setGlossy(glossy);
         activeSkin->setButtonStyle(static_cast<space::SPButtonStyle>(buttonStyle));
+    } else {
+        // "modern" and installed skin bundles are skin.xml skins; fall back to
+        // procedural drawing if the bundle is missing.
+        activeSkin = space::SPAppManager::instance().createSkin(skinType);
+        if (!activeSkin) activeSkin = new space::SPModernSkin();
+        activeSkin->setGlossy(glossy);
+        activeSkin->setButtonStyle(static_cast<space::SPButtonStyle>(buttonStyle));
     }
+    // The HSL sliders tint every skin, including the skin.xml sprites.
+    activeSkin->setHue(aeroHue);
+    activeSkin->setSaturation(aeroSaturation);
+    activeSkin->setLightness(aeroLightness);
     this->m_windowElement->setSkin(activeSkin);
 
     this->m_windowElement->setColorScheme(colorScheme);
-    if (skinType == "frutiger-aero")
-        this->m_windowElement->setTintColor(space::SPColor::fromHSL(aeroHue, aeroSaturation, aeroLightness));
-    else
+    if (skinType == "classic")
         this->m_windowElement->setTintColor(space::SPColor(tintColor));
+    else
+        this->m_windowElement->setTintColor(space::SPColor::fromHSL(aeroHue, aeroSaturation, aeroLightness));
     this->m_main->setFullWidthAddressBar(fullWidthAddressBar);
     this->m_windowElement->appendChild(this->m_main);
     this->m_windowElement->pack();

@@ -11,6 +11,7 @@
 #include "SPModernSkin.h"
 #include "SPClassicSkin.h"
 #include "SPFrutigerAeroSkin.h"
+#include "SPAppManager.h"
 #include "SPAeroColorSlider.h"
 #include "SPGraphicsContext.h"
 #include "PlatformUi.h"
@@ -172,6 +173,19 @@ ConfigView::ConfigView(SPElement *parent) : SPViewElement(parent) {
         reinterpret_cast<SPCallback>(&ConfigView::onFrutigerAeroSkinClicked),
         this, m_frutigerAeroSkinButton
     );
+
+    // Additional skins installed as app bundles. modern.skin is the "Modern" button.
+    for (const SPAppExtension* ext : SPAppManager::instance().getExtensions("Skin")) {
+        if (ext->identifier == "modern.skin") continue;
+        const string name = ext->getName();
+        auto *btn = makeButton(skinRow, name, static_cast<int>(name.size()) * 7 + 24, 28);
+        btn->addEventListener(
+            "click",
+            reinterpret_cast<SPCallback>(&ConfigView::onBundleSkinClicked),
+            this, btn
+        );
+        m_bundleSkinButtons.emplace_back(btn, ext->identifier);
+    }
 
     // ── Frutiger Aero options (hidden unless aero skin active) ─────────────
     m_aeroSection = new SPVBoxElement(this);
@@ -514,12 +528,15 @@ void ConfigView::saveSettings() {
         aero->setGlossy(m_pendingGlossy);
         aero->setButtonStyle(m_pendingButtonStyle);
         newSkin = aero;
-    } else if (m_pendingSkinType == "modern") {
-        newSkin = new SPModernSkin();
+    } else if (m_pendingSkinType == "classic") {
+        newSkin = new SPClassicSkin();
         newSkin->setGlossy(m_pendingGlossy);
         newSkin->setButtonStyle(m_pendingButtonStyle);
     } else {
-        newSkin = new SPClassicSkin();
+        // "modern" and installed skin bundles are skin.xml skins; fall back to
+        // procedural drawing if the bundle is missing.
+        newSkin = SPAppManager::instance().createSkin(m_pendingSkinType);
+        if (!newSkin) newSkin = new SPModernSkin();
         newSkin->setGlossy(m_pendingGlossy);
         newSkin->setButtonStyle(m_pendingButtonStyle);
     }
@@ -597,6 +614,8 @@ void ConfigView::updateSkinButtons() {
     set(m_classicSkinButton,      "classic");
     set(m_modernSkinButton,       "modern");
     set(m_frutigerAeroSkinButton, "frutiger-aero");
+    for (const auto& [btn, type] : m_bundleSkinButtons)
+        set(btn, type);
 }
 
 void ConfigView::updateFullWidthAddressBarButton() {
@@ -622,6 +641,19 @@ int ConfigView::onModernSkinClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
 
 int ConfigView::onFrutigerAeroSkinClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
     m_pendingSkinType = "frutiger-aero";
+    updateSkinButtons();
+    updateAeroSectionVisibility();
+    this->invalidate();
+    return 0;
+}
+
+int ConfigView::onBundleSkinClicked(SPObject* sender, SPEventArgs* /*e*/) {
+    for (const auto& [btn, type] : m_bundleSkinButtons) {
+        if (static_cast<SPObject*>(btn) == sender) {
+            m_pendingSkinType = type;
+            break;
+        }
+    }
     updateSkinButtons();
     updateAeroSectionVisibility();
     this->invalidate();

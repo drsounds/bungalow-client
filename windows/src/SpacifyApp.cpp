@@ -30,6 +30,7 @@
 #include "ConfigView.h"
 #include "UiDispatcher.h"
 #include "PlatformUi.h"
+#include "SPAppManager.h"
 
 #include <nlohmann/json.hpp>
 #include <cstdint>
@@ -87,6 +88,13 @@ space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::S
     // Relative XUL paths resolve against the resources directory.
     SetCurrentDirectoryW(resourcesDir.c_str());
 
+    // Discover app bundles (Apps/, ~/Bungalow/Apps, ~/Documents/Bungalow/Apps)
+    // before creating the skin, which may come from one of them.
+    auto& apps = space::SPAppManager::instance();
+    apps.addDefaultSearchPaths(resourcesDir.u8string(), space::platform::homeDir(),
+                               space::platform::documentsDir());
+    apps.scan();
+
     // Use an existing bundled database, otherwise create one in the user data dir.
     fs::path dbPath = resourcesDir / "spacify.db";
     if (!fs::exists(dbPath)) {
@@ -105,7 +113,7 @@ space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::S
     space::SPColor tintColor(100, 127, 255, 127);
     short colorScheme          = SP_COLOR_SCHEME_DARK;
     bool  glossy               = false;
-    std::string skinType       = "classic";
+    std::string skinType       = "modern";
     bool  fullWidthAddressBar  = true;
     float aeroHue              = 200.0f;
     float aeroSaturation       = 0.70f;
@@ -152,12 +160,15 @@ space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::S
         aero->setGlossy(glossy);
         aero->setButtonStyle(static_cast<space::SPButtonStyle>(buttonStyle));
         activeSkin = aero;
-    } else if (skinType == "modern") {
-        activeSkin = new space::SPModernSkin();
+    } else if (skinType == "classic") {
+        activeSkin = new space::SPClassicSkin();
         activeSkin->setGlossy(glossy);
         activeSkin->setButtonStyle(static_cast<space::SPButtonStyle>(buttonStyle));
     } else {
-        activeSkin = new space::SPClassicSkin();
+        // "modern" and installed skin bundles are skin.xml skins; fall back to
+        // procedural drawing if the bundle is missing.
+        activeSkin = space::SPAppManager::instance().createSkin(skinType);
+        if (!activeSkin) activeSkin = new space::SPModernSkin();
         activeSkin->setGlossy(glossy);
         activeSkin->setButtonStyle(static_cast<space::SPButtonStyle>(buttonStyle));
     }
