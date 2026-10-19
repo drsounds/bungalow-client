@@ -14,6 +14,10 @@ inline constexpr char kAppScheme[] = "sp";
 // Browser -> renderer: extra_info key holding the app's startup script.
 inline constexpr char kStartupScriptKey[] = "startupScript";
 
+// Browser -> renderer: extra_info key marking a site browser. Its startup
+// script runs in main frames of any origin, without the spacify bridge.
+inline constexpr char kSiteBrowserKey[] = "siteBrowser";
+
 // Renderer -> browser: window.spacify.navigate(uri). Argument 0 is the URI.
 inline constexpr char kNavigateMessage[] = "spacify.navigate";
 

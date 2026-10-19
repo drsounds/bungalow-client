@@ -154,7 +154,27 @@ SiteView::~SiteView() {
     if (s_activeInstance == this) s_activeInstance = nullptr;
 }
 
-void SiteView::runScript(const std::string&) {}
+void SiteView::runScript(const std::string& js) {
+#ifdef BUNGALOW_CEF
+    if (m_browser) m_browser->executeScript(js);
+#else
+    (void)js;
+#endif
+}
+
+string SiteView::themeScript() {
+    const string bgHex = getBackgroundColor().toHTMLColor();
+    const string fgHex = getForegroundColor().toHTMLColor();
+    const string scheme = (getColorScheme() == SP_COLOR_SCHEME_DARK) ? "dark" : "light";
+    return string("(function(){") +
+        "var e=document.getElementById('sp-theme');" +
+        "if(!e){e=document.createElement('style');e.id='sp-theme';" +
+        "(document.head||document.documentElement).appendChild(e);}" +
+        "e.textContent='" +
+        ":root{--sp-bg-color:" + bgHex + ";--sp-fg-color:" + fgHex + ";--sp-color-scheme:" + scheme + "}" +
+        "body{background-color:" + bgHex + ";color:" + fgHex + "}" +
+        "';})();";
+}
 
 void SiteView::setNavBarVisible(bool visible) {
     if (!m_navRow) return;
@@ -190,6 +210,15 @@ void SiteView::navigate(const string& uri) {
     if (url.empty()) return;
 
     updateUrlBar(url);
+
+#ifdef BUNGALOW_CEF
+    // Already showing it, e.g. the page navigated itself and reported it.
+    if (m_browser && normalizeUrl(url) == normalizeUrl(m_loadedUrl)) {
+        m_showBrowser = true;
+        invalidate();
+        return;
+    }
+#endif
 
     if (auto* app = SpacifyApp::current()) {
         if (auto* dm = app->getDownloadManager()) {
@@ -233,8 +262,30 @@ void SiteView::loadUrl(const string& url) {
         }
     }
 
-    if (normalizeUrl(m_loadedUrl) == normalizeUrl(url)) return;
+    if (normalizeUrl(m_loadedUrl) == normalizeUrl(url)) {
+#ifdef BUNGALOW_CEF
+        if (m_browser) {
+            m_showBrowser = true;
+            invalidate();
+        }
+#endif
+        return;
+    }
+    showUrl(url);
+}
+
+void SiteView::showUrl(const string& url) {
     m_loadedUrl = url;
+#ifdef BUNGALOW_CEF
+    if (auto* browser = ensureBrowser()) {
+        m_loadingUrl = true;
+        m_showBrowser = true;
+        m_pageTitle.clear();
+        browser->loadUrl(url);
+        invalidate(); // the browser is positioned on the next paint
+        return;
+    }
+#endif
     ShellExecuteW(nullptr, L"open", widen(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
@@ -243,12 +294,23 @@ void SiteView::openExternalUrl(const string& url) {
     ShellExecuteW(nullptr, L"open", widen(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
+// History entries were consented to when first visited, so they are shown
+// without asking again or pushing a new entry. The system browser fallback
+// only updates the URL bar.
 void SiteView::navigateBack(const string& uri) {
     string url = uriToUrl(uri);
-    if (!url.empty()) {
-        m_currentUri = uri;
-        updateUrlBar(url);
+    if (url.empty()) return;
+    m_currentUri = uri;
+    updateUrlBar(url);
+#ifdef BUNGALOW_CEF
+    if (!ensureBrowser()) return;
+    if (normalizeUrl(url) != normalizeUrl(m_loadedUrl)) {
+        showUrl(url);
+    } else {
+        m_showBrowser = true;
+        invalidate();
     }
+#endif
 }
 
 void SiteView::navigateForward(const string& uri) {
@@ -261,11 +323,118 @@ void SiteView::setVisible(bool value) {
         s_activeInstance = this;
     else if (s_activeInstance == this)
         s_activeInstance = nullptr;
+
+#ifdef BUNGALOW_CEF
+    if (!m_browser) return;
+    if (value) {
+        // Pick up theme changes made while hidden (e.g. in the settings view).
+        m_browser->setDarkColorScheme(getColorScheme() == SP_COLOR_SCHEME_DARK);
+        m_browser->executeScript(themeScript());
+        invalidate();
+    } else {
+        m_browser->setVisible(false); // hidden views are not painted
+    }
+#endif
 }
+
+#ifdef BUNGALOW_CEF
+// ── Embedded browser ──────────────────────────────────────────────────────────
+
+SPEmbeddedSiteBrowser* SiteView::ensureBrowser() {
+    if (m_browser || m_browserFailed) return m_browser.get();
+
+    SPEmbeddedSiteBrowser::Options options;
+    if (auto* app = SpacifyApp::current())
+        options.developerMode = app->isDeveloperMode();
+    options.darkColorScheme = getColorScheme() == SP_COLOR_SCHEME_DARK;
+    // Run the theme as soon as the document element exists, before page scripts.
+    options.startupScript =
+        "(function(apply){if(document.documentElement){apply();return;}"
+        "new MutationObserver(function(_,o){if(document.documentElement){o.disconnect();apply();}})"
+        ".observe(document,{childList:true});})(function(){" + themeScript() + "});";
+
+    SPEmbeddedSiteBrowser::Callbacks callbacks;
+    callbacks.addressChanged = [this](const string& url) { onAddressChanged(url); };
+    callbacks.navigateRequested = [this](const string& uri) {
+        if (isVisible()) getWindowElement()->navigate(uri);
+    };
+    callbacks.navigationRequested = [this](const string& url) { onNavigationRequested(url); };
+    callbacks.downloadRequested = [this](const string& url) { onDownloadRequested(url); };
+    callbacks.titleChanged = [this](const string& title) { m_pageTitle = title; };
+
+    m_browser = createEmbeddedSiteBrowser(this, std::move(options), std::move(callbacks));
+    m_browserFailed = !m_browser;
+    return m_browser.get();
+}
+
+void SiteView::hideSiteBrowser() {
+    m_showBrowser = false;
+    if (m_browser) m_browser->setVisible(false);
+}
+
+// The page committed a new address: a load we started, a link the page
+// followed on an allowed host, or a pushState/hash change.
+void SiteView::onAddressChanged(const string& url) {
+    const bool startedHere = m_loadingUrl;
+    m_loadingUrl = false;
+    m_loadedUrl = url;
+    updateUrlBar(url);
+
+    const string uri = urlToUri(url);
+    if (uri.empty() || uri == m_currentUri) return;
+    if (startedHere || !isVisible()) {
+        // A redirect of our own load: no extra history entry.
+        m_currentUri = uri;
+        return;
+    }
+    // navigate() finds m_loadedUrl already showing and only records it.
+    getWindowElement()->navigate(uri);
+}
+
+// The page tried to open a page on a host that has not been allowed yet (or in
+// a new window): go through navigate() for consent and download detection.
+void SiteView::onNavigationRequested(const string& url) {
+    if (!isVisible()) return;
+    const string uri = urlToUri(url);
+    if (!uri.empty()) {
+        getWindowElement()->navigate(uri);
+        return;
+    }
+    // Plain http has no spacify: URI; show it in place without history.
+    if (isDomainAllowed(url) || showThirdPartyWarning(extractHostname(url)))
+        showUrl(url);
+}
+
+void SiteView::onDownloadRequested(const string& url) {
+    auto* app = SpacifyApp::current();
+    if (!app || !app->getDownloadManager()) return;
+    app->getDownloadManager()->checkUrl(url, [this](const string& checkedUrl,
+                                                    bool          /*isDownload*/,
+                                                    const string& filename,
+                                                    const string& contentType) {
+        if (auto* a = SpacifyApp::current())
+            if (auto* d = a->getDownloadManager())
+                d->startDownload(checkedUrl, filename, contentType);
+        getWindowElement()->navigate("spacify:downloads");
+    });
+}
+
+// Absolute bounds are only known once painted, so the native browser is
+// positioned and shown from here; layout changes and window resizes both end
+// in a repaint.
+void SiteView::paint(int x, int y, SPGraphicsContext* c) {
+    SPViewElement::paint(x, y, c);
+    if (!m_browser || !m_showBrowser || !isVisible()) return;
+    const auto bounds = getAbsoluteBounds();
+    m_browser->setBounds(bounds.x, bounds.y + m_navOffset, bounds.width, bounds.height - m_navOffset);
+    m_browser->setVisible(true);
+}
+#endif
 
 int SiteView::onBookmarkClicked(SPObject*, SPEventArgs*) {
     if (m_currentUri.empty()) return 0;
-    auto* args = new space::SPBookmarkEventArgs(m_currentUri, m_currentUri);
+    const string& title = m_pageTitle.empty() ? m_currentUri : m_pageTitle;
+    auto* args = new space::SPBookmarkEventArgs(m_currentUri, title);
     this->getWindowElement()->notify("bookmarktoggled", this, args);
     return 0;
 }
@@ -296,11 +465,21 @@ void SiteView::navigateToInputUrl(const string& text) {
 }
 
 void SiteView::reload() {
+#ifdef BUNGALOW_CEF
+    if (m_browser) {
+        if (m_showBrowser) m_browser->reload();
+        return;
+    }
+#endif
     if (!m_loadedUrl.empty())
         ShellExecuteW(nullptr, L"open", widen(m_loadedUrl).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
-void SiteView::showInspector() {}
+void SiteView::showInspector() {
+#ifdef BUNGALOW_CEF
+    if (m_browser && m_showBrowser) m_browser->showDevTools();
+#endif
+}
 
 } // namespace views
 } // namespace space

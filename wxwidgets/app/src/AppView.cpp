@@ -149,6 +149,8 @@ int AppView::onAddAppClicked(SPObject* /*sender*/, SPEventArgs* /*args*/) {
     if (uri.empty()) return 0;
     string title = uri; // fallback; webview title not directly accessible here
 #ifdef BUNGALOW_CEF
+    if (!getPageTitle().empty())
+        title = getPageTitle();
     if (m_activeApp && !m_activeApp->title.empty())
         title = m_activeApp->title;
 #endif
@@ -259,6 +261,7 @@ AppView::LocalApp* AppView::localAppFor(const SPAppBundle& bundle) {
 
     SPEmbeddedBrowser::Options options;
     options.developerMode = m_devMode;
+    options.darkColorScheme = getColorScheme() == SP_COLOR_SCHEME_DARK;
     // Run the theme as soon as the document element exists, before app scripts.
     options.startupScript =
         "(function(apply){if(document.documentElement){apply();return;}"
@@ -302,7 +305,10 @@ void AppView::onRouteChanged(const string& appId, const string& path) {
         getWindowElement()->navigate(appUri(appId, path));
 }
 
+// app is null when showing the error view or before falling back to the
+// remote path, which shows the site browser again.
 void AppView::showLocalApp(LocalApp* app) {
+    hideSiteBrowser();
     if (m_activeApp && m_activeApp != app)
         m_activeApp->browser->setVisible(false);
     m_activeApp = app;
@@ -321,7 +327,9 @@ void AppView::setVisible(bool value) {
     SiteView::setVisible(value);
     if (!m_activeApp) return;
     if (value) {
-        m_activeApp->browser->executeScript(themeScript()); // pick up theme changes
+        // Pick up theme changes made while hidden (e.g. in the settings view).
+        m_activeApp->browser->setDarkColorScheme(getColorScheme() == SP_COLOR_SCHEME_DARK);
+        m_activeApp->browser->executeScript(themeScript());
         invalidate();
     } else {
         m_activeApp->browser->setVisible(false); // hidden views are not painted
@@ -340,19 +348,18 @@ void AppView::paint(int x, int y, SPGraphicsContext* c) {
     m_activeApp->browser->setVisible(true);
 }
 
-// Exposes the app theme as CSS variables, like the wx SiteView does for sites.
-string AppView::themeScript() {
-    const string bgHex = getBackgroundColor().toHTMLColor();
-    const string fgHex = getForegroundColor().toHTMLColor();
-    const string scheme = (getColorScheme() == SP_COLOR_SCHEME_DARK) ? "dark" : "light";
-    return string("(function(){") +
-        "var e=document.getElementById('sp-theme');" +
-        "if(!e){e=document.createElement('style');e.id='sp-theme';" +
-        "(document.head||document.documentElement).appendChild(e);}" +
-        "e.textContent='" +
-        ":root{--sp-bg-color:" + bgHex + ";--sp-fg-color:" + fgHex + ";--sp-color-scheme:" + scheme + "}" +
-        "body{background-color:" + bgHex + ";color:" + fgHex + "}" +
-        "';})();";
+void AppView::showInspector() {
+    if (m_activeApp)
+        m_activeApp->browser->showDevTools();
+    else
+        SiteView::showInspector();
+}
+
+void AppView::reload() {
+    if (m_activeApp)
+        m_activeApp->browser->reload();
+    else
+        SiteView::reload();
 }
 
 int AppView::onDevToolsClicked(SPObject* /*sender*/, SPEventArgs* /*args*/) {

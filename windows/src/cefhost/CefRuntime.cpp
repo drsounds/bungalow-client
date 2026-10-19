@@ -67,7 +67,9 @@ public:
 
     void OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extraInfo) override {
         if (extraInfo && extraInfo->HasKey(kStartupScriptKey))
-            m_startupScripts[browser->GetIdentifier()] = extraInfo->GetString(kStartupScriptKey);
+            m_startupScripts[browser->GetIdentifier()] = {
+                extraInfo->GetString(kStartupScriptKey),
+                extraInfo->HasKey(kSiteBrowserKey) && extraInfo->GetBool(kSiteBrowserKey)};
     }
 
     void OnBrowserDestroyed(CefRefPtr<CefBrowser> browser) override {
@@ -79,6 +81,14 @@ public:
         auto script = m_startupScripts.find(browser->GetIdentifier());
         if (script == m_startupScripts.end()) return;
         const std::string url = frame->GetURL();
+
+        CefRefPtr<CefV8Value> result;
+        CefRefPtr<CefV8Exception> error;
+        if (script->second.siteBrowser) {
+            if (frame->IsMain() && !script->second.script.empty())
+                context->Eval(script->second.script, url, 0, result, error);
+            return;
+        }
         if (url.rfind(std::string(kAppScheme) + "://", 0) != 0) return;
 
         CefRefPtr<CefV8Value> spacify = CefV8Value::CreateObject(nullptr, nullptr);
@@ -86,14 +96,17 @@ public:
                           V8_PROPERTY_ATTRIBUTE_READONLY);
         context->GetGlobal()->SetValue("spacify", spacify, V8_PROPERTY_ATTRIBUTE_READONLY);
 
-        CefRefPtr<CefV8Value> result;
-        CefRefPtr<CefV8Exception> error;
-        context->Eval(std::string(kBridgeScript) + script->second.ToString(), url, 0, result, error);
+        context->Eval(std::string(kBridgeScript) + script->second.script.ToString(), url, 0, result, error);
     }
 
 private:
+    struct StartupScript {
+        CefString script;
+        bool siteBrowser = false;
+    };
+
     // Browser id -> startup script. Renderer main thread only.
-    std::map<int, CefString> m_startupScripts;
+    std::map<int, StartupScript> m_startupScripts;
 
     IMPLEMENT_REFCOUNTING(BungalowCefApp);
 };

@@ -26,9 +26,22 @@ CAppModule _Module;
 namespace {
 constexpr int FileAboutCommandId = 1101;
 constexpr int FileExitCommandId = 1102;
+constexpr int DevelopShowInspectorCommandId = 1201;
+constexpr int DevelopReloadPageCommandId = 1202;
 constexpr int CaptionButtonWidth = 46;
 
-enum class CaptionItem { None, File, Minimize, Maximize, Close };
+enum class CaptionItem { None, File, Develop, Minimize, Maximize, Close };
+
+constexpr CaptionItem CaptionItems[] = {CaptionItem::File, CaptionItem::Develop, CaptionItem::Minimize,
+										CaptionItem::Maximize, CaptionItem::Close};
+
+bool IsMenuItem(CaptionItem item) {
+	return item == CaptionItem::File || item == CaptionItem::Develop;
+}
+
+const wchar_t *MenuLabel(CaptionItem item) {
+	return item == CaptionItem::Develop ? L"Develop" : L"File";
+}
 
 // 80% of the work area of the monitor under the cursor, centered on it.
 RECT InitialWindowBounds() {
@@ -108,8 +121,9 @@ public:
 	bool didFailInitialization() const { return initializationFailed; }
 
 	~MainFrame() {
-		if (fileMenu)
-			DestroyMenu(fileMenu);
+		for (HMENU menu : {fileMenu, developMenu})
+			if (menu)
+				DestroyMenu(menu);
 		DestroyCaptionFonts();
 	}
 
@@ -145,13 +159,16 @@ public:
 		}
 
 		fileMenu = CreatePopupMenu();
-		if (!fileMenu) {
+		developMenu = CreatePopupMenu();
+		if (!fileMenu || !developMenu) {
 			initializationFailed = true;
 			return -1;
 		}
 		AppendMenuW(fileMenu, MF_STRING, FileAboutCommandId, L"&About Spacify");
 		AppendMenuW(fileMenu, MF_SEPARATOR, 0, nullptr);
 		AppendMenuW(fileMenu, MF_STRING, FileExitCommandId, L"E&xit");
+		AppendMenuW(developMenu, MF_STRING, DevelopShowInspectorCommandId, L"Show &Inspector");
+		AppendMenuW(developMenu, MF_STRING, DevelopReloadPageCommandId, L"&Reload Page");
 		CreateCaptionFonts();
 		return 0;
 	}
@@ -271,8 +288,8 @@ public:
 
 	void OnLeftButtonDown(UINT, CPoint point) {
 		const CaptionItem item = CaptionItemAt(point);
-		if (item == CaptionItem::File) {
-			ShowFileMenu();
+		if (IsMenuItem(item)) {
+			ShowCaptionMenu(item);
 			return;
 		}
 		if (item != CaptionItem::None) {
@@ -345,17 +362,29 @@ public:
 		case FileExitCommandId:
 			PostMessage(WM_CLOSE);
 			return 0;
+		case DevelopShowInspectorCommandId:
+			app.showWebInspector();
+			return 0;
+		case DevelopReloadPageCommandId:
+			app.reloadWebPage();
+			return 0;
 		default:
 			app.command(wParam, lParam);
 			return 0;
 		}
 	}
 
-	// Alt+F opens the File menu, like a native menu bar.
+	// Alt+F / Alt+D open the File / Develop menus, like a native menu bar.
 	LRESULT OnSysCommand(UINT, WPARAM wParam, LPARAM lParam, BOOL &handled) {
-		if ((wParam & 0xFFF0) == SC_KEYMENU && std::towlower(static_cast<wint_t>(lParam)) == L'f') {
-			ShowFileMenu();
-			return 0;
+		if ((wParam & 0xFFF0) == SC_KEYMENU) {
+			switch (std::towlower(static_cast<wint_t>(lParam))) {
+			case L'f':
+				ShowCaptionMenu(CaptionItem::File);
+				return 0;
+			case L'd':
+				ShowCaptionMenu(CaptionItem::Develop);
+				return 0;
+			}
 		}
 		handled = FALSE;
 		return 0;
@@ -370,13 +399,14 @@ public:
 
 private:
 	HMENU fileMenu = nullptr;
+	HMENU developMenu = nullptr;
 	HFONT titleFont = nullptr;
 	HFONT menuFont = nullptr;
 	HFONT glyphFont = nullptr;
 	bool hasGlyphFont = false;
 	CaptionItem hoveredItem = CaptionItem::None;
 	CaptionItem pressedItem = CaptionItem::None;
-	bool menuOpen = false;
+	CaptionItem openMenu = CaptionItem::None;
 	bool trackingMouse = false;
 	bool initializationFailed = false;
 
@@ -414,17 +444,11 @@ private:
 		::GetClientRect(m_hWnd, &client);
 		const int height = space::NativeApplication::CaptionHeight;
 		switch (item) {
-		case CaptionItem::File: {
-			int textWidth = 24;
-			if (HDC screen = ::GetDC(m_hWnd)) {
-				HGDIOBJ old = SelectObject(screen, menuFont ? menuFont : GetStockObject(DEFAULT_GUI_FONT));
-				SIZE size{};
-				if (GetTextExtentPoint32W(screen, L"File", 4, &size))
-					textWidth = size.cx;
-				SelectObject(screen, old);
-				::ReleaseDC(m_hWnd, screen);
-			}
-			return {4, 0, 4 + textWidth + 16, height};
+		case CaptionItem::File:
+			return {4, 0, 4 + MenuLabelWidth(item) + 16, height};
+		case CaptionItem::Develop: {
+			const LONG left = CaptionItemRect(CaptionItem::File).right;
+			return {left, 0, left + MenuLabelWidth(item) + 16, height};
 		}
 		case CaptionItem::Close:
 			return {client.right - CaptionButtonWidth, 0, client.right, height};
@@ -437,11 +461,24 @@ private:
 		}
 	}
 
+	int MenuLabelWidth(CaptionItem item) const {
+		int textWidth = 24;
+		if (HDC screen = ::GetDC(m_hWnd)) {
+			HGDIOBJ old = SelectObject(screen, menuFont ? menuFont : GetStockObject(DEFAULT_GUI_FONT));
+			const wchar_t *label = MenuLabel(item);
+			SIZE size{};
+			if (GetTextExtentPoint32W(screen, label, static_cast<int>(wcslen(label)), &size))
+				textWidth = size.cx;
+			SelectObject(screen, old);
+			::ReleaseDC(m_hWnd, screen);
+		}
+		return textWidth;
+	}
+
 	CaptionItem CaptionItemAt(POINT point) const {
 		if (point.y < 0 || point.y >= space::NativeApplication::CaptionHeight)
 			return CaptionItem::None;
-		for (CaptionItem item : {CaptionItem::File, CaptionItem::Minimize,
-								 CaptionItem::Maximize, CaptionItem::Close}) {
+		for (CaptionItem item : CaptionItems) {
 			const RECT rect = CaptionItemRect(item);
 			if (PtInRect(&rect, point))
 				return item;
@@ -477,7 +514,8 @@ private:
 	void ActivateCaptionItem(CaptionItem item) {
 		switch (item) {
 		case CaptionItem::File:
-			ShowFileMenu();
+		case CaptionItem::Develop:
+			ShowCaptionMenu(item);
 			break;
 		case CaptionItem::Minimize:
 			ShowWindow(SW_MINIMIZE);
@@ -516,9 +554,8 @@ private:
 		SetBkMode(dc, TRANSPARENT);
 
 		// Transparent items: only hover/pressed states draw a translucent wash.
-		for (CaptionItem item : {CaptionItem::File, CaptionItem::Minimize,
-								 CaptionItem::Maximize, CaptionItem::Close}) {
-			const bool active = item == pressedItem || (item == CaptionItem::File && menuOpen);
+		for (CaptionItem item : CaptionItems) {
+			const bool active = item == pressedItem || item == openMenu;
 			if (item != hoveredItem && !active)
 				continue;
 			const RECT rect = CaptionItemRect(item);
@@ -534,8 +571,10 @@ private:
 		DrawTextW(dc, L"Spacify", -1, &title, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 
 		SelectObject(dc, menuFont ? menuFont : GetStockObject(DEFAULT_GUI_FONT));
-		RECT file = CaptionItemRect(CaptionItem::File);
-		DrawTextW(dc, L"File", -1, &file, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+		for (CaptionItem item : {CaptionItem::File, CaptionItem::Develop}) {
+			RECT rect = CaptionItemRect(item);
+			DrawTextW(dc, MenuLabel(item), -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+		}
 
 		if (glyphFont)
 			SelectObject(dc, glyphFont);
@@ -559,15 +598,16 @@ private:
 		SelectObject(dc, oldFont);
 	}
 
-	void ShowFileMenu() {
-		RECT item = CaptionItemRect(CaptionItem::File);
-		POINT anchor{item.left, item.bottom};
+	void ShowCaptionMenu(CaptionItem item) {
+		const RECT rect = CaptionItemRect(item);
+		POINT anchor{rect.left, rect.bottom};
 		ClientToScreen(&anchor);
-		menuOpen = true;
+		openMenu = item;
 		InvalidateCaption();
-		TrackPopupMenu(fileMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON,
+		TrackPopupMenu(item == CaptionItem::Develop ? developMenu : fileMenu,
+					   TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RIGHTBUTTON,
 					   anchor.x, anchor.y, 0, m_hWnd, nullptr);
-		menuOpen = false;
+		openMenu = CaptionItem::None;
 		SetHoveredItem(CaptionItem::None);
 		InvalidateCaption();
 	}

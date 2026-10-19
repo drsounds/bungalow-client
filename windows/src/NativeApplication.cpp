@@ -134,4 +134,20 @@ namespace space
         if (graphics)
             graphics->handleCommand(wParam, lParam);
     }
+
+    void NativeApplication::showWebInspector()
+    {
+#ifdef BUNGALOW_WTL
+        if (app)
+            app->showWebInspector();
+#endif
+    }
+
+    void NativeApplication::reloadWebPage()
+    {
+#ifdef BUNGALOW_WTL
+        if (app)
+            app->reloadWebPage();
+#endif
+    }
 }

@@ -37,6 +37,8 @@ public:
     void navigateForward(const string& uri) override;
     void setVisible(bool value) override;
     void paint(int x, int y, SPGraphicsContext* c) override;
+    void showInspector() override;
+    void reload() override;
 #endif
 
 private:
@@ -68,7 +70,6 @@ private:
     void onRouteChanged(const string& appId, const string& path);
     void showLocalApp(LocalApp* app);
     void showError(const string& message);
-    string themeScript();
     int  onDevToolsClicked(SPObject* sender, SPEventArgs* args);
 #endif
 };

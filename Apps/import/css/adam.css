@@ -1,0 +1,111 @@
+/*
+ * sp://import/css/adam.css — the default dark app theme ("Adam").
+ * Uses the host theme variables (--sp-bg-color, --sp-fg-color) when set.
+ */
+
+:root {
+    --sp-accent: #84bd00;
+    --sp-selection: #3d6f9e;
+    color-scheme: dark;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+}
+body {
+    background: var(--sp-bg-color, #2b2b2b);
+    color: var(--sp-fg-color, #d6d6d6);
+    font-family: "Segoe UI", Tahoma, "Lucida Grande", Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+a { color: #e8e8e8; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1, h2, h3 { margin: 0 0 8px; font-weight: 600; color: #f0f0f0; }
+h1 { font-size: 22px; }
+h2 { font-size: 15px; }
+h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #9a9a9a; }
+
+/* Section divider: <divider><h2>Title</h2></divider> */
+divider {
+    display: block;
+    margin: 12px 0 6px;
+    padding: 0 12px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+}
+divider h2 { margin: 0; }
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+
+.button, .sp-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 24px;
+    padding: 0 10px;
+    border: 1px solid #111;
+    border-radius: 3px;
+    background: linear-gradient(#5a5a5a, #3c3c3c);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    color: #eee;
+    font: inherit;
+    text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    vertical-align: middle;
+}
+.button:hover, .sp-button:hover { background: linear-gradient(#666, #444); }
+.button:active, .sp-button:active { background: linear-gradient(#333, #444); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5); }
+.button[disabled], .sp-button[disabled] { opacity: 0.5; cursor: default; }
+.sp-primary { background: linear-gradient(#93cf05, #6a9a00); border-color: #3d5900; }
+.sp-primary:hover { background: linear-gradient(#a0dc10, #75a800); }
+.sp-flat { background: none; border-color: transparent; box-shadow: none; }
+.sp-flat:hover { background: rgba(255, 255, 255, 0.08); }
+
+.button.icon > span, .sp-button.icon > span {
+    display: inline-block;
+    width: 12px;
+    text-align: center;
+    font-weight: 700;
+}
+.icon .plus::before { content: "+"; }
+.icon .share::before { content: "\21AA"; }
+.icon .star::before { content: "\2605"; }
+
+/* ── Inputs ─────────────────────────────────────────────────────────── */
+
+.input, .textarea, input[type="search"], input[type="find"] {
+    box-sizing: border-box;
+    height: 24px;
+    padding: 0 8px;
+    border: 1px solid #111;
+    border-radius: 12px;
+    background: #1d1d1d;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.08);
+    color: #eee;
+    font: inherit;
+}
+.textarea { height: auto; min-height: 60px; padding: 6px 8px; border-radius: 3px; }
+.input:focus, .textarea:focus { outline: none; border-color: var(--sp-accent); }
+
+/* ── Loading indicator ──────────────────────────────────────────────── */
+
+.loader {
+    width: 24px;
+    height: 24px;
+    margin: 16px auto;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    border-top-color: var(--sp-accent);
+    border-radius: 50%;
+    animation: sp-spin 0.8s linear infinite;
+}
+@keyframes sp-spin { to { transform: rotate(360deg); } }
+
+.label { color: #9a9a9a; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
