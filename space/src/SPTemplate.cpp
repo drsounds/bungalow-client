@@ -124,6 +124,30 @@ int appendPrint(lua_State *state) {
 	return 0;
 }
 
+// escape(value): makes entity data safe to interpolate into XUL markup.
+int escapeXml(lua_State *state) {
+	if (lua_isnoneornil(state, 1)) {
+		lua_pushliteral(state, "");
+		return 1;
+	}
+	size_t size = 0;
+	const char *text = luaL_tolstring(state, 1, &size);
+	std::string escaped;
+	escaped.reserve(size);
+	for (size_t i = 0; i < size; ++i) {
+		switch (text[i]) {
+		case '&': escaped += "&amp;"; break;
+		case '<': escaped += "&lt;"; break;
+		case '>': escaped += "&gt;"; break;
+		case '"': escaped += "&quot;"; break;
+		case '\'': escaped += "&apos;"; break;
+		default: escaped.push_back(text[i]);
+		}
+	}
+	lua_pushlstring(state, escaped.data(), escaped.size());
+	return 1;
+}
+
 } // namespace
 
 std::string SPTemplate::render(const std::string &source,
@@ -142,6 +166,8 @@ std::string SPTemplate::render(const std::string &source,
 	lua_pushlightuserdata(state.get(), &output);
 	lua_pushcclosure(state.get(), appendPrint, 1);
 	lua_setglobal(state.get(), "print");
+	lua_pushcfunction(state.get(), escapeXml);
+	lua_setglobal(state.get(), "escape");
 
 	lua_pushlstring(state.get(), method.data(), method.size());
 	lua_setglobal(state.get(), "method");

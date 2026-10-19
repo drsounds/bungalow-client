@@ -33,6 +33,8 @@
 #include "ConfigView.h"
 #include "PlatformUi.h"
 #include "SPAppManager.h"
+#include "SPUriStore.h"
+#include "EntityResolvers.h"
 
 #include <nlohmann/json.hpp>
 #include <cstdint>
@@ -91,6 +93,13 @@ bool SpacifyApp::OnInit(){
     m_databasePath = resourcesDir.GetPath().ToStdString() + "/spacify.db";
     m_database = std::make_unique<Database>(m_databasePath);
     m_downloadManager = std::make_unique<DownloadManager>(m_database->handle());
+
+    // Global URI entity store: views render the JSON-cached entity at once
+    // and update when the resolver delivers fresh data.
+    auto& uriStore = space::SPUriStore::instance();
+    uriStore.setPersistenceDirectory(space::platform::userDataDir() + "/cache/uris");
+    uriStore.setScheduler([this](std::function<void()> task) { this->CallAfter(task); });
+    space::registerEntityResolvers(uriStore, *m_database);
 
     this->m_space = new space::Space();
     this->m_frame = new SpaceFrame(this, this->m_space);

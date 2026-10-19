@@ -57,5 +57,14 @@ int main() {
 		std::cerr << "Literal backslashes and quotes were not preserved\n";
 		return 1;
 	}
+
+	const std::string entity = space::SPTemplate::render(
+		"<text>${escape(model.entity.name)}${escape(model.missing)}</text>", "GET",
+		"spacify:artist:1", "", nlohmann::json::object(),
+		{{"entity", {{"name", "Simon & <Garfunkel>"}}}});
+	if (entity != "<text>Simon &amp; &lt;Garfunkel&gt;</text>") {
+		std::cerr << "escape() did not produce safe XUL: " << entity << '\n';
+		return 1;
+	}
 	return 0;
 }

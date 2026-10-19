@@ -437,6 +437,23 @@ namespace space {
 		if (requestData.contains("command") && requestData.at("command").is_string())
 			action = requestData.at("command").get<string>();
 
+		// Render whatever the store already knows (memory or the JSON cache)
+		// right away, then re-render when the resolver delivers fresh data.
+		SPUriStore &store = SPUriStore::instance();
+		m_srcSubscription.reset();
+		if (method == "GET")
+			store.resolveURI(uri);
+		this->renderTemplate(templateSource.str(), method, uri, action, requestData);
+		if (method == "GET") {
+			m_srcSubscription = store.subscribe(uri,
+				[this, source = templateSource.str(), uri](const string &, const SPUriEntry &) {
+					this->renderTemplate(source, "GET", uri, "", nlohmann::json::object());
+				});
+		}
+	}
+
+	void SPElement::renderTemplate(const string &source, const string &method, const string &uri,
+								   const string &action, const nlohmann::json &requestData) {
 		std::time_t now = std::time(nullptr);
 		std::tm localTime{};
 #ifdef _WIN32
@@ -448,10 +465,13 @@ namespace space {
 		timestamp << std::put_time(&localTime, "%Y-%m-%d %H:%M:%S");
 		nlohmann::json model = nlohmann::json::object();
 		model["now"] = timestamp.str();
+		const SPUriEntry entry = SPUriStore::instance().get(uri);
+		model["entity"] = entry.data;
+		model["status"] = toString(entry.status);
 
 		try {
 			this->setInnerXUL(space::SPTemplate::render(
-				templateSource.str(), method, uri, action, requestData, model));
+				source, method, uri, action, requestData, model));
 		} catch (const std::exception& error) {
 			if (s_xulErrorHandler)
 				s_xulErrorHandler(error.what());
@@ -563,6 +583,36 @@ namespace space {
 		}
 		if (args->getAttributeName() == "src") {
 			this->loadSrc(args->getNewValue());
+		}
+		if (args->getAttributeName() == "entity") {
+			this->bindEntity(args->getNewValue());
+		}
+	}
+
+	// <text entity="spacify:artist:1" entity-field="name">Fallback</text>
+	// shows the cached field immediately and updates it once the entity
+	// has been fetched.
+	void SPElement::bindEntity(const string &uri) {
+		m_entitySubscription.reset();
+		if (uri.empty())
+			return;
+		SPUriStore &store = SPUriStore::instance();
+		this->applyEntity(store.resolveURI(uri));
+		m_entitySubscription = store.subscribe(uri, [this](const string &, const SPUriEntry &entry) {
+			this->applyEntity(entry);
+		});
+	}
+
+	void SPElement::applyEntity(const SPUriEntry &entry) {
+		this->setStringAttributeSilently("entity-status", toString(entry.status));
+		const string field = this->getStringAttribute("entity-field", "name");
+		if (!entry.data.is_object() || !entry.data.contains(field))
+			return;
+		const nlohmann::json &value = entry.data.at(field);
+		const string text = value.is_string() ? value.get<string>() : value.dump();
+		if (text != this->getInnerText()) {
+			this->setInnerText(text);
+			this->invalidate();
 		}
 	}
 
@@ -1089,6 +1139,10 @@ namespace space {
 				// cout << "Packed";
 			}
 		}
+		// The XML text above is only a fallback; put the cached entity back.
+		const string entityUri = elm->getStringAttribute("entity", "");
+		if (!entityUri.empty())
+			elm->bindEntity(entityUri);
 
 		elm->pack();
 		return elm;

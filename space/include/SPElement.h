@@ -16,6 +16,7 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 #include "SPXmlParser.h"
+#include "SPUriStore.h"
 
 using namespace std;
 
@@ -77,6 +78,14 @@ namespace space {
     	SPElement *m_parsingElement;
     	int m_parsingDepth = 0;
         int m_gap = 0;
+        /// Re-renders the src template when its URI entity changes.
+        SPUriStore::Subscription m_srcSubscription;
+        /// Keeps the inner text in sync with the "entity" attribute's URI.
+        SPUriStore::Subscription m_entitySubscription;
+        void renderTemplate(const string &source, const string &method, const string &uri,
+                            const string &action, const nlohmann::json &requestData);
+        void bindEntity(const string &uri);
+        void applyEntity(const SPUriEntry &entry);
     public:
         /// Set by the application layer to receive XUL load-failure notifications.
         static std::function<void(const std::string&)> s_xulErrorHandler;

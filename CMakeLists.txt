@@ -162,6 +162,13 @@ if(BUILD_TESTING)
     target_link_libraries(spacify-template-test PRIVATE nlohmann_json::nlohmann_json elua)
     add_test(NAME spacify-template-test COMMAND spacify-template-test)
 
+    add_executable(spacify-uri-store-test
+        space/tests/SPUriStoreTest.cpp
+        space/src/SPUriStore.cpp)
+    target_include_directories(spacify-uri-store-test PRIVATE space/include)
+    target_link_libraries(spacify-uri-store-test PRIVATE nlohmann_json::nlohmann_json)
+    add_test(NAME spacify-uri-store-test COMMAND spacify-uri-store-test)
+
     add_executable(spacify-string-test space/tests/SPStringTest.cpp)
     target_include_directories(spacify-string-test PRIVATE space/include)
     add_test(NAME spacify-string-test COMMAND spacify-string-test)

@@ -117,6 +117,8 @@ public:
 
     /** Returns all artists ordered by name. */
     std::vector<ArtistRecord>    getAllArtists();
+    /** Returns the artist with @p isni, or an empty isni if not found. */
+    ArtistRecord                 getArtist(const std::string& isni);
     /** Returns all recordings ordered by name. */
     std::vector<RecordingRecord> getAllRecordings();
     /** Returns all releases ordered by name. */

@@ -396,6 +396,20 @@ std::vector<Database::ArtistRecord> Database::getAllArtists()
     return out;
 }
 
+Database::ArtistRecord Database::getArtist(const std::string& isni)
+{
+    ArtistRecord out;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT isni, name FROM artists WHERE isni = ?;",
+        -1, &stmt, nullptr) != SQLITE_OK) return out;
+    sqlite3_bind_text(stmt, 1, isni.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+        out = { colText(stmt, 0), colText(stmt, 1) };
+    sqlite3_finalize(stmt);
+    return out;
+}
+
 std::vector<Database::RecordingRecord> Database::getAllRecordings()
 {
     std::vector<RecordingRecord> out;

@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <view>
     <page title="Overview" id="overview">
-        <text>Artist</text>
+% if model.entity then
+        <text size="24">${escape(model.entity.name)}</text>
+% elseif model.status == "error" then
+        <text>Artist not found</text>
+% else
+        <text>Loading artist</text>
+% end
+% if model.status == "loading" and model.entity then
+        <text>Updating</text>
+% end
     </page>
     <page title="Test" id="test">
         <text>Second view</text>

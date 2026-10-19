@@ -21,8 +21,9 @@ namespace space {
 		return SPTabBarViewElement::acceptsUri(uri);
 	}
 	void SPSpiderViewElement::navigate(const string &uri) {
-		vector<string> parts = split(uri, ':');
-		string baseUri = parts[0] + ":" + parts[1];
+		// Keep the full entity URI (spacify:artist:<id>) so the view can be
+		// resolved through SPUriStore; only the #tab fragment is dropped.
+		string baseUri = uri.substr(0, uri.find('#'));
 		this->setAttribute("src", baseUri);
 	}
 
