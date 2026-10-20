@@ -8,6 +8,8 @@ ehthumbs_vista.db
 # Dump file
 *.stackdump
 
+bungalow-client
+
 /vcpkg/
 /vcpkg_installed/
 
