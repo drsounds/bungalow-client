@@ -64,11 +64,10 @@ protected:
     // Title of the current page, or empty.
     const string& getPageTitle() const { return m_pageTitle; }
 
-#ifdef BUNGALOW_CEF
     // Hides the site browser until the next site navigation, for subclasses
-    // that show other content in its place.
+    // that show other content in its place. A no-op without BUNGALOW_CEF,
+    // where pages open in the system browser.
     void hideSiteBrowser();
-#endif
 
     static constexpr int kNavBarHeight = 36;
 

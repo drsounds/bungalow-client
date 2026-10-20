@@ -73,36 +73,6 @@ std::string convertTemplate(const std::string &source) {
 	return converted;
 }
 
-void pushJson(lua_State *state, const nlohmann::json &value) {
-	if (value.is_null()) {
-		lua_pushnil(state);
-	} else if (value.is_boolean()) {
-		lua_pushboolean(state, value.get<bool>());
-	} else if (value.is_number()) {
-		lua_pushnumber(state, value.get<lua_Number>());
-	} else if (value.is_string()) {
-		const auto &text = value.get_ref<const std::string &>();
-		lua_pushlstring(state, text.data(), text.size());
-	} else if (value.is_array()) {
-		lua_createtable(state, static_cast<int>(value.size()), 0);
-		lua_Integer index = 1;
-		for (const auto &item : value) {
-			pushJson(state, item);
-			lua_rawseti(state, -2, index++);
-		}
-	} else if (value.is_object()) {
-		lua_createtable(state, 0, static_cast<int>(value.size()));
-		for (const auto &[key, item] : value.items()) {
-			pushJson(state, item);
-			lua_setfield(state, -2, key.c_str());
-		}
-	}
-}
-
-void pushObject(lua_State *state, const nlohmann::json &object) {
-	pushJson(state, object);
-}
-
 int appendPrint(lua_State *state) {
 	auto *output =
 		static_cast<std::string *>(lua_touserdata(state, lua_upvalueindex(1)));
@@ -150,12 +120,41 @@ int escapeXml(lua_State *state) {
 
 } // namespace
 
+void SPTemplate::pushJson(lua_State *state, const nlohmann::json &value) {
+	if (value.is_null()) {
+		lua_pushnil(state);
+	} else if (value.is_boolean()) {
+		lua_pushboolean(state, value.get<bool>());
+	} else if (value.is_number_integer()) {
+		lua_pushinteger(state, value.get<lua_Integer>());
+	} else if (value.is_number()) {
+		lua_pushnumber(state, value.get<lua_Number>());
+	} else if (value.is_string()) {
+		const auto &text = value.get_ref<const std::string &>();
+		lua_pushlstring(state, text.data(), text.size());
+	} else if (value.is_array()) {
+		lua_createtable(state, static_cast<int>(value.size()), 0);
+		lua_Integer index = 1;
+		for (const auto &item : value) {
+			pushJson(state, item);
+			lua_rawseti(state, -2, index++);
+		}
+	} else if (value.is_object()) {
+		lua_createtable(state, 0, static_cast<int>(value.size()));
+		for (const auto &[key, item] : value.items()) {
+			pushJson(state, item);
+			lua_setfield(state, -2, key.c_str());
+		}
+	}
+}
+
 std::string SPTemplate::render(const std::string &source,
 							   const std::string &method,
 							   const std::string &uri,
 							   const std::string &action,
 							   const nlohmann::json &data,
-							   const nlohmann::json &model) {
+							   const nlohmann::json &model,
+							   bool modelGlobals) {
 	using LuaState = std::unique_ptr<lua_State, decltype(&lua_close)>;
 	LuaState state(luaL_newstate(), &lua_close);
 	if (!state)
@@ -175,10 +174,16 @@ std::string SPTemplate::render(const std::string &source,
 	lua_setglobal(state.get(), "uri");
 	lua_pushlstring(state.get(), action.data(), action.size());
 	lua_setglobal(state.get(), "action");
-	pushObject(state.get(), data);
+	pushJson(state.get(), data);
 	lua_setglobal(state.get(), "data");
-	pushObject(state.get(), model);
+	pushJson(state.get(), model);
 	lua_setglobal(state.get(), "model");
+	if (modelGlobals && model.is_object()) {
+		for (const auto &[key, item] : model.items()) {
+			pushJson(state.get(), item);
+			lua_setglobal(state.get(), key.c_str());
+		}
+	}
 
 	const std::string converted = convertTemplate(source);
 	EluaContext context;

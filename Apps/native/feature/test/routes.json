@@ -1,0 +1,9 @@
+{
+    "routes": [
+        {
+            "path": "^bungalow:app:native:(?P<name>[a-zA-Z0-9\\-_]+)$",
+            "view": "index.xml",
+            "controller": "index.lua"
+        }
+    ]
+}

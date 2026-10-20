@@ -199,6 +199,17 @@ if(BUILD_TESTING)
     target_link_libraries(bungalow-template-test PRIVATE nlohmann_json::nlohmann_json elua)
     add_test(NAME bungalow-template-test COMMAND bungalow-template-test)
 
+    add_executable(bungalow-native-app-test
+        space/tests/SPNativeAppTest.cpp
+        space/src/SPNativeApp.cpp
+        space/src/SPTemplate.cpp)
+    target_include_directories(bungalow-native-app-test PRIVATE
+        ${LUA_INCLUDE_DIR}
+        space/include
+        elua/include)
+    target_link_libraries(bungalow-native-app-test PRIVATE nlohmann_json::nlohmann_json elua)
+    add_test(NAME bungalow-native-app-test COMMAND bungalow-native-app-test)
+
     add_executable(bungalow-uri-store-test
         space/tests/SPUriStoreTest.cpp
         space/src/SPUriStore.cpp)

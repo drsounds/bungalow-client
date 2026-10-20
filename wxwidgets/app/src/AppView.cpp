@@ -8,12 +8,13 @@
 #include "SPBookmarkEventArgs.h"
 #include "Database.h"
 #include "SPString.h"
-
-#ifdef BUNGALOW_CEF
 #include "SPAppManager.h"
+#include "SPNativeApp.h"
+#include "SPNativeAppElement.h"
 #include "SPTextElement.h"
 #include "SPVBoxElement.h"
 
+#ifdef BUNGALOW_CEF
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -28,7 +29,6 @@ static bool getDevMode() {
     return false;
 }
 
-#ifdef BUNGALOW_CEF
 namespace {
 
 constexpr const char* kAppPrefix = "bungalow:app:";
@@ -48,6 +48,7 @@ bool splitAppUri(const string& uri, string& appId, string& path) {
     return !appId.empty();
 }
 
+#ifdef BUNGALOW_CEF
 // id "<id>", path "/a/b" -> bungalow:app:<id>:a:b
 string appUri(const string& appId, const string& path) {
     string uri = kAppPrefix + appId;
@@ -75,15 +76,14 @@ string sharedApiScript() {
     script << in.rdbuf();
     return script.str();
 }
+#endif
 
 } // namespace
-#endif
 
 AppView::AppView(SPElement* parent)
     : SiteView(parent, "bungalow:app:", true, getDevMode(), false) // no bookmark button — we add "Add app" instead
     , m_devMode(getDevMode())
 {
-#ifdef BUNGALOW_CEF
     m_errorView = new SPVBoxElement(this);
     m_errorView->setFlex(1);
     m_errorView->setPadding({ 24, 24, 24, 24 });
@@ -98,7 +98,6 @@ AppView::AppView(SPElement* parent)
     m_errorView->appendChild(m_errorText);
     m_errorView->setVisible(false);
     this->appendChild(m_errorView);
-#endif
 
     if (!m_navRow) return;
 
@@ -139,17 +138,20 @@ bool AppView::acceptsUri(const string& uri) {
 }
 
 void AppView::navigate(const string& uri) {
-#ifdef BUNGALOW_CEF
-    if (navigateLocalApp(uri)) {
-        if (!m_devMode)
-            updateAppNavBar(uri);
-        invalidate(); // the browser is positioned on the next paint
-        return;
-    }
-#endif
+    if (navigateBundle(uri)) return;
     SiteView::navigate(uri);
     if (!m_devMode)
         updateAppNavBar(uri);
+}
+
+void AppView::navigateBack(const string& uri) {
+    if (!navigateBundle(uri))
+        SiteView::navigateBack(uri);
+}
+
+void AppView::navigateForward(const string& uri) {
+    if (!navigateBundle(uri))
+        SiteView::navigateForward(uri);
 }
 
 void AppView::updateAppNavBar(const string& uri) {
@@ -221,22 +223,107 @@ string AppView::urlToUri(const string& url) const {
     return uri;
 }
 
+// ── Installed app bundles ─────────────────────────────────────────────────────
+
+bool AppView::navigateBundle(const string& uri) {
+    bool shown = navigateNativeApp(uri);
 #ifdef BUNGALOW_CEF
-// ── Local app bundles ─────────────────────────────────────────────────────────
-
-void AppView::navigateBack(const string& uri) {
-    if (navigateLocalApp(uri)) {
-        if (!m_devMode)
-            updateAppNavBar(uri);
-        invalidate();
-    } else {
-        SiteView::navigateBack(uri);
+    if (!shown)
+        shown = navigateLocalApp(uri);
+#endif
+    if (!shown) {
+        showNativeApp(nullptr);
+        return false;
     }
+    if (!m_devMode)
+        updateAppNavBar(uri);
+    invalidate(); // a local app browser is positioned on the next paint
+    return true;
 }
 
-void AppView::navigateForward(const string& uri) {
-    navigateBack(uri);
+bool AppView::navigateNativeApp(const string& uri, bool restart) {
+    string appId, path;
+    if (!splitAppUri(uri, appId, path)) return false;
+    const SPAppBundle* bundle = SPAppManager::instance().findBundle(appId);
+    if (!bundle || !SPNativeApp::isNative(*bundle)) return false;
+
+    setCurrentUri(uri);
+    SPNativeAppElement* app = nativeAppFor(*bundle, restart);
+    if (!app) return true; // the error view is showing
+    showNativeApp(app);
+    app->loadSrc(uri); // errors replace it with the error view
+    return true;
 }
+
+// An app that failed to start is not kept, so it is retried on every
+// navigation; restart only applies to a running one.
+SPNativeAppElement* AppView::nativeAppFor(const SPAppBundle& bundle, bool restart) {
+    auto existing = m_nativeApps.find(bundle.identifier);
+    if (existing != m_nativeApps.end()) {
+        if (restart) {
+            try {
+                existing->second->restart();
+            } catch (const std::exception& error) {
+                showError("The app \"" + bundle.identifier + "\" could not be restarted: " + error.what());
+                return nullptr;
+            }
+        }
+        return existing->second;
+    }
+
+    SPNativeAppElement* app = nullptr;
+    try {
+        app = new SPNativeAppElement(this, bundle);
+    } catch (const std::exception& error) {
+        showError("The app \"" + bundle.identifier + "\" could not be started: " + error.what());
+        return nullptr;
+    }
+    app->setFlex(1);
+    app->setVisible(false);
+    app->setErrorHandler([this](const string& message) { showError(message); });
+    this->appendChild(app);
+    m_nativeApps[bundle.identifier] = app;
+    return app;
+}
+
+void AppView::showNativeApp(SPNativeAppElement* app) {
+    hideSiteBrowser();
+#ifdef BUNGALOW_CEF
+    if (m_activeApp) {
+        m_activeApp->browser->setVisible(false);
+        m_activeApp = nullptr;
+    }
+#endif
+    if (m_activeNativeApp && m_activeNativeApp != app)
+        m_activeNativeApp->setVisible(false);
+    m_activeNativeApp = app;
+    if (app) app->setVisible(true);
+    m_errorView->setVisible(false);
+    invalidate();
+}
+
+void AppView::showError(const string& message) {
+    showNativeApp(nullptr);
+    m_errorText->setInnerText(message);
+    m_errorView->setVisible(true);
+    invalidate();
+}
+
+// Keyed on the current URI rather than the shown app, so a native app that
+// is showing an error can be reloaded once the error is fixed.
+void AppView::reload() {
+    if (navigateNativeApp(getCurrentUri(), true)) return;
+#ifdef BUNGALOW_CEF
+    if (m_activeApp) {
+        m_activeApp->browser->reload();
+        return;
+    }
+#endif
+    SiteView::reload();
+}
+
+#ifdef BUNGALOW_CEF
+// ── Local HTML5 app bundles ───────────────────────────────────────────────────
 
 bool AppView::navigateLocalApp(const string& uri) {
     string appId, path;
@@ -327,17 +414,14 @@ void AppView::onRouteChanged(const string& appId, const string& path) {
 // remote path, which shows the site browser again.
 void AppView::showLocalApp(LocalApp* app) {
     hideSiteBrowser();
+    if (m_activeNativeApp) {
+        m_activeNativeApp->setVisible(false);
+        m_activeNativeApp = nullptr;
+    }
     if (m_activeApp && m_activeApp != app)
         m_activeApp->browser->setVisible(false);
     m_activeApp = app;
     if (m_errorView) m_errorView->setVisible(false);
-    invalidate();
-}
-
-void AppView::showError(const string& message) {
-    showLocalApp(nullptr);
-    m_errorText->setInnerText(message);
-    m_errorView->setVisible(true);
     invalidate();
 }
 
@@ -371,13 +455,6 @@ void AppView::showInspector() {
         m_activeApp->browser->showDevTools();
     else
         SiteView::showInspector();
-}
-
-void AppView::reload() {
-    if (m_activeApp)
-        m_activeApp->browser->reload();
-    else
-        SiteView::reload();
 }
 
 int AppView::onDevToolsClicked(SPObject* /*sender*/, SPEventArgs* /*args*/) {

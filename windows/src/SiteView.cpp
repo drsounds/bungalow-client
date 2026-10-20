@@ -337,6 +337,13 @@ void SiteView::setVisible(bool value) {
 #endif
 }
 
+void SiteView::hideSiteBrowser() {
+#ifdef BUNGALOW_CEF
+    m_showBrowser = false;
+    if (m_browser) m_browser->setVisible(false);
+#endif
+}
+
 #ifdef BUNGALOW_CEF
 // ── Embedded browser ──────────────────────────────────────────────────────────
 
@@ -365,11 +372,6 @@ SPEmbeddedSiteBrowser* SiteView::ensureBrowser() {
     m_browser = createEmbeddedSiteBrowser(this, std::move(options), std::move(callbacks));
     m_browserFailed = !m_browser;
     return m_browser.get();
-}
-
-void SiteView::hideSiteBrowser() {
-    m_showBrowser = false;
-    if (m_browser) m_browser->setVisible(false);
 }
 
 // The page committed a new address: a load we started, a link the page
