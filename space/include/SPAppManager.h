@@ -20,7 +20,8 @@ namespace space {
     public:
         static SPAppManager& instance();
 
-        /// Adds <base>/Apps, ~/Bungalow/Apps and <documents>/Bungalow/Apps.
+        /// Adds <base>/Apps, ~/Bungalow, ~/Bungalow/Apps, <documents>/Bungalow
+        /// and <documents>/Bungalow/Apps (later paths win on duplicate ids).
         /// Empty arguments are skipped.
         void addDefaultSearchPaths(const std::string& base, const std::string& home,
                                    const std::string& documents);

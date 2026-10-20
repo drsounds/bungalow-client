@@ -90,7 +90,7 @@ space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::S
     // Relative XUL paths resolve against the resources directory.
     SetCurrentDirectoryW(resourcesDir.c_str());
 
-    // Discover app bundles (Apps/, ~/Bungalow/Apps, ~/Documents/Bungalow/Apps)
+    // Discover app bundles (Apps/, ~/Bungalow[/Apps], ~/Documents/Bungalow[/Apps])
     // before creating the skin, which may come from one of them.
     auto& apps = space::SPAppManager::instance();
     apps.addDefaultSearchPaths(resourcesDir.u8string(), space::platform::homeDir(),

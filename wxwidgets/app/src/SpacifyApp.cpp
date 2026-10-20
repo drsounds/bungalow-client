@@ -82,7 +82,7 @@ bool SpacifyApp::OnInit(){
     // Set CWD to the resources parent so relative XUL paths work from anywhere.
     wxSetWorkingDirectory(resourcesDir.GetPathWithSep() + "..");
 
-    // Discover app bundles (Apps/, ~/Bungalow/Apps, ~/Documents/Bungalow/Apps)
+    // Discover app bundles (Apps/, ~/Bungalow[/Apps], ~/Documents/Bungalow[/Apps])
     // before creating the skin, which may come from one of them.
     auto& apps = space::SPAppManager::instance();
     apps.addDefaultSearchPaths(std::string(wxGetCwd().ToUTF8()), space::platform::homeDir(),

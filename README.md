@@ -35,7 +35,7 @@ the prebuilt CEF 151 binary distribution plus a locally built
 `libcef_dll_wrapper`. The CEF runtime files are copied next to the executable
 after each build.
 
-An app is a folder in `Apps/` (or `~/Bungalow/Apps`, `~/Documents/Bungalow/Apps`)
+An app is a folder in `Apps/` (or `~/Bungalow`, `~/Bungalow/Apps`, `~/Documents/Bungalow`, `~/Documents/Bungalow/Apps`)
 with a `manifest.json` and an `index.html`:
 
 ```json

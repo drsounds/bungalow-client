@@ -99,10 +99,14 @@ namespace space {
                                              const std::string& documents) {
         if (!base.empty())
             addSearchPath((fs::u8path(base) / "Apps").u8string());
-        if (!home.empty())
-            addSearchPath((fs::u8path(home) / "Bungalow" / "Apps").u8string());
-        if (!documents.empty())
-            addSearchPath((fs::u8path(documents) / "Bungalow" / "Apps").u8string());
+        // Bundles may sit directly in a Bungalow folder or in its Apps/ subfolder.
+        // Subfolders without a manifest.json (such as Apps/ itself) are skipped.
+        for (const std::string& root : { home, documents }) {
+            if (root.empty()) continue;
+            const fs::path bungalow = fs::u8path(root) / "Bungalow";
+            addSearchPath(bungalow.u8string());
+            addSearchPath((bungalow / "Apps").u8string());
+        }
     }
 
     void SPAppManager::addSearchPath(const std::string& dir) {
