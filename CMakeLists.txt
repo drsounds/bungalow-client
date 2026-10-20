@@ -104,7 +104,7 @@ else()
     endif()
     set(PLATFORM_LIBRARIES winhttp msimg32 comctl32 gdi32 gdiplus user32 ole32 shell32 comdlg32)
     if(BUNGALOW_UI_BACKEND STREQUAL "wtl")
-        list(APPEND PLATFORM_LIBRARIES winmm shell32 ole32 SQLite::SQLite3)
+        list(APPEND PLATFORM_LIBRARIES winmm shell32 ole32 SQLite3::SQLite3)
     endif()
 endif()
 
@@ -125,7 +125,7 @@ if(BUNGALOW_ENABLE_CEF)
         windows/include
         wxwidgets/app/include)
     target_compile_definitions(bungalow-cef PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0A00 UNICODE _UNICODE)
-    target_link_libraries(bungalow-cef PUBLIC cef::cef PRIVATE nlohmann_json::nlohmann_json SQLite::SQLite3)
+    target_link_libraries(bungalow-cef PUBLIC cef::cef PRIVATE nlohmann_json::nlohmann_json SQLite3::SQLite3)
 endif()
 
 if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets" AND wxWidgets_USE_FILE)
@@ -175,7 +175,6 @@ if(WIN32)
     set_target_properties(bungalow-client PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
-<<<<<<< HEAD
 if(BUNGALOW_ENABLE_CEF)
     target_compile_definitions(bungalow-client PRIVATE BUNGALOW_CEF)
     target_link_libraries(bungalow-client PRIVATE bungalow-cef)
@@ -188,9 +187,6 @@ if(BUNGALOW_ENABLE_CEF)
 endif()
 
 install(TARGETS bungalow-client RUNTIME DESTINATION .)
-=======
-install(TARGETS bungalow-client RUNTIME DESTINATION .)
->>>>>>> d84031d3c3ce1e5085482f92499f20901eca99ea
 
 if(BUILD_TESTING)
     add_executable(bungalow-template-test
