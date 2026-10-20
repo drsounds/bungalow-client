@@ -67,7 +67,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/spacify/Documents/spacify-client-web"
+			"value" : "/Users/bungalow/Documents/bungalow-client-web"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -507,7 +507,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/spacify/Documents/spacify-client-web/CMakeFiles/pkgRedirects"
+			"value" : "/Users/bungalow/Documents/bungalow-client-web/CMakeFiles/pkgRedirects"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -567,7 +567,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/spacify/Documents/spacify-client-web"
+			"value" : "/Users/bungalow/Documents/bungalow-client-web"
 		},
 		{
 			"name" : "CMAKE_INSTALL_NAME_TOOL",
@@ -875,7 +875,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "SpacifyClient"
+			"value" : "BungalowClient"
 		},
 		{
 			"name" : "CMAKE_PROJECT_SPDX_LICENSE",
@@ -2318,7 +2318,7 @@
 			"value" : "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libsqlite3.tbd"
 		},
 		{
-			"name" : "SpacifyClient_BINARY_DIR",
+			"name" : "BungalowClient_BINARY_DIR",
 			"properties" : 
 			[
 				{
@@ -2327,10 +2327,10 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/spacify/Documents/spacify-client-web"
+			"value" : "/Users/bungalow/Documents/bungalow-client-web"
 		},
 		{
-			"name" : "SpacifyClient_IS_TOP_LEVEL",
+			"name" : "BungalowClient_IS_TOP_LEVEL",
 			"properties" : 
 			[
 				{
@@ -2342,7 +2342,7 @@
 			"value" : "ON"
 		},
 		{
-			"name" : "SpacifyClient_SOURCE_DIR",
+			"name" : "BungalowClient_SOURCE_DIR",
 			"properties" : 
 			[
 				{
@@ -2351,7 +2351,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/spacify/Documents/spacify-client-web"
+			"value" : "/Users/bungalow/Documents/bungalow-client-web"
 		},
 		{
 			"name" : "ZLIB_INCLUDE_DIR",

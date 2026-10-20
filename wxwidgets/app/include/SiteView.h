@@ -51,9 +51,9 @@ protected:
     SPHBoxElement*   m_navRow        = nullptr;
 
 private:
-    string m_uriPrefix;   // e.g. "spacify:site:" or "spacify:app:"
+    string m_uriPrefix;   // e.g. "bungalow:site:" or "bungalow:app:"
     int    m_navOffset;   // kNavBarHeight when nav bar shown, else 0
-    string m_currentUri;  // spacify URI currently loaded
+    string m_currentUri;  // bungalow URI currently loaded
 
     SPButtonElement* m_bookmarkButton = nullptr;
     SPInputElement*  m_urlInput      = nullptr;

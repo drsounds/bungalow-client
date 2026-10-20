@@ -11,13 +11,13 @@ namespace views {
 /// Presents a full SiteView (wxWebView) with no navigation bar.
 /// When active:
 ///   - Audio data (PCM + FFT) is pushed each frame via RunScript into a
-///     window.spacifyAudioFrame({pcm:[...], fft:[...]}) callback.
-///   - Playback state changes are pushed via window.spacifyPlaybackChanged({...}).
+///     window.bungalowAudioFrame({pcm:[...], fft:[...]}) callback.
+///   - Playback state changes are pushed via window.bungalowPlaybackChanged({...}).
 ///
 /// Web pages hosted here register these callbacks to drive their own
 /// visualizations or lyrics/metadata displays.
 ///
-/// URI prefix: "spacify:player:app:" by default.  Subclasses may override
+/// URI prefix: "bungalow:player:app:" by default.  Subclasses may override
 /// uriToUrl() to translate the URI into a page URL.
 class SPAppView
     : public SiteView
@@ -25,7 +25,7 @@ class SPAppView
 {
 public:
     explicit SPAppView(SPElement* parent,
-                       const std::string& uriPrefix = "spacify:player:app:");
+                       const std::string& uriPrefix = "bungalow:player:app:");
 
     // ── SPElement / SiteView ──────────────────────────────────────────────────
     std::string getType() override { return "appview"; }
@@ -40,7 +40,7 @@ public:
     void onPlaybackChanged(bool playing, int posMs, int durMs) override;
 
     /// Injects the latest PCM and FFT frame as JSON into the hosted web page.
-    /// The page should define window.spacifyAudioFrame(data) to receive it.
+    /// The page should define window.bungalowAudioFrame(data) to receive it.
     ///
     /// Data is capped at 256 PCM samples and 256 FFT bins per frame to keep
     /// the serialised payload small.

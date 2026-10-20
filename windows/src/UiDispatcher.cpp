@@ -27,7 +27,7 @@ void initUiDispatcher() {
     WNDCLASSW wc{};
     wc.lpfnWndProc = dispatcherProc;
     wc.hInstance = GetModuleHandleW(nullptr);
-    wc.lpszClassName = L"SpacifyUiDispatcher";
+    wc.lpszClassName = L"BungalowUiDispatcher";
     RegisterClassW(&wc);
     g_window = CreateWindowExW(0, wc.lpszClassName, L"", 0, 0, 0, 0, 0,
                                HWND_MESSAGE, nullptr, wc.hInstance, nullptr);

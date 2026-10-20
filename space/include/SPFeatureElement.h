@@ -2,8 +2,8 @@
 // Created by Alexander Forselius on 2025-12-12.
 //
 
-#ifndef SPACIFYCLIENT_SPFEATURE_H
-#define SPACIFYCLIENT_SPFEATURE_H
+#ifndef BUNGALOWCLIENT_SPFEATURE_H
+#define BUNGALOWCLIENT_SPFEATURE_H
 
 #include "SPViewStackElement.h"
 
@@ -19,4 +19,4 @@ namespace space {
 }
 
 
-#endif //SPACIFYCLIENT_SPFEATURE_H
+#endif //BUNGALOWCLIENT_SPFEATURE_H

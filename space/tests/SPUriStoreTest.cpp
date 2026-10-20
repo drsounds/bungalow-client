@@ -23,7 +23,7 @@ void check(bool condition, const char *message) {
 }
 
 fs::path makeTempDir() {
-	fs::path dir = fs::temp_directory_path() / "spacify-uri-store-test";
+	fs::path dir = fs::temp_directory_path() / "bungalow-uri-store-test";
 	fs::remove_all(dir);
 	fs::create_directories(dir);
 	return dir;
@@ -43,20 +43,20 @@ int main() {
 		SPUriStore store;
 		store.setClock([&] { return now; });
 		store.setPersistenceDirectory(dir.u8string());
-		store.registerResolver("spacify:artist:", [&](const std::string &uri, auto resolve, auto) {
+		store.registerResolver("bungalow:artist:", [&](const std::string &uri, auto resolve, auto) {
 			++fetches;
 			resolve({{"uri", uri}, {"name", "Kraftwerk"}});
 		});
 
-		SPUriEntry entry = store.resolveURI("spacify:artist:1");
+		SPUriEntry entry = store.resolveURI("bungalow:artist:1");
 		check(entry.status == SPUriStatus::Fresh, "sync resolver yields a fresh entry");
 		check(entry.data.value("name", "") == "Kraftwerk", "entry holds resolved data");
-		check(fs::exists(store.cacheFilePath("spacify:artist:1")), "entry is persisted as JSON");
+		check(fs::exists(store.cacheFilePath("bungalow:artist:1")), "entry is persisted as JSON");
 
-		store.resolveURI("spacify:artist:1");
+		store.resolveURI("bungalow:artist:1");
 		check(fetches == 1, "fresh entries are not refetched within max age");
 		now += 10 * 60 * 1000;
-		store.resolveURI("spacify:artist:1");
+		store.resolveURI("bungalow:artist:1");
 		check(fetches == 2, "entries older than max age are refetched");
 	}
 
@@ -66,31 +66,31 @@ int main() {
 		store.setClock([&] { return now; });
 		store.setPersistenceDirectory(dir.u8string());
 		store.setScheduler([&](std::function<void()> task) { deferred.push_back(std::move(task)); });
-		store.registerResolver("spacify:artist:", [&](const std::string &, auto resolve, auto) {
+		store.registerResolver("bungalow:artist:", [&](const std::string &, auto resolve, auto) {
 			pending.push_back(resolve);
 		});
 
 		std::vector<std::string> seen;
-		auto subscription = store.subscribe("spacify:artist:1", [&](const std::string &, const SPUriEntry &e) {
+		auto subscription = store.subscribe("bungalow:artist:1", [&](const std::string &, const SPUriEntry &e) {
 			seen.push_back(space::toString(e.status));
 		});
 
-		SPUriEntry entry = store.resolveURI("spacify:artist:1");
+		SPUriEntry entry = store.resolveURI("bungalow:artist:1");
 		check(entry.status == SPUriStatus::Loading, "cached entry is revalidated");
 		check(entry.data.value("name", "") == "Kraftwerk", "cached data is available while loading");
 		check(pending.size() == 1, "one fetch is in flight");
 
-		store.resolveURI("spacify:artist:1");
+		store.resolveURI("bungalow:artist:1");
 		check(pending.size() == 1, "no duplicate fetch while loading");
 
 		pending[0]({{"name", "Kraftwerk (updated)"}});
-		check(store.get("spacify:artist:1").status == SPUriStatus::Loading,
+		check(store.get("bungalow:artist:1").status == SPUriStatus::Loading,
 			  "results wait for the scheduler");
 		for (auto &task : deferred)
 			task();
 		deferred.clear();
 
-		entry = store.get("spacify:artist:1");
+		entry = store.get("bungalow:artist:1");
 		check(entry.status == SPUriStatus::Fresh, "scheduled result is applied");
 		check(entry.data.value("name", "") == "Kraftwerk (updated)", "fresh data replaces cached data");
 		check(seen == std::vector<std::string>({"cached", "loading", "fresh"}),
@@ -120,7 +120,7 @@ int main() {
 		int secondCalls = 0;
 		auto first = store.subscribe("", [&](const std::string &, const SPUriEntry &) { second.reset(); });
 		second = store.subscribe("", [&](const std::string &, const SPUriEntry &) { ++secondCalls; });
-		store.dispatch({space::SPUriAction::Type::Patch, "spacify:track:1", {{"name", "x"}}});
+		store.dispatch({space::SPUriAction::Type::Patch, "bungalow:track:1", {{"name", "x"}}});
 		check(secondCalls == 0 && !second.active(), "unsubscribed listener is skipped");
 	}
 
@@ -128,9 +128,9 @@ int main() {
 	{
 		SPUriStore store;
 		store.setPersistenceDirectory(dir.u8string());
-		store.get("spacify:artist:1");
-		store.dispatch({space::SPUriAction::Type::Evict, "spacify:artist:1"});
-		check(!fs::exists(store.cacheFilePath("spacify:artist:1")), "evict deletes the cache file");
+		store.get("bungalow:artist:1");
+		store.dispatch({space::SPUriAction::Type::Evict, "bungalow:artist:1"});
+		check(!fs::exists(store.cacheFilePath("bungalow:artist:1")), "evict deletes the cache file");
 	}
 
 	fs::remove_all(dir);

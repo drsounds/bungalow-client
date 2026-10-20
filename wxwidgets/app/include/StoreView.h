@@ -4,7 +4,7 @@
 namespace space {
 namespace views {
 
-// Handles spacify:store: URIs — bare names expand to <name>.store.spacify.se
+// Handles bungalow:store: URIs — bare names expand to <name>.store.bungalow.se
 class StoreView : public SiteView {
 public:
     explicit StoreView(SPElement* parent);
@@ -13,7 +13,7 @@ public:
     string urlToUri(const string& url)   const override;
 
 private:
-    static constexpr const char* kStoreDomain = ".store.spacify.se";
+    static constexpr const char* kStoreDomain = ".store.bungalow.se";
 };
 
 } // namespace views

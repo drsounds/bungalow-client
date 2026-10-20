@@ -4,7 +4,7 @@
 namespace space {
 namespace views {
 
-// Like SiteView but handles spacify:app: URIs.
+// Like SiteView but handles bungalow:app: URIs.
 // Dev mode: full URL bar always shown.
 // Non-dev mode: nav bar with "Add app" button shown only while the app is not in favourites.
 class AppView : public SiteView {
@@ -23,7 +23,7 @@ private:
     void updateAppNavBar(const string& uri);
     int  onAddAppClicked(SPObject* sender, SPEventArgs* args);
 
-    static constexpr const char* kAppsDomain = ".apps.spacify.se";
+    static constexpr const char* kAppsDomain = ".apps.bungalow.se";
 };
 
 } // namespace views

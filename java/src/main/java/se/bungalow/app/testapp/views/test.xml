@@ -1,0 +1,11 @@
+<view xmlns="https://ns.bungalow.se/TR/spider.xsd">
+    <page id="overview" title="Overview">
+        <vbox>
+        <text>${os.date("%Y-%m-%d")}</text>
+        % for i,10 do
+        <text>${i}</text>
+        % end
+        <button onclick="refresh">Refresh</button>
+        </vbox>
+    </page>
+</view>

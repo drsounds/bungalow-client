@@ -17,7 +17,7 @@ int SPStandardTableDataSource::getRowCount() {
 SPStandardTableDataSource::~SPStandardTableDataSource() {
 }
 string SPStandardTableDataSource::getUriForCell (int column, int row) {
-    return "spacify:internal:debug";
+    return "bungalow:internal:debug";
 }
 string SPStandardTableDataSource::getTextForCell (int column, int row) {
     string t ("Row ");
@@ -33,7 +33,7 @@ string SPStandardTableDataSource::getTextForColumn (int column) {
     return t;
 }
 string SPStandardTableDataSource::getRowUri(int index) {
-    return "spacify:internal:debug";
+    return "bungalow:internal:debug";
 }
 
 bool SPStandardTableDataSource::isRowActive(int index) {

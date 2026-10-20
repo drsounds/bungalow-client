@@ -6,7 +6,7 @@
 namespace space {
 
 /// Carries current playback state: playing flag, position, and duration.
-/// Dispatched on SpacifyApp's playback observable whenever state changes.
+/// Dispatched on BungalowApp's playback observable whenever state changes.
 class SPPlaybackStateEventArgs : public SPEventArgs {
 public:
     bool playing    = false;

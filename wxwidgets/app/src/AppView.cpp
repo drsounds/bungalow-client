@@ -1,5 +1,5 @@
 #include "AppView.h"
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 #include "SPViewElement.h"
 #include "SPWindowElement.h"
 #include "SPButtonElement.h"
@@ -13,13 +13,13 @@ namespace space {
 namespace views {
 
 static bool getDevMode() {
-    if (auto* app = SpacifyApp::current())
+    if (auto* app = BungalowApp::current())
         return app->isDeveloperMode();
     return false;
 }
 
 AppView::AppView(SPElement* parent)
-    : SiteView(parent, "spacify:app:", true, getDevMode(), false) // no bookmark button — we add "Add app" instead
+    : SiteView(parent, "bungalow:app:", true, getDevMode(), false) // no bookmark button — we add "Add app" instead
     , m_devMode(getDevMode())
 {
     if (!m_navRow) return;
@@ -46,7 +46,7 @@ AppView::AppView(SPElement* parent, bool showNavBar)
 }
 
 bool AppView::acceptsUri(const string& uri) {
-    return space::startsWith(uri, "spacify:app:");
+    return space::startsWith(uri, "bungalow:app:");
 }
 
 void AppView::navigate(const string& uri) {
@@ -56,7 +56,7 @@ void AppView::navigate(const string& uri) {
 }
 
 void AppView::updateAppNavBar(const string& uri) {
-    auto* app = SpacifyApp::current();
+    auto* app = BungalowApp::current();
     if (!app || !app->getDatabase()) return;
     bool favorited = app->getDatabase()->isBookmarked(uri);
     setNavBarVisible(!favorited);
@@ -72,11 +72,11 @@ int AppView::onAddAppClicked(SPObject* /*sender*/, SPEventArgs* /*args*/) {
     return 0;
 }
 
-// spacify:app:myapp        -> https://myapp.apps.spacify.se
-// spacify:app:example.com  -> https://example.com
-// spacify:app:myapp:page   -> https://myapp.apps.spacify.se/page
+// bungalow:app:myapp        -> https://myapp.apps.bungalow.se
+// bungalow:app:example.com  -> https://example.com
+// bungalow:app:myapp:page   -> https://myapp.apps.bungalow.se/page
 string AppView::uriToUrl(const string& uri) const {
-    const string prefix = "spacify:app:";
+    const string prefix = "bungalow:app:";
     if (uri.size() <= prefix.size()) return "";
 
     string remainder = uri.substr(prefix.size());
@@ -93,8 +93,8 @@ string AppView::uriToUrl(const string& uri) const {
     return url;
 }
 
-// https://myapp.apps.spacify.se/page -> spacify:app:myapp:page
-// https://example.com/page           -> spacify:app:example.com:page
+// https://myapp.apps.bungalow.se/page -> bungalow:app:myapp:page
+// https://example.com/page           -> bungalow:app:example.com:page
 string AppView::urlToUri(const string& url) const {
     const string scheme = "https://";
     if (url.rfind(scheme, 0) != 0) return "";
@@ -104,13 +104,13 @@ string AppView::urlToUri(const string& url) const {
     string domain    = (slash == string::npos) ? rest : rest.substr(0, slash);
     string path      = (slash == string::npos) ? "" : rest.substr(slash);
 
-    // Collapse .apps.spacify.se back to the bare app name
+    // Collapse .apps.bungalow.se back to the bare app name
     const string suffix = kAppsDomain;
     if (domain.size() > suffix.size() &&
         domain.substr(domain.size() - suffix.size()) == suffix)
         domain = domain.substr(0, domain.size() - suffix.size());
 
-    string uri = "spacify:app:" + domain;
+    string uri = "bungalow:app:" + domain;
     for (char c : path)
         uri += (c == '/') ? ':' : c;
     while (!uri.empty() && uri.back() == ':')

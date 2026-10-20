@@ -1,7 +1,0 @@
-/**
- * 
- */
-/**
- * 
- */
-package se.spacify.app;

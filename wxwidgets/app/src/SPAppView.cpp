@@ -32,8 +32,8 @@ void SPAppView::onDeactivated() {
 
 void SPAppView::onPlaybackChanged(bool playing, int posMs, int durMs) {
     std::string js =
-        "if(typeof window.spacifyPlaybackChanged==='function'){"
-            "window.spacifyPlaybackChanged({"
+        "if(typeof window.bungalowPlaybackChanged==='function'){"
+            "window.bungalowPlaybackChanged({"
                 "playing:"    + std::string(playing ? "true" : "false") +
                 ",positionMs:" + std::to_string(posMs) +
                 ",durationMs:" + std::to_string(durMs) +
@@ -56,8 +56,8 @@ void SPAppView::onAudioFrame(const float* pcm, int pcmCount,
     std::string js;
     js.reserve(64 + maxPcm * 10 + maxFft * 10);
 
-    js = "if(typeof window.spacifyAudioFrame==='function'){"
-             "window.spacifyAudioFrame({pcm:[";
+    js = "if(typeof window.bungalowAudioFrame==='function'){"
+             "window.bungalowAudioFrame({pcm:[";
 
     char buf[32];
     for (int i = 0; i < maxPcm; ++i) {

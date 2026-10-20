@@ -3,7 +3,7 @@
 #include "SPTableElement.h"
 #include "SPSectionElement.h"
 #include "SPTabStackElement.h"
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 #include "SPTabBarElement.h"
 #include "SPPlaybackEventArgs.h"
 
@@ -43,11 +43,11 @@ PlayQueueView::PlayQueueView(SPElement* parent)
     );
 
     this->tabStack->appendChild(section);
-    this->tabBar->addTab("overview", "Play queue", "spacify:internal:playqueue");
+    this->tabBar->addTab("overview", "Play queue", "bungalow:internal:playqueue");
     this->tabStack->setTabId("overview");
 
     // Subscribe to queue and playback events so the panel stays in sync.
-    if (auto* app = SpacifyApp::current()) {
+    if (auto* app = BungalowApp::current()) {
         app->getPlaybackEvents().addEventListener(
             "queue:changed",
             reinterpret_cast<SPCallback>(&PlayQueueView::reload),
@@ -65,7 +65,7 @@ PlayQueueView::PlayQueueView(SPElement* parent)
 
 int PlayQueueView::reload(SPObject* /*sender*/, SPEventArgs* /*args*/) {
     if (!m_dataSource) return 0;
-    if (auto* app = SpacifyApp::current()) {
+    if (auto* app = BungalowApp::current()) {
         m_dataSource->setEntries(app->getQueueEntries(), app->getQueueIndex());
     }
     if (m_table) m_table->invalidate();
@@ -76,7 +76,7 @@ int PlayQueueView::onRowDblClicked(SPObject* /*sender*/, SPEventArgs* args) {
     auto* rowArgs = dynamic_cast<SPTableRowEventArgs*>(args);
     if (!rowArgs) return 0;
 
-    if (auto* app = SpacifyApp::current())
+    if (auto* app = BungalowApp::current())
         app->playQueueAtIndex(rowArgs->getRow());
 
     return 0;

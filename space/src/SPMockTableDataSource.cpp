@@ -45,7 +45,7 @@ SPMockTableDataSource::~SPMockTableDataSource() {
 
 }
 string SPMockTableDataSource::getUriForCell (int column, int row) {
-    return "spacify:internal:debug";
+    return "bungalow:internal:debug";
 }
 string SPMockTableDataSource::getTextForCell (int column, int row) {
     string t ("Row ");
@@ -61,7 +61,7 @@ string SPMockTableDataSource::getTextForColumn (int column) {
     return t;
 }
 string SPMockTableDataSource::getRowUri(int index) {
-    return "spacify:internal:debug";
+    return "bungalow:internal:debug";
 }
 
 bool SPMockTableDataSource::isRowActive(int index) {

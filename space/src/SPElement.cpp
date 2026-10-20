@@ -399,7 +399,7 @@ namespace space {
 	}
 
 	void SPElement::request(const string& method, const string &uri, const string &data) {
-		const string prefix = "spacify:";
+		const string prefix = "bungalow:";
 		if (uri.rfind(prefix, 0) != 0) {
 			this->loadXUL("./views/error.xml");
 			return;
@@ -589,7 +589,7 @@ namespace space {
 		}
 	}
 
-	// <text entity="spacify:artist:1" entity-field="name">Fallback</text>
+	// <text entity="bungalow:artist:1" entity-field="name">Fallback</text>
 	// shows the cached field immediately and updates it once the entity
 	// has been fetched.
 	void SPElement::bindEntity(const string &uri) {

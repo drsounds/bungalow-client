@@ -13,7 +13,7 @@ class SPGraphicsContext;
 
 /// Sidebar widget that shows the currently playing track.
 /// Layout (top → bottom): title label, artist/info label, cover art image.
-/// Subscribes to SpacifyApp's "playback:changed" observable.
+/// Subscribes to BungalowApp's "playback:changed" observable.
 class SPNowPlayingBarTitleElement : public SPVBoxElement
 {
 public:
@@ -24,7 +24,7 @@ public:
 
     void paint(int x, int y, SPGraphicsContext* gc) override;
 
-    /// Called when SpacifyApp dispatches a "playback:changed" event.
+    /// Called when BungalowApp dispatches a "playback:changed" event.
     int onPlaybackChanged(SPObject* sender, SPEventArgs* args);
 
 private:

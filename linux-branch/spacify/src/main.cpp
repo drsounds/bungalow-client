@@ -1,5 +1,0 @@
-//
-// Created by Alexander Forselius on 2025-12-06.
-//
-
-#include "SpacifyApp.h"

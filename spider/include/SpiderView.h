@@ -27,4 +27,4 @@ namespace spider {
 	};
 }
 
-#endif //SPACIFYCLIENT_SPIDER_H
+#endif //BUNGALOWCLIENT_SPIDER_H

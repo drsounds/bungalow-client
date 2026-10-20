@@ -7,7 +7,7 @@
 #include "SPTabBarViewElement.h"
 #include "SPTabBarElement.h"
 #include "SPPlaybackEventArgs.h"
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 
 #include <regex>
 
@@ -38,7 +38,7 @@ namespace space {
             section->appendChild(m_table);
 
             this->tabStack->appendChild(section);
-            this->tabBar->addTab("overview", "Local Files", "spacify:localfiles");
+            this->tabBar->addTab("overview", "Local Files", "bungalow:localfiles");
             this->tabStack->setTabId("overview");
         }
 
@@ -49,14 +49,14 @@ namespace space {
         }
 
         bool LocalFilesView::acceptsUri(const std::string& uri) {
-            return std::regex_match(uri, std::regex("spacify:localfiles"));
+            return std::regex_match(uri, std::regex("bungalow:localfiles"));
         }
 
         int LocalFilesView::onTableDoubleClick(SPObject* /*sender*/, SPEventArgs* args) {
             auto* rowArgs = dynamic_cast<SPTableRowEventArgs*>(args);
             if (!rowArgs || !m_dataSource) return 0;
 
-            auto* app = SpacifyApp::current();
+            auto* app = BungalowApp::current();
             if (!app) return 0;
 
             PlayContext ctx;

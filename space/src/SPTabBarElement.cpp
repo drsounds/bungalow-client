@@ -144,7 +144,7 @@ void SPTabBarElement::mouseDown(SPObject* sender, SPEventArgs *e) {
 
     tabBar->invalidate();
 }
-#define spacify2009 true
+#define bungalow2009 true
 void SPTabBarElement::paint(int x, int y, int width, int height, SPGraphicsContext *g) {
 
     this->getSkin()->drawTabBar(g, this, x, y, width, height);

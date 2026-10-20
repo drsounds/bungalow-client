@@ -7,7 +7,7 @@
 #include "SPTabBarViewElement.h"
 #include "SPTabBarElement.h"
 #include "SPPlaybackEventArgs.h"
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 #include "SPColor.h"
 #include "PlatformUi.h"
 
@@ -50,7 +50,7 @@ namespace space {
             );
 
             this->tabStack->appendChild(section);
-            this->tabBar->addTab("overview", "Library", "spacify:library");
+            this->tabBar->addTab("overview", "Library", "bungalow:library");
             this->tabStack->setTabId("overview");
 
             // + tool button on the right of the tab bar
@@ -64,7 +64,7 @@ namespace space {
         }
 
         void LibraryView::playRowInContext(int row) {
-            auto* app = SpacifyApp::current();
+            auto* app = BungalowApp::current();
             if (!app || !m_dataSource || !m_db) return;
 
             PlayContext ctx;
@@ -126,7 +126,7 @@ namespace space {
         }
 
         bool LibraryView::acceptsUri(const std::string& uri) {
-            return std::regex_match(uri, std::regex("spacify:library"));
+            return std::regex_match(uri, std::regex("bungalow:library"));
         }
 
         LibraryView::~LibraryView() {}

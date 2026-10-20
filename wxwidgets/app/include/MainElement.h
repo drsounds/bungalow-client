@@ -69,7 +69,7 @@ namespace space {
 
         private:
             void rebuildNavItems();
-            // Extract the favicon domain from a spacify:site: or spacify:app: URI.
+            // Extract the favicon domain from a bungalow:site: or bungalow:app: URI.
             // Returns empty string for non-site/app URIs.
             static std::string faviconDomain(const std::string& uri);
     };

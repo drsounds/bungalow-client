@@ -27,7 +27,7 @@ namespace space
     class MainElement;
 }
 
-class SpacifyApp : public wxApp, public space::SPApplicationContext
+class BungalowApp : public wxApp, public space::SPApplicationContext
 {
 protected:
     space::Space* m_space;
@@ -79,7 +79,7 @@ protected:
     void playFromIndex(int idx);
 
 public:
-    static SpacifyApp* current() { return dynamic_cast<SpacifyApp*>(wxTheApp); }
+    static BungalowApp* current() { return dynamic_cast<BungalowApp*>(wxTheApp); }
     virtual bool OnInit() override;
     virtual int OnExit() override;
     Database* getDatabase() { return m_database.get(); }

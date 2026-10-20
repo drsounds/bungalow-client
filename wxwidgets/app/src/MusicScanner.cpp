@@ -283,7 +283,7 @@ std::string MusicScannerThread::httpGet(const std::string& url) {
     }
     std::string cmd =
         "curl -s --max-time 3 "
-        "-A 'Spacify/1.0 (https://spacify.app)' "
+        "-A 'Bungalow/1.0 (https://bungalow.app)' "
         "'" + safe + "' 2>/dev/null";
 
     FILE* pipe = popen(cmd.c_str(), "r");

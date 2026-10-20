@@ -1,5 +1,5 @@
 #include "SiteView.h"
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 #include "SPWindowElement.h"
 #include "SPViewStackElement.h"
 #include "SPInputEventArgs.h"
@@ -59,17 +59,17 @@ string SiteView::extractHostname(const string& url) {
     return hostPort;
 }
 
-// Returns true if the URL's hostname is whitelisted (*.spacify.se) or has been
+// Returns true if the URL's hostname is whitelisted (*.bungalow.se) or has been
 // previously accepted by the user and recorded in the database.
 bool SiteView::isDomainAllowed(const string& url) const {
     string hostname = extractHostname(url);
     if (hostname.empty()) return true;
 
     // Bungalow-operated domains are always allowed
-    if (hostname == "spacify.se" || space::endsWith(hostname, ".spacify.se"))
+    if (hostname == "bungalow.se" || space::endsWith(hostname, ".bungalow.se"))
         return true;
 
-    auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+    auto* app = dynamic_cast<BungalowApp*>(wxTheApp);
     if (app && app->getDatabase())
         return app->getDatabase()->isDomainAccepted(hostname);
 
@@ -95,7 +95,7 @@ bool SiteView::showThirdPartyWarning(const string& hostname) {
 
     if (dlg.ShowModal() != wxID_YES) return false;
 
-    auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+    auto* app = dynamic_cast<BungalowApp*>(wxTheApp);
     if (app && app->getDatabase())
         app->getDatabase()->addAcceptedDomain(hostname);
     return true;
@@ -104,7 +104,7 @@ bool SiteView::showThirdPartyWarning(const string& hostname) {
 // ── Constructor / Destructor ──────────────────────────────────────────────────
 
 SiteView::SiteView(SPElement* parent)
-    : SiteView(parent, "spacify:site:", true, true) {}
+    : SiteView(parent, "bungalow:site:", true, true) {}
 
 SiteView::SiteView(SPElement* parent, const string& uriPrefix, bool showNavBar, bool showUrlBar, bool showBookmarkButton)
     : SPViewElement(parent)
@@ -174,7 +174,7 @@ void SiteView::ensureWebView() {
     m_webView->Hide();
 
     bool devMode = false;
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp))
+    if (auto* app = dynamic_cast<BungalowApp*>(wxTheApp))
         devMode = app->isDeveloperMode();
 
     // Inject app theme colors and expose CSS variables at document start
@@ -193,13 +193,13 @@ void SiteView::ensureWebView() {
     m_webView->Bind(wxEVT_WEBVIEW_NAVIGATED,  &SiteView::onWebViewNavigated,  this);
     m_webView->Bind(wxEVT_WEBVIEW_ERROR,      &SiteView::onWebViewError,      this);
 
-    if (m_webView->AddScriptMessageHandler("spacifyNav")) {
+    if (m_webView->AddScriptMessageHandler("bungalowNav")) {
         m_webView->AddUserScript(R"js(
 (function() {
     var _push    = history.pushState.bind(history);
     var _replace = history.replaceState.bind(history);
     function notify(url) {
-        try { window.webkit.messageHandlers.spacifyNav.postMessage(url); } catch(e) {}
+        try { window.webkit.messageHandlers.bungalowNav.postMessage(url); } catch(e) {}
     }
     history.pushState = function(s, t, u) {
         _push(s, t, u);
@@ -246,7 +246,7 @@ void SiteView::updateUrlBar(const string& url) {
 
 void SiteView::updateBookmarkButton(const string& uri) {
     if (!m_bookmarkButton) return;
-    auto* app = dynamic_cast<SpacifyApp*>(wxTheApp);
+    auto* app = dynamic_cast<BungalowApp*>(wxTheApp);
     if (!app || !app->getDatabase()) return;
     bool bookmarked = app->getDatabase()->isBookmarked(uri);
     m_bookmarkButton->setInnerText(bookmarked ? "\xe2\x98\x85" : "\xe2\x98\x86"); // ★ / ☆
@@ -256,7 +256,7 @@ void SiteView::updateBookmarkButton(const string& uri) {
 // ── SPViewElement interface ───────────────────────────────────────────────────
 
 bool SiteView::acceptsUri(const string& uri) {
-    return space::startsWith(uri, "spacify:site:");
+    return space::startsWith(uri, "bungalow:site:");
 }
 
 void SiteView::navigate(const string& uri) {
@@ -272,7 +272,7 @@ void SiteView::navigate(const string& uri) {
 
     // Ask the download manager whether this URL is a downloadable resource.
     // If there's no download manager, or the URL is clearly a web page, load immediately.
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp)) {
+    if (auto* app = dynamic_cast<BungalowApp*>(wxTheApp)) {
         if (auto* dm = app->getDownloadManager()) {
             m_pendingUrl   = url;
             m_checkingUrl  = true;
@@ -285,10 +285,10 @@ void SiteView::navigate(const string& uri) {
                 m_pendingUrl.clear();
 
                 if (isDownload) {
-                    if (auto* a = dynamic_cast<SpacifyApp*>(wxTheApp))
+                    if (auto* a = dynamic_cast<BungalowApp*>(wxTheApp))
                         if (auto* d = a->getDownloadManager())
                             d->startDownload(checkedUrl, filename, contentType);
-                    getWindowElement()->navigate("spacify:downloads");
+                    getWindowElement()->navigate("bungalow:downloads");
                 } else {
                     loadUrl(checkedUrl);
                 }
@@ -403,22 +403,22 @@ void SiteView::pack() {
 
 // ── Webview event handlers ────────────────────────────────────────────────────
 
-// Returns true for any URI that uses the spacify: scheme or an accepted alias.
-static bool isSpacifyScheme(const string& uri) {
-    return space::startsWith(uri, "spacify:") ||
+// Returns true for any URI that uses the bungalow: scheme or an accepted alias.
+static bool isBungalowScheme(const string& uri) {
+    return space::startsWith(uri, "bungalow:") ||
            space::startsWith(uri, "space:")    ||
            space::startsWith(uri, "bungalow:") ||
            space::startsWith(uri, "musik:");
 }
 
 // Called BEFORE the webview loads a URL.
-// Intercepts spacify: scheme hrefs and forwards them to the global viewstack
+// Intercepts bungalow: scheme hrefs and forwards them to the global viewstack
 // instead of letting the webview attempt to load an unknown protocol.
 // Also intercepts user-initiated navigations to unaccepted third-party domains.
 void SiteView::onWebViewNavigating(wxWebViewEvent& event) {
     if (!event.IsTargetMainFrame()) return;
     string url = event.GetURL().ToStdString();
-    if (isSpacifyScheme(url)) {
+    if (isBungalowScheme(url)) {
         event.Veto();
         if (!m_navigatingProgrammatically)
             this->getWindowElement()->navigate(url);
@@ -434,18 +434,18 @@ void SiteView::onWebViewNavigated(wxWebViewEvent& event) {
     if (!event.IsTargetMainFrame()) return;
     string url = event.GetURL().ToStdString();
     updateUrlBar(url);
-    string spacifyUri = urlToUri(url);
-    if (!spacifyUri.empty()) {
-        m_currentUri = spacifyUri;
-        updateBookmarkButton(spacifyUri);
+    string bungalowUri = urlToUri(url);
+    if (!bungalowUri.empty()) {
+        m_currentUri = bungalowUri;
+        updateBookmarkButton(bungalowUri);
     }
     applyThemeToWebView();
     if (m_navigatingProgrammatically) {
         m_navigatingProgrammatically = false;
         return;
     }
-    if (!spacifyUri.empty())
-        this->getWindowElement()->navigate(spacifyUri);
+    if (!bungalowUri.empty())
+        this->getWindowElement()->navigate(bungalowUri);
 }
 
 void SiteView::onWebViewError(wxWebViewEvent& /*event*/) {
@@ -456,9 +456,9 @@ void SiteView::onScriptMessage(wxWebViewEvent& event) {
     if (m_navigatingProgrammatically) return;
     string url = event.GetString().ToStdString();
     updateUrlBar(url);
-    string spacifyUri = urlToUri(url);
-    if (!spacifyUri.empty())
-        this->getWindowElement()->navigate(spacifyUri);
+    string bungalowUri = urlToUri(url);
+    if (!bungalowUri.empty())
+        this->getWindowElement()->navigate(bungalowUri);
 }
 
 // ── Nav bar handlers ──────────────────────────────────────────────────────────
@@ -487,15 +487,15 @@ int SiteView::onGoClicked(SPObject* /*sender*/, SPEventArgs* /*args*/) {
 void SiteView::navigateToInputUrl(const string& text) {
     if (text.empty()) return;
     string resolved = text;
-    if (resolved.find("://") == string::npos && !isSpacifyScheme(resolved))
+    if (resolved.find("://") == string::npos && !isBungalowScheme(resolved))
         resolved = "https://" + resolved;
-    string spacifyUri;
+    string bungalowUri;
     if (space::startsWith(resolved, "https://"))
-        spacifyUri = urlToUri(resolved);
-    else if (isSpacifyScheme(resolved))
-        spacifyUri = resolved;
-    if (!spacifyUri.empty())
-        this->getWindowElement()->navigate(spacifyUri);
+        bungalowUri = urlToUri(resolved);
+    else if (isBungalowScheme(resolved))
+        bungalowUri = resolved;
+    if (!bungalowUri.empty())
+        this->getWindowElement()->navigate(bungalowUri);
 }
 
 // ── Developer tools ───────────────────────────────────────────────────────────

@@ -2,8 +2,8 @@
 // Created by Alexander Forselius on 2025-12-03.
 //
 
-#ifndef SPACIFYCLIENT_APP_H
-#define SPACIFYCLIENT_APP_H
+#ifndef BUNGALOWCLIENT_APP_H
+#define BUNGALOWCLIENT_APP_H
 #include <string>
 
 #include "SPObservable.h"
@@ -71,4 +71,4 @@ namespace space
     };
 }
 
-#endif //SPACIFYCLIENT_APP_H
+#endif //BUNGALOWCLIENT_APP_H

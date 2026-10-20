@@ -3,7 +3,7 @@
 
 #include "SPPlayerCanvasElement.h"
 #include "SPPlaybackEventArgs.h"
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 
 #include <wx/app.h>
 #include <wx/timer.h>
@@ -35,7 +35,7 @@ SPPlayerCanvasElement::SPPlayerCanvasElement(SPElement* parent)
     setTagName("playercanvas");
     m_audioTimer = new CanvasAudioTimer(this);
 
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp)) {
+    if (auto* app = dynamic_cast<BungalowApp*>(wxTheApp)) {
         app->getPlaybackEvents().addEventListener(
             "playback:changed",
             reinterpret_cast<SPCallback>(&SPPlayerCanvasElement::onPlaybackChanged),

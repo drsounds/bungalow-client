@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "spacify-client"
+			"path" : "bungalow-client"
 		}
 	],
 	"backtrace" : 1,
@@ -117,19 +117,19 @@
 				},
 				{
 					"backtrace" : 8,
-					"path" : "/Users/spacify/Documents/spacify-client-web/include"
+					"path" : "/Users/bungalow/Documents/bungalow-client-web/include"
 				},
 				{
 					"backtrace" : 9,
-					"path" : "/Users/spacify/Documents/spacify-client-web/spacify/include"
+					"path" : "/Users/bungalow/Documents/bungalow-client-web/bungalow/include"
 				},
 				{
 					"backtrace" : 9,
-					"path" : "/Users/spacify/Documents/spacify-client-web/space/include"
+					"path" : "/Users/bungalow/Documents/bungalow-client-web/space/include"
 				},
 				{
 					"backtrace" : 9,
-					"path" : "/Users/spacify/Documents/spacify-client-web/wxwidgets/include"
+					"path" : "/Users/bungalow/Documents/bungalow-client-web/wxwidgets/include"
 				}
 			],
 			"language" : "CXX",
@@ -277,7 +277,7 @@
 			]
 		}
 	],
-	"id" : "spacify-client::@6890427a1f51a3e7e1df",
+	"id" : "bungalow-client::@6890427a1f51a3e7e1df",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -507,8 +507,8 @@
 			"fragment" : "-lwx_osx_cocoau_gl-3.3"
 		}
 	],
-	"name" : "spacify-client",
-	"nameOnDisk" : "spacify-client",
+	"name" : "bungalow-client",
+	"nameOnDisk" : "bungalow-client",
 	"paths" : 
 	{
 		"build" : ".",
@@ -1256,313 +1256,313 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/AddTrackDialog.cpp",
+			"path" : "bungalow/src/AddTrackDialog.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/AppView.cpp",
+			"path" : "bungalow/src/AppView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/ArtistOverView.cpp",
+			"path" : "bungalow/src/ArtistOverView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/ArtistView.cpp",
+			"path" : "bungalow/src/ArtistView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/ConfigView.cpp",
+			"path" : "bungalow/src/ConfigView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/CuratorView.cpp",
+			"path" : "bungalow/src/CuratorView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/Database.cpp",
+			"path" : "bungalow/src/Database.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/DoctrineView.cpp",
+			"path" : "bungalow/src/DoctrineView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/DownloadManager.cpp",
+			"path" : "bungalow/src/DownloadManager.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/DownloadsDataSource.cpp",
+			"path" : "bungalow/src/DownloadsDataSource.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/DownloadsView.cpp",
+			"path" : "bungalow/src/DownloadsView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/FaviconCache.cpp",
+			"path" : "bungalow/src/FaviconCache.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/LibraryDataSource.cpp",
+			"path" : "bungalow/src/LibraryDataSource.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/LibraryView.cpp",
+			"path" : "bungalow/src/LibraryView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/LocalFilesDataSource.cpp",
+			"path" : "bungalow/src/LocalFilesDataSource.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/LocalFilesView.cpp",
+			"path" : "bungalow/src/LocalFilesView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/MainElement.cpp",
+			"path" : "bungalow/src/MainElement.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/MusicScanner.cpp",
+			"path" : "bungalow/src/MusicScanner.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/PlayQueueDataSource.cpp",
+			"path" : "bungalow/src/PlayQueueDataSource.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/PlayQueueView.cpp",
+			"path" : "bungalow/src/PlayQueueView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/PlayerView.cpp",
+			"path" : "bungalow/src/PlayerView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/PythonRunner.cpp",
+			"path" : "bungalow/src/PythonRunner.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/SPAppView.cpp",
+			"path" : "bungalow/src/SPAppView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/SPMusicVisualizerCanvasElement.cpp",
+			"path" : "bungalow/src/SPMusicVisualizerCanvasElement.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/SPMusicVisualizerElement.cpp",
+			"path" : "bungalow/src/SPMusicVisualizerElement.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/SPPlayerCanvasElement.cpp",
+			"path" : "bungalow/src/SPPlayerCanvasElement.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/SiteView.cpp",
+			"path" : "bungalow/src/SiteView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/SiteViewMac.mm",
+			"path" : "bungalow/src/SiteViewMac.mm",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/SpaceView.cpp",
+			"path" : "bungalow/src/SpaceView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/SpacifyApp.cpp",
+			"path" : "bungalow/src/BungalowApp.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/StartFeature.cpp",
+			"path" : "bungalow/src/StartFeature.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/StartView.cpp",
+			"path" : "bungalow/src/StartView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/StoreView.cpp",
+			"path" : "bungalow/src/StoreView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/TopListView.cpp",
+			"path" : "bungalow/src/TopListView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/UserView.cpp",
+			"path" : "bungalow/src/UserView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/WhatsNewView.cpp",
+			"path" : "bungalow/src/WhatsNewView.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/main.cpp",
+			"path" : "bungalow/src/main.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPArtist.cpp",
+			"path" : "bungalow/src/models/SPArtist.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPAudioFile.cpp",
+			"path" : "bungalow/src/models/SPAudioFile.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPFileRow.cpp",
+			"path" : "bungalow/src/models/SPFileRow.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPLabel.cpp",
+			"path" : "bungalow/src/models/SPLabel.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPPlayable.cpp",
+			"path" : "bungalow/src/models/SPPlayable.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPPlayableTrack.cpp",
+			"path" : "bungalow/src/models/SPPlayableTrack.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPRecording.cpp",
+			"path" : "bungalow/src/models/SPRecording.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPRecordingArtist.cpp",
+			"path" : "bungalow/src/models/SPRecordingArtist.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPRelease.cpp",
+			"path" : "bungalow/src/models/SPRelease.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPReleaseArtist.cpp",
+			"path" : "bungalow/src/models/SPReleaseArtist.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPSave.cpp",
+			"path" : "bungalow/src/models/SPSave.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPTrack.cpp",
+			"path" : "bungalow/src/models/SPTrack.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/models/SPTrackAudioFile.cpp",
+			"path" : "bungalow/src/models/SPTrackAudioFile.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/services/AVAudioPlayerBridge.mm",
+			"path" : "bungalow/src/services/AVAudioPlayerBridge.mm",
 			"sourceGroupIndex" : 0
 		},
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "spacify/src/services/LocalMediaService.cpp",
+			"path" : "bungalow/src/services/LocalMediaService.cpp",
 			"sourceGroupIndex" : 0
 		},
 		{
@@ -2011,267 +2011,267 @@
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/AddTrackDialog.h",
+			"path" : "bungalow/include/AddTrackDialog.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/AppView.h",
+			"path" : "bungalow/include/AppView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/ArtistOverView.h",
+			"path" : "bungalow/include/ArtistOverView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/ArtistView.h",
+			"path" : "bungalow/include/ArtistView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/ConfigView.h",
+			"path" : "bungalow/include/ConfigView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/CuratorView.h",
+			"path" : "bungalow/include/CuratorView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/Database.h",
+			"path" : "bungalow/include/Database.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/DoctrineView.h",
+			"path" : "bungalow/include/DoctrineView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/DownloadManager.h",
+			"path" : "bungalow/include/DownloadManager.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/DownloadsDataSource.h",
+			"path" : "bungalow/include/DownloadsDataSource.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/DownloadsView.h",
+			"path" : "bungalow/include/DownloadsView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/FaviconCache.h",
+			"path" : "bungalow/include/FaviconCache.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/LibraryDataSource.h",
+			"path" : "bungalow/include/LibraryDataSource.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/LibraryView.h",
+			"path" : "bungalow/include/LibraryView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/LocalFilesDataSource.h",
+			"path" : "bungalow/include/LocalFilesDataSource.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/LocalFilesView.h",
+			"path" : "bungalow/include/LocalFilesView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/MainElement.h",
+			"path" : "bungalow/include/MainElement.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/MusicScanner.h",
+			"path" : "bungalow/include/MusicScanner.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/PlayQueueDataSource.h",
+			"path" : "bungalow/include/PlayQueueDataSource.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/PlayQueueView.h",
+			"path" : "bungalow/include/PlayQueueView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/PlayerView.h",
+			"path" : "bungalow/include/PlayerView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/PythonRunner.h",
+			"path" : "bungalow/include/PythonRunner.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/SPAppView.h",
+			"path" : "bungalow/include/SPAppView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/SPMusicVisualizerCanvasElement.h",
+			"path" : "bungalow/include/SPMusicVisualizerCanvasElement.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/SPMusicVisualizerElement.h",
+			"path" : "bungalow/include/SPMusicVisualizerElement.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/SPPlayerCanvasElement.h",
+			"path" : "bungalow/include/SPPlayerCanvasElement.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/SiteView.h",
+			"path" : "bungalow/include/SiteView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/SpaceView.h",
+			"path" : "bungalow/include/SpaceView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/SpacifyApp.h",
+			"path" : "bungalow/include/BungalowApp.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/StartFeature.h",
+			"path" : "bungalow/include/StartFeature.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/StartView.h",
+			"path" : "bungalow/include/StartView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/StoreView.h",
+			"path" : "bungalow/include/StoreView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/TopListView.h",
+			"path" : "bungalow/include/TopListView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/UserView.h",
+			"path" : "bungalow/include/UserView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/WhatsNewView.h",
+			"path" : "bungalow/include/WhatsNewView.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPArtist.h",
+			"path" : "bungalow/include/models/SPArtist.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPAudioFile.h",
+			"path" : "bungalow/include/models/SPAudioFile.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPDBConnection.h",
+			"path" : "bungalow/include/models/SPDBConnection.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPFileRow.h",
+			"path" : "bungalow/include/models/SPFileRow.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPLabel.h",
+			"path" : "bungalow/include/models/SPLabel.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPModel.h",
+			"path" : "bungalow/include/models/SPModel.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPPlayable.h",
+			"path" : "bungalow/include/models/SPPlayable.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPPlayableTrack.h",
+			"path" : "bungalow/include/models/SPPlayableTrack.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPRecording.h",
+			"path" : "bungalow/include/models/SPRecording.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPRecordingArtist.h",
+			"path" : "bungalow/include/models/SPRecordingArtist.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPRelease.h",
+			"path" : "bungalow/include/models/SPRelease.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPReleaseArtist.h",
+			"path" : "bungalow/include/models/SPReleaseArtist.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPSave.h",
+			"path" : "bungalow/include/models/SPSave.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPTrack.h",
+			"path" : "bungalow/include/models/SPTrack.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/models/SPTrackAudioFile.h",
+			"path" : "bungalow/include/models/SPTrackAudioFile.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/services/LocalMediaService.h",
+			"path" : "bungalow/include/services/LocalMediaService.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/services/SPMediaService.h",
+			"path" : "bungalow/include/services/SPMediaService.h",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 1,
-			"path" : "spacify/include/services/SPService.h",
+			"path" : "bungalow/include/services/SPService.h",
 			"sourceGroupIndex" : 1
 		},
 		{

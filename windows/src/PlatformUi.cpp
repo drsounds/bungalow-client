@@ -145,7 +145,7 @@ std::string showFolderDialog(const std::string& title, const std::string& initia
 }
 
 std::string userDataDir() {
-    std::string dir = knownFolder(FOLDERID_RoamingAppData) + "/Spacify";
+    std::string dir = knownFolder(FOLDERID_RoamingAppData) + "/Bungalow";
     std::error_code ec;
     std::filesystem::create_directories(std::filesystem::u8path(dir), ec);
     return dir;

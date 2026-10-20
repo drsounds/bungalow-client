@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug spacify-client (WTL)",
+            "name": "Debug bungalow-client (WTL)",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/ninja/spacify-client.exe",
+            "program": "${workspaceFolder}/build/ninja/bungalow-client.exe",
             "args": [],
             "cwd": "${workspaceFolder}/build/ninja",
             "preLaunchTask": "CMake: build"

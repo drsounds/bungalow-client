@@ -12,7 +12,7 @@ SPServer::SPServer()
 
 void SPServer::request(string method, string uri, void *data, space_server_reply *reply) {
     if (method == "GET") {
-        if (uri == "spacify:internal:home") {
+        if (uri == "bungalow:internal:home") {
 
         }
     }
