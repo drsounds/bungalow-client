@@ -24,10 +24,10 @@ its exported functions (`lookup`, `search`, `createPlaylist`,
 
 ## Routing
 
-`spacify:app:<app>:a:b` is served as `sp://<app>/a/b`, and
+`bungalow:app:<app>:a:b` is served as `sp://<app>/a/b`, and
 `models.application.arguments` is `["a", "b"]`. Clicking a `spotify:` link or
 assigning `location = "spotify:..."` is routed through
-`window.spacify.navigate()` (as `spacify:...`), so the host's view stack
+`window.bungalow.navigate()` (as `bungalow:...`), so the host's view stack
 records it and calls back `window.navigate(path)` for the app's own URIs.
 
 ## Dev mode

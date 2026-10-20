@@ -1,5 +1,5 @@
 #include "AppView.h"
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 #include "SPViewElement.h"
 #include "SPWindowElement.h"
 #include "SPButtonElement.h"
@@ -23,7 +23,7 @@ namespace space {
 namespace views {
 
 static bool getDevMode() {
-    if (auto* app = SpacifyApp::current())
+    if (auto* app = BungalowApp::current())
         return app->isDeveloperMode();
     return false;
 }
@@ -31,9 +31,9 @@ static bool getDevMode() {
 #ifdef BUNGALOW_CEF
 namespace {
 
-constexpr const char* kAppPrefix = "spacify:app:";
+constexpr const char* kAppPrefix = "bungalow:app:";
 
-// spacify:app:<id>:a:b -> id "<id>", path "/a/b"
+// bungalow:app:<id>:a:b -> id "<id>", path "/a/b"
 bool splitAppUri(const string& uri, string& appId, string& path) {
     if (!space::startsWith(uri, kAppPrefix)) return false;
     const string rest = uri.substr(std::char_traits<char>::length(kAppPrefix));
@@ -48,7 +48,7 @@ bool splitAppUri(const string& uri, string& appId, string& path) {
     return !appId.empty();
 }
 
-// id "<id>", path "/a/b" -> spacify:app:<id>:a:b
+// id "<id>", path "/a/b" -> bungalow:app:<id>:a:b
 string appUri(const string& appId, const string& path) {
     string uri = kAppPrefix + appId;
     for (char c : path)
@@ -80,7 +80,7 @@ string sharedApiScript() {
 #endif
 
 AppView::AppView(SPElement* parent)
-    : SiteView(parent, "spacify:app:", true, getDevMode(), false) // no bookmark button — we add "Add app" instead
+    : SiteView(parent, "bungalow:app:", true, getDevMode(), false) // no bookmark button — we add "Add app" instead
     , m_devMode(getDevMode())
 {
 #ifdef BUNGALOW_CEF
@@ -135,7 +135,7 @@ AppView::AppView(SPElement* parent, bool showNavBar)
 }
 
 bool AppView::acceptsUri(const string& uri) {
-    return space::startsWith(uri, "spacify:app:");
+    return space::startsWith(uri, "bungalow:app:");
 }
 
 void AppView::navigate(const string& uri) {
@@ -153,7 +153,7 @@ void AppView::navigate(const string& uri) {
 }
 
 void AppView::updateAppNavBar(const string& uri) {
-    auto* app = SpacifyApp::current();
+    auto* app = BungalowApp::current();
     if (!app || !app->getDatabase()) return;
     bool favorited = app->getDatabase()->isBookmarked(uri);
     setNavBarVisible(!favorited);
@@ -175,11 +175,11 @@ int AppView::onAddAppClicked(SPObject* /*sender*/, SPEventArgs* /*args*/) {
     return 0;
 }
 
-// spacify:app:myapp        -> https://myapp.apps.spacify.se
-// spacify:app:example.com  -> https://example.com
-// spacify:app:myapp:page   -> https://myapp.apps.spacify.se/page
+// bungalow:app:myapp        -> https://myapp.apps.bungalow.se
+// bungalow:app:example.com  -> https://example.com
+// bungalow:app:myapp:page   -> https://myapp.apps.bungalow.se/page
 string AppView::uriToUrl(const string& uri) const {
-    const string prefix = "spacify:app:";
+    const string prefix = "bungalow:app:";
     if (uri.size() <= prefix.size()) return "";
 
     string remainder = uri.substr(prefix.size());
@@ -196,8 +196,8 @@ string AppView::uriToUrl(const string& uri) const {
     return url;
 }
 
-// https://myapp.apps.spacify.se/page -> spacify:app:myapp:page
-// https://example.com/page           -> spacify:app:example.com:page
+// https://myapp.apps.bungalow.se/page -> bungalow:app:myapp:page
+// https://example.com/page           -> bungalow:app:example.com:page
 string AppView::urlToUri(const string& url) const {
     const string scheme = "https://";
     if (url.rfind(scheme, 0) != 0) return "";
@@ -207,13 +207,13 @@ string AppView::urlToUri(const string& url) const {
     string domain    = (slash == string::npos) ? rest : rest.substr(0, slash);
     string path      = (slash == string::npos) ? "" : rest.substr(slash);
 
-    // Collapse .apps.spacify.se back to the bare app name
+    // Collapse .apps.bungalow.se back to the bare app name
     const string suffix = kAppsDomain;
     if (domain.size() > suffix.size() &&
         domain.substr(domain.size() - suffix.size()) == suffix)
         domain = domain.substr(0, domain.size() - suffix.size());
 
-    string uri = "spacify:app:" + domain;
+    string uri = "bungalow:app:" + domain;
     for (char c : path)
         uri += (c == '/') ? ':' : c;
     while (!uri.empty() && uri.back() == ':')
@@ -244,7 +244,7 @@ bool AppView::navigateLocalApp(const string& uri) {
 
     const SPAppBundle* bundle = SPAppManager::instance().findBundle(appId);
     if (bundle && !hasIndexHtml(*bundle)) {
-        // Not an HTML5 bundle: keep the remote https://<id>.apps.spacify.se path.
+        // Not an HTML5 bundle: keep the remote https://<id>.apps.bungalow.se path.
         showLocalApp(nullptr);
         return false;
     }
@@ -285,9 +285,9 @@ AppView::LocalApp* AppView::localAppFor(const SPAppBundle& bundle) {
     // The shared bundle itself has no app pages to bootstrap.
     if (appId != kSharedApiBundle)
         options.startupScript += "\n" + sharedApiScript();
-    // Besides spacify.se, apps may fetch from the https hosts their manifest
+    // Besides bungalow.se, apps may fetch from the https hosts their manifest
     // lists under AllowedHosts, once the user has accepted each of them.
-    options.allowedHosts.insert("spacify.se");
+    options.allowedHosts.insert("bungalow.se");
     auto hosts = bundle.manifest.find("AllowedHosts");
     if (hosts != bundle.manifest.end() && hosts->is_array()) {
         for (const auto& entry : *hosts) {

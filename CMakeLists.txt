@@ -45,19 +45,19 @@ target_include_directories(elua PUBLIC
 target_link_libraries(elua PUBLIC ${LUA_LIBRARIES})
 
 file(GLOB SPACE_SOURCES CONFIGURE_DEPENDS "space/src/*.cpp")
-file(GLOB SPACIFY_SOURCES CONFIGURE_DEPENDS "spacify/src/*.cpp")
+file(GLOB BUNGALOW_SOURCES CONFIGURE_DEPENDS "bungalow/src/*.cpp")
 file(GLOB SPACE_HEADERS CONFIGURE_DEPENDS "space/include/*.h")
-file(GLOB SPACIFY_HEADERS CONFIGURE_DEPENDS "spacify/include/*.h")
+file(GLOB BUNGALOW_HEADERS CONFIGURE_DEPENDS "bungalow/include/*.h")
 if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
-    list(FILTER SPACIFY_SOURCES EXCLUDE REGEX "/main\\.cpp$")
+    list(FILTER BUNGALOW_SOURCES EXCLUDE REGEX "/main\\.cpp$")
 else()
-    set(SPACIFY_SOURCES)
-    set(SPACIFY_HEADERS)
+    set(BUNGALOW_SOURCES)
+    set(BUNGALOW_HEADERS)
     if(BUNGALOW_UI_BACKEND STREQUAL "wtl")
         find_package(SQLite3 REQUIRED)
-        file(GLOB_RECURSE SPACIFY_SOURCES CONFIGURE_DEPENDS "spacify/src/*.cpp")
-        file(GLOB_RECURSE SPACIFY_HEADERS CONFIGURE_DEPENDS "spacify/include/*.h")
-        list(FILTER SPACIFY_SOURCES EXCLUDE REGEX "/main\\.cpp$")
+        file(GLOB_RECURSE BUNGALOW_SOURCES CONFIGURE_DEPENDS "bungalow/src/*.cpp")
+        file(GLOB_RECURSE BUNGALOW_HEADERS CONFIGURE_DEPENDS "bungalow/include/*.h")
+        list(FILTER BUNGALOW_SOURCES EXCLUDE REGEX "/main\\.cpp$")
     endif()
 endif()
 
@@ -81,7 +81,7 @@ else()
         endif()
         list(APPEND BACKEND_SOURCES
             windows/src/wtl_main.cpp
-            windows/src/SpacifyApp.cpp
+            windows/src/BungalowApp.cpp
             windows/src/SiteView.cpp
             windows/src/FaviconCache.cpp
             windows/src/DownloadManager.cpp
@@ -132,38 +132,38 @@ if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets" AND wxWidgets_USE_FILE)
     include(${wxWidgets_USE_FILE})
 endif()
 
-add_executable(spacify-client
+add_executable(bungalow-client
     ${SPACE_SOURCES}
-    ${SPACIFY_SOURCES}
+    ${BUNGALOW_SOURCES}
     ${BACKEND_SOURCES}
     ${SPACE_HEADERS}
-    ${SPACIFY_HEADERS}
+    ${BUNGALOW_HEADERS}
     ${BACKEND_HEADERS}
     space/src/SPPageElement.h)
 
-target_include_directories(spacify-client PRIVATE
+target_include_directories(bungalow-client PRIVATE
     ${LUA_INCLUDE_DIR}
     ${PNG_INCLUDE_DIRS}
     ${EXPAT_INCLUDE_DIRS}
     space/include
-    spacify/include)
+    bungalow/include)
 
 if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
-    target_include_directories(spacify-client PRIVATE
+    target_include_directories(bungalow-client PRIVATE
         wxwidgets/include
         wxwidgets/app/include
         ${wxWidgets_INCLUDE_DIRS})
-    target_compile_definitions(spacify-client PRIVATE BUNGALOW_ENABLE_PLAYER_CANVAS)
+    target_compile_definitions(bungalow-client PRIVATE BUNGALOW_ENABLE_PLAYER_CANVAS)
 else()
-    target_include_directories(spacify-client PRIVATE windows/include)
+    target_include_directories(bungalow-client PRIVATE windows/include)
     if(BUNGALOW_UI_BACKEND STREQUAL "wtl")
-        target_include_directories(spacify-client PRIVATE "${WTL_INCLUDE_DIR}" wxwidgets/app/include)
-        target_compile_definitions(spacify-client PRIVATE BUNGALOW_WTL)
+        target_include_directories(bungalow-client PRIVATE "${WTL_INCLUDE_DIR}" wxwidgets/app/include)
+        target_compile_definitions(bungalow-client PRIVATE BUNGALOW_WTL)
     endif()
-    target_compile_definitions(spacify-client PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0601)
+    target_compile_definitions(bungalow-client PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0601)
 endif()
 
-target_link_libraries(spacify-client PRIVATE
+target_link_libraries(bungalow-client PRIVATE
     ${PLATFORM_LIBRARIES}
     nlohmann_json::nlohmann_json
     PNG::PNG
@@ -172,48 +172,52 @@ target_link_libraries(spacify-client PRIVATE
     elua)
 
 if(WIN32)
-    set_target_properties(spacify-client PROPERTIES WIN32_EXECUTABLE TRUE)
+    set_target_properties(bungalow-client PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
+<<<<<<< HEAD
 if(BUNGALOW_ENABLE_CEF)
-    target_compile_definitions(spacify-client PRIVATE BUNGALOW_CEF)
-    target_link_libraries(spacify-client PRIVATE bungalow-cef)
+    target_compile_definitions(bungalow-client PRIVATE BUNGALOW_CEF)
+    target_link_libraries(bungalow-client PRIVATE bungalow-cef)
     # Chromium needs the Windows 10 compatibility manifest and, since this exe
     # also runs CEF's renderer processes, an 8 MiB main-thread stack.
-    target_sources(spacify-client PRIVATE windows/spacify-client.manifest)
-    target_link_options(spacify-client PRIVATE /STACK:0x800000)
-    cef_copy_runtime(spacify-client)
+    target_sources(bungalow-client PRIVATE windows/bungalow-client.manifest)
+    target_link_options(bungalow-client PRIVATE /STACK:0x800000)
+    cef_copy_runtime(bungalow-client)
     cef_install_runtime(.)
 endif()
 
-install(TARGETS spacify-client RUNTIME DESTINATION .)
+install(TARGETS bungalow-client RUNTIME DESTINATION .)
+=======
+install(TARGETS bungalow-client RUNTIME DESTINATION .)
+>>>>>>> d84031d3c3ce1e5085482f92499f20901eca99ea
 
 if(BUILD_TESTING)
-    add_executable(spacify-template-test
+    add_executable(bungalow-template-test
         space/tests/SPTemplateTest.cpp
         space/src/SPTemplate.cpp)
-    target_include_directories(spacify-template-test PRIVATE
+    target_include_directories(bungalow-template-test PRIVATE
         ${LUA_INCLUDE_DIR}
         space/include
         elua/include)
-    target_link_libraries(spacify-template-test PRIVATE nlohmann_json::nlohmann_json elua)
-    add_test(NAME spacify-template-test COMMAND spacify-template-test)
+    target_link_libraries(bungalow-template-test PRIVATE nlohmann_json::nlohmann_json elua)
+    add_test(NAME bungalow-template-test COMMAND bungalow-template-test)
 
-    add_executable(spacify-uri-store-test
+    add_executable(bungalow-uri-store-test
         space/tests/SPUriStoreTest.cpp
         space/src/SPUriStore.cpp)
-    target_include_directories(spacify-uri-store-test PRIVATE space/include)
-    target_link_libraries(spacify-uri-store-test PRIVATE nlohmann_json::nlohmann_json)
-    add_test(NAME spacify-uri-store-test COMMAND spacify-uri-store-test)
+    target_include_directories(bungalow-uri-store-test PRIVATE space/include)
+    target_link_libraries(bungalow-uri-store-test PRIVATE nlohmann_json::nlohmann_json)
+    add_test(NAME bungalow-uri-store-test COMMAND bungalow-uri-store-test)
 
-    add_executable(spacify-string-test space/tests/SPStringTest.cpp)
-    target_include_directories(spacify-string-test PRIVATE space/include)
-    add_test(NAME spacify-string-test COMMAND spacify-string-test)
+    add_executable(bungalow-string-test space/tests/SPStringTest.cpp)
+    target_include_directories(bungalow-string-test PRIVATE space/include)
+    add_test(NAME bungalow-string-test COMMAND bungalow-string-test)
 
-    add_executable(spacify-xml-parser-test
+    add_executable(bungalow-xml-parser-test
         space/tests/SPXmlParserTest.cpp
         space/src/SPXmlParser.cpp)
-    target_include_directories(spacify-xml-parser-test PRIVATE space/include)
-    target_link_libraries(spacify-xml-parser-test PRIVATE EXPAT::EXPAT)
-    add_test(NAME spacify-xml-parser-test COMMAND spacify-xml-parser-test)
+    target_include_directories(bungalow-xml-parser-test PRIVATE space/include)
+    target_link_libraries(bungalow-xml-parser-test PRIVATE EXPAT::EXPAT)
+    add_test(NAME bungalow-xml-parser-test COMMAND bungalow-xml-parser-test)
 endif()

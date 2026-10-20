@@ -144,7 +144,7 @@
 					[
 						0
 					],
-					"name" : "SpacifyClient",
+					"name" : "BungalowClient",
 					"targetIndexes" : 
 					[
 						0
@@ -155,9 +155,9 @@
 			[
 				{
 					"directoryIndex" : 0,
-					"id" : "spacify-client::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-spacify-client-Debug-be99b324e97f1435dbcf.json",
-					"name" : "spacify-client",
+					"id" : "bungalow-client::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-bungalow-client-Debug-be99b324e97f1435dbcf.json",
+					"name" : "bungalow-client",
 					"projectIndex" : 0
 				}
 			]
@@ -166,8 +166,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/Users/spacify/Documents/spacify-client-web",
-		"source" : "/Users/spacify/Documents/spacify-client-web"
+		"build" : "/Users/bungalow/Documents/bungalow-client-web",
+		"source" : "/Users/bungalow/Documents/bungalow-client-web"
 	},
 	"version" : 
 	{

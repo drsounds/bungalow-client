@@ -37,9 +37,9 @@ int main() {
 								  {"nested", {{"label", "nested value"}}}};
 
 	const auto rendered = space::SPTemplate::render(
-		source, "POST", "spacify:start", "refresh", data, model);
+		source, "POST", "bungalow:start", "refresh", data, model);
 	if (!contains(rendered, "title=\"Overview\"") ||
-		!contains(rendered, "POST spacify:start refresh Lua") ||
+		!contains(rendered, "POST bungalow:start refresh Lua") ||
 		!contains(rendered, "<text>1</text>") ||
 		!contains(rendered, "<text>two</text>") ||
 		!contains(rendered, "1</text>") || !contains(rendered, "2</text>") ||
@@ -60,7 +60,7 @@ int main() {
 
 	const std::string entity = space::SPTemplate::render(
 		"<text>${escape(model.entity.name)}${escape(model.missing)}</text>", "GET",
-		"spacify:artist:1", "", nlohmann::json::object(),
+		"bungalow:artist:1", "", nlohmann::json::object(),
 		{{"entity", {{"name", "Simon & <Garfunkel>"}}}});
 	if (entity != "<text>Simon &amp; &lt;Garfunkel&gt;</text>") {
 		std::cerr << "escape() did not produce safe XUL: " << entity << '\n';

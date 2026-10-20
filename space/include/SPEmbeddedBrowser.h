@@ -39,8 +39,8 @@ namespace space {
             /// The app changed its route (pushState, hash change, page load).
             /// path is the in-app path, e.g. "/a/b".
             std::function<void(const std::string& path)> routeChanged;
-            /// The app asked the host to open a spacify: URI
-            /// (window.spacify.navigate or a spacify: link).
+            /// The app asked the host to open a bungalow: URI
+            /// (window.bungalow.navigate or a bungalow: link).
             std::function<void(const std::string& uri)> navigateRequested;
             /// The app tried to open a page outside its bundle.
             std::function<void(const std::string& url)> externalUrlRequested;
@@ -90,7 +90,7 @@ namespace space {
         struct Callbacks {
             /// The main frame's URL changed (page load, pushState, hash change).
             std::function<void(const std::string& url)> addressChanged;
-            /// The page asked to open a spacify: URI (link or redirect).
+            /// The page asked to open a bungalow: URI (link or redirect).
             std::function<void(const std::string& uri)> navigateRequested;
             /// The page tried to open an http(s) page on a host that has not
             /// been allowed, or in a new window. The navigation was cancelled.

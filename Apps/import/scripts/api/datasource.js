@@ -375,14 +375,14 @@ function generatePlaylist(uri) {
 
 // ── URI handling ─────────────────────────────────────────────────────────
 
-// Accepts spotify:, spacify:, bungalow:, space: and musik: URIs and
+// Accepts spotify:, bungalow:, bungalow:, space: and musik: URIs and
 // open.spotify.com links; returns the spotify: form.
 function normalizeUri(uri) {
     if (!uri) return uri;
     uri = String(uri).trim();
     var m = uri.match(/^https?:\/\/(?:open|play)\.spotify\.com\/(.+)$/);
     if (m) return "spotify:" + m[1].split("?")[0].replace(/\//g, ":");
-    return uri.replace(/^(spacify|bungalow|space|musik):/, "spotify:");
+    return uri.replace(/^(bungalow|bungalow|space|musik):/, "spotify:");
 }
 
 function typeOf(uri) {

@@ -1,6 +1,6 @@
 #include "MainElement.h"
 #include "FaviconCache.h"
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 #include "LibraryView.h"
 #include "StartView.h"
 #include "SPInputElement.h"
@@ -51,12 +51,12 @@ namespace space {
     }
 
     // ── Helper: normalize alternative URI scheme prefixes ────────────────────
-    // space:, bungalow:, and musik: are all aliases for the spacify: scheme.
+    // space:, bungalow:, and musik: are all aliases for the bungalow: scheme.
     static string normalizeScheme(const string& uri) {
         static const pair<const char*, const char*> kAliases[] = {
-            { "space:",    "spacify:" },
-            { "bungalow:", "spacify:" },
-            { "musik:",    "spacify:" },
+            { "space:",    "bungalow:" },
+            { "bungalow:", "bungalow:" },
+            { "musik:",    "bungalow:" },
         };
         for (auto& [alias, canonical] : kAliases) {
             if (uri.rfind(alias, 0) == 0)
@@ -65,25 +65,25 @@ namespace space {
         return uri;
     }
 
-    // ── Helper: returns true if the string starts with a known spacify scheme ─
-    static bool hasSpacifyScheme(const string& uri) {
-        return uri.rfind("spacify:", 0) == 0
+    // ── Helper: returns true if the string starts with a known bungalow scheme ─
+    static bool hasBungalowScheme(const string& uri) {
+        return uri.rfind("bungalow:", 0) == 0
             || uri.rfind("space:",    0) == 0
             || uri.rfind("bungalow:", 0) == 0
             || uri.rfind("musik:",    0) == 0;
     }
 
-    // ── Helper: favicon domain from a spacify URI ─────────────────────────────
+    // ── Helper: favicon domain from a bungalow URI ─────────────────────────────
     // Returns the effective hostname for favicon fetching, applying the
     // appropriate hosted-domain suffix for bare names (app/curator/store).
     // Returns "" for URIs that don't map to a web domain.
     /*static*/ string MainElement::faviconDomain(const string& uri) {
         struct SchemeEntry { const char* prefix; size_t len; const char* hosted; };
         static const SchemeEntry kSchemes[] = {
-            { "spacify:site:",    13, nullptr                },
-            { "spacify:app:",     12, ".apps.spacify.se"     },
-            { "spacify:curator:", 16, ".curator.spacify.se"  },
-            { "spacify:store:",   14, ".store.spacify.se"    },
+            { "bungalow:site:",    13, nullptr                },
+            { "bungalow:app:",     12, ".apps.bungalow.se"     },
+            { "bungalow:curator:", 16, ".curator.bungalow.se"  },
+            { "bungalow:store:",   14, ".store.bungalow.se"    },
         };
 
         for (auto& s : kSchemes) {
@@ -99,11 +99,11 @@ namespace space {
     }
 
     // ── Helper: extract domain-level URI ─────────────────────────────────────
-    // spacify:site:example.com:page -> spacify:site:example.com
-    // spacify:app:finder:sub       -> spacify:app:finder
+    // bungalow:site:example.com:page -> bungalow:site:example.com
+    // bungalow:app:finder:sub       -> bungalow:app:finder
     // Returns empty string if the URI is already the domain level
     static string domainUri(const string& uri) {
-        // Find 3rd colon (after "spacify:scheme:domain")
+        // Find 3rd colon (after "bungalow:scheme:domain")
         size_t first = uri.find(':');
         if (first == string::npos) return "";
         size_t second = uri.find(':', first + 1);
@@ -137,7 +137,7 @@ namespace space {
         const int sel = platform::showPopupMenu({ { ID_REMOVE_BOOKMARK, "Remove bookmark" } });
 
         if (sel == ID_REMOVE_BOOKMARK && !uri.empty()) {
-            auto* app = SpacifyApp::current();
+            auto* app = BungalowApp::current();
             if (app && app->getDatabase())
                 app->getDatabase()->removeBookmark(uri);
             rebuildNavItems();
@@ -152,7 +152,7 @@ namespace space {
         auto* args = dynamic_cast<space::SPBookmarkEventArgs*>(e);
         if (!args) return 0;
 
-        auto* app = SpacifyApp::current();
+        auto* app = BungalowApp::current();
         if (!app || !app->getDatabase()) return 0;
         Database* db = app->getDatabase();
 
@@ -212,7 +212,7 @@ namespace space {
     void MainElement::rebuildNavItems() {
         treeView->clearItems();
 
-        auto* app = SpacifyApp::current();
+        auto* app = BungalowApp::current();
         Database* db = (app && app->getDatabase()) ? app->getDatabase() : nullptr;
 
         // Resolve icon path: use cached favicon if available, otherwise the default SVG.
@@ -247,12 +247,12 @@ namespace space {
         treeView->addSection("MAIN");
 
 
-        auto* start = new SPTreeItem(new SPUri("spacify:start"));
+        auto* start = new SPTreeItem(new SPUri("bungalow:start"));
         start->setText("Start");
         start->setIconPath("icons/NowPlaying.svg");
         treeView->addItem(start);
 
-        auto* itemNowPlaying = new SPTreeItem(new SPUri("spacify:player"));
+        auto* itemNowPlaying = new SPTreeItem(new SPUri("bungalow:player"));
         itemNowPlaying->setText("Now Playing");
         itemNowPlaying->setIconPath("icons/NowPlaying.svg");
         treeView->addItem(itemNowPlaying);
@@ -260,27 +260,27 @@ namespace space {
         // ── LIBRARY ──────────────────────────────────────────────────────────
         treeView->addSection("LIBRARY");
 
-        auto* itemSettings = new SPTreeItem(new SPUri("spacify:config"));
+        auto* itemSettings = new SPTreeItem(new SPUri("bungalow:config"));
         itemSettings->setText("Settings");
         itemSettings->setIconPath("icons/Document.svg");
         itemSettings->setCollapsed(false); // expanded by default
         treeView->addItem(itemSettings);
 
-        auto* itemLibrary = new SPTreeItem(new SPUri("spacify:library"));
+        auto* itemLibrary = new SPTreeItem(new SPUri("bungalow:library"));
         itemLibrary->setText("Library");
         itemLibrary->setIconPath("icons/Library.svg");
-        auto* itemTracks = new SPTreeItem(new SPUri("spacify:library"));
+        auto* itemTracks = new SPTreeItem(new SPUri("bungalow:library"));
         itemTracks->setText("Tracks");
         itemTracks->setIconPath("icons/MusicNote.svg");
         itemLibrary->addChild(itemTracks);
         treeView->addItem(itemLibrary);
 
-        auto* itemLocalFiles = new SPTreeItem(new SPUri("spacify:localfiles"));
+        auto* itemLocalFiles = new SPTreeItem(new SPUri("bungalow:localfiles"));
         itemLocalFiles->setText("Local Files");
         itemLocalFiles->setIconPath("icons/MusicFile.svg");
         itemLibrary->addChild(itemLocalFiles);
 
-        auto* itemDownloads = new SPTreeItem(new SPUri("spacify:downloads"));
+        auto* itemDownloads = new SPTreeItem(new SPUri("bungalow:downloads"));
         itemDownloads->setText("Downloads");
         itemDownloads->setIconPath("icons/Downloads.svg");
         treeView->addItem(itemDownloads);
@@ -289,27 +289,27 @@ namespace space {
             // ── APPS ─────────────────────────────────────────────────────────────
             treeView->addSection("APPS");
 
-            auto* itemAppFinder = new SPTreeItem(new SPUri("spacify:app:finder"));
+            auto* itemAppFinder = new SPTreeItem(new SPUri("bungalow:app:finder"));
             itemAppFinder->setText("App Finder");
-            itemAppFinder->setIconPath(resolveIcon("spacify:app:finder", "icons/App.svg"));
+            itemAppFinder->setIconPath(resolveIcon("bungalow:app:finder", "icons/App.svg"));
             treeView->addItem(itemAppFinder);
 
-            addBookmarkSection("spacify:app:",  "icons/App.svg");
+            addBookmarkSection("bungalow:app:",  "icons/App.svg");
 
             // ── CURATORS ──────────────────────────────────────────────────────────
             treeView->addSection("CURATORS");
 
-            addBookmarkSection("spacify:curator:", "icons/WebPage.svg");
+            addBookmarkSection("bungalow:curator:", "icons/WebPage.svg");
 
             // ── STORE ─────────────────────────────────────────────────────────────
             treeView->addSection("STORE");
 
-            addBookmarkSection("spacify:store:", "icons/WebPage.svg");
+            addBookmarkSection("bungalow:store:", "icons/WebPage.svg");
 
             // ── WEB SITES ─────────────────────────────────────────────────────────
             treeView->addSection("WEB SITES");
 
-            addBookmarkSection("spacify:site:", "icons/WebPage.svg");
+            addBookmarkSection("bungalow:site:", "icons/WebPage.svg");
         }
     }
 
@@ -399,11 +399,11 @@ namespace space {
         viewStack = (SPViewStackElement *)this->getElementById("viewstack");
         viewStack->setFlex(1);
         sqlite3* db = nullptr;
-        if (auto* app = SpacifyApp::current())
+        if (auto* app = BungalowApp::current())
             db = app->getDatabase() ? app->getDatabase()->handle() : nullptr;
 
         DownloadManager* dm = nullptr;
-        if (auto* app = SpacifyApp::current())
+        if (auto* app = BungalowApp::current())
             dm = app->getDownloadManager();
 
         viewStack->appendChild(new views::SpaceView(viewStack));
@@ -435,7 +435,7 @@ namespace space {
         footer->setHeight(32);
         footer->setId("footer");
 
-        this->navigate("spacify:start");
+        this->navigate("bungalow:start");
     }
 
     MainElement::MainElement(SPElement *parent) : SPVBoxElement(parent)
@@ -461,8 +461,8 @@ namespace space {
         auto *ie = dynamic_cast<SPInputEventArgs*>(eventArgs);
         if (!ie) return 0;
         string query = ie->getText();
-        if (!hasSpacifyScheme(query)) {
-            query = "spacify:search:" + query;
+        if (!hasBungalowScheme(query)) {
+            query = "bungalow:search:" + query;
         }
         this->navigate(query);
         return 0;

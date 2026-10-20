@@ -15,13 +15,13 @@ class SPTextElement;
 
 namespace views {
 
-// Like SiteView but handles spacify:app: URIs.
+// Like SiteView but handles bungalow:app: URIs.
 // Dev mode: full URL bar always shown.
 // Non-dev mode: nav bar with "Add app" button shown only while the app is not in favourites.
 //
 // With BUNGALOW_CEF, installed bundles that contain an index.html run locally
 // in an embedded browser (one per app, kept alive while switching), served
-// from sp://<app_id>/. spacify:app:<app_id>:a:b maps to the in-app route /a/b.
+// from sp://<app_id>/. bungalow:app:<app_id>:a:b maps to the in-app route /a/b.
 // Unknown app ids show an error view.
 class AppView : public SiteView {
 public:
@@ -48,8 +48,6 @@ private:
     void updateAppNavBar(const string& uri);
     int  onAddAppClicked(SPObject* sender, SPEventArgs* args);
 
-    static constexpr const char* kAppsDomain = ".apps.spacify.se";
-
 #ifdef BUNGALOW_CEF
     struct LocalApp {
         std::unique_ptr<SPEmbeddedBrowser> browser;
@@ -72,6 +70,7 @@ private:
     void showError(const string& message);
     int  onDevToolsClicked(SPObject* sender, SPEventArgs* args);
 #endif
+    static constexpr const char* kAppsDomain = ".apps.bungalow";
 };
 
 } // namespace views

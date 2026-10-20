@@ -4,7 +4,7 @@
 
 #include <memory>
 
-class SpacifyApp;
+class BungalowApp;
 
 namespace space
 {
@@ -41,7 +41,7 @@ namespace space
         SPWindowElement *windowElement = nullptr;
         SPElement *mainElement = nullptr;
         Win32GraphicsContext *graphics = nullptr;
-        std::unique_ptr<SpacifyApp> app;
+        std::unique_ptr<BungalowApp> app;
         bool leftButtonDown = false;
         bool rightButtonDown = false;
     };

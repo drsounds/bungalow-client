@@ -1,13 +1,13 @@
 # Views framework
 
-The views framework will allow for extending Spacify
+The views framework will allow for extending Bungalow
 and will be using a V8 based JavaScript engine to allow integrations
 
 Each view is written in JS
 
 ````javascript
 
-import render from '@spacify/ui'
+import render from '@bungalow/ui'
 
 function Page() {
    return render(

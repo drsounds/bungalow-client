@@ -164,7 +164,7 @@ public:
 			initializationFailed = true;
 			return -1;
 		}
-		AppendMenuW(fileMenu, MF_STRING, FileAboutCommandId, L"&About Spacify");
+		AppendMenuW(fileMenu, MF_STRING, FileAboutCommandId, L"&About Bungalow");
 		AppendMenuW(fileMenu, MF_SEPARATOR, 0, nullptr);
 		AppendMenuW(fileMenu, MF_STRING, FileExitCommandId, L"E&xit");
 		AppendMenuW(developMenu, MF_STRING, DevelopShowInspectorCommandId, L"Show &Inspector");
@@ -356,7 +356,7 @@ public:
 	LRESULT OnCommand(UINT, WPARAM wParam, LPARAM lParam, BOOL &) {
 		switch (LOWORD(wParam)) {
 		case FileAboutCommandId:
-			::MessageBoxW(m_hWnd, L"Spacify Client", L"About Spacify",
+			::MessageBoxW(m_hWnd, L"Bungalow Client", L"About Bungalow",
 						  MB_OK | MB_ICONINFORMATION);
 			return 0;
 		case FileExitCommandId:
@@ -568,7 +568,7 @@ private:
 		HGDIOBJ oldFont = SelectObject(dc, titleFont ? titleFont : GetStockObject(DEFAULT_GUI_FONT));
 		SetTextColor(dc, textColor);
 		RECT title{0, 0, client.right, height};
-		DrawTextW(dc, L"Spacify", -1, &title, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+		DrawTextW(dc, L"Bungalow", -1, &title, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 
 		SelectObject(dc, menuFont ? menuFont : GetStockObject(DEFAULT_GUI_FONT));
 		for (CaptionItem item : {CaptionItem::File, CaptionItem::Develop}) {
@@ -656,7 +656,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
 
 	if (FAILED(_Module.Init(nullptr, instance))) {
 		::MessageBoxW(nullptr, L"Unable to initialize the WTL application.",
-					  L"Spacify", MB_OK | MB_ICONERROR);
+					  L"Bungalow", MB_OK | MB_ICONERROR);
 		return 1;
 	}
 
@@ -674,11 +674,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
 			::MessageBoxW(
 				nullptr,
 				frame.didFailInitialization()
-					? L"Unable to initialize the Spacify user interface."
-					: L"Unable to create the Spacify window.",
-				L"Spacify", MB_OK | MB_ICONERROR);
+					? L"Unable to initialize the Bungalow user interface."
+					: L"Unable to create the Bungalow window.",
+				L"Bungalow", MB_OK | MB_ICONERROR);
 		} else {
-			::SetWindowTextW(frame.m_hWnd, L"Spacify");
+			::SetWindowTextW(frame.m_hWnd, L"Bungalow");
 			frame.ShowWindow(showCommand);
 			frame.UpdateWindow();
 			result = loop.Run();

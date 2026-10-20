@@ -8,10 +8,10 @@
 #include "Space.h"
 #include "Win32GraphicsContext.h"
 #ifdef BUNGALOW_WTL
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 #include "MainElement.h"
 #else
-class SpacifyApp {};
+class BungalowApp {};
 #endif
 
 #include <commctrl.h>
@@ -35,17 +35,17 @@ namespace space
         space->addWindow(windowElement);
 
 #ifdef BUNGALOW_WTL
-        app = std::make_unique<SpacifyApp>();
+        app = std::make_unique<BungalowApp>();
         try {
             mainElement = app->initialize(space, windowElement);
         } catch (const std::exception &e) {
-            MessageBoxA(window, e.what(), "Spacify startup error", MB_OK | MB_ICONERROR);
+            MessageBoxA(window, e.what(), "Bungalow startup error", MB_OK | MB_ICONERROR);
             return false;
         }
 #else
         mainElement = new SPTextElement(windowElement);
         mainElement->setId("main");
-        static_cast<SPTextElement *>(mainElement)->setInnerText("Spacify");
+        static_cast<SPTextElement *>(mainElement)->setInnerText("Bungalow");
         mainElement->setHeight(32);
         windowElement->appendChild(mainElement);
 #endif

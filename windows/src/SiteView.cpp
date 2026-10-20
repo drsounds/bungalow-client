@@ -1,5 +1,5 @@
 #include "SiteView.h"
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 #include "SPWindowElement.h"
 #include "SPViewStackElement.h"
 #include "SPInputEventArgs.h"
@@ -25,8 +25,8 @@ static std::wstring widen(const std::string& s) {
     return w;
 }
 
-static bool isSpacifyScheme(const string& uri) {
-    return space::startsWith(uri, "spacify:") ||
+static bool isBungalowScheme(const string& uri) {
+    return space::startsWith(uri, "bungalow:") ||
            space::startsWith(uri, "space:")    ||
            space::startsWith(uri, "bungalow:") ||
            space::startsWith(uri, "musik:");
@@ -74,10 +74,10 @@ bool SiteView::isDomainAllowed(const string& url) const {
     string hostname = extractHostname(url);
     if (hostname.empty()) return true;
 
-    if (hostname == "spacify.se" || space::endsWith(hostname, ".spacify.se"))
+    if (hostname == "bungalow.se" || space::endsWith(hostname, ".bungalow.se"))
         return true;
 
-    auto* app = SpacifyApp::current();
+    auto* app = BungalowApp::current();
     if (app && app->getDatabase())
         return app->getDatabase()->isDomainAccepted(hostname);
 
@@ -98,14 +98,14 @@ bool SiteView::showThirdPartyWarning(const string& hostname) {
                     MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING) != IDYES)
         return false;
 
-    auto* app = SpacifyApp::current();
+    auto* app = BungalowApp::current();
     if (app && app->getDatabase())
         app->getDatabase()->addAcceptedDomain(hostname);
     return true;
 }
 
 SiteView::SiteView(SPElement* parent)
-    : SiteView(parent, "spacify:site:", true, true) {}
+    : SiteView(parent, "bungalow:site:", true, true) {}
 
 SiteView::SiteView(SPElement* parent, const string& uriPrefix, bool showNavBar, bool showUrlBar, bool showBookmarkButton)
     : SPViewElement(parent)
@@ -190,7 +190,7 @@ void SiteView::updateUrlBar(const string& url) {
 
 void SiteView::updateBookmarkButton(const string& uri) {
     if (!m_bookmarkButton) return;
-    auto* app = SpacifyApp::current();
+    auto* app = BungalowApp::current();
     if (!app || !app->getDatabase()) return;
     bool bookmarked = app->getDatabase()->isBookmarked(uri);
     m_bookmarkButton->setInnerText(bookmarked ? "\xe2\x98\x85" : "\xe2\x98\x86");
@@ -198,7 +198,7 @@ void SiteView::updateBookmarkButton(const string& uri) {
 }
 
 bool SiteView::acceptsUri(const string& uri) {
-    return space::startsWith(uri, "spacify:site:");
+    return space::startsWith(uri, "bungalow:site:");
 }
 
 void SiteView::navigate(const string& uri) {
@@ -220,7 +220,7 @@ void SiteView::navigate(const string& uri) {
     }
 #endif
 
-    if (auto* app = SpacifyApp::current()) {
+    if (auto* app = BungalowApp::current()) {
         if (auto* dm = app->getDownloadManager()) {
             m_pendingUrl  = url;
             m_checkingUrl = true;
@@ -233,10 +233,10 @@ void SiteView::navigate(const string& uri) {
                 m_pendingUrl.clear();
 
                 if (isDownload) {
-                    if (auto* a = SpacifyApp::current())
+                    if (auto* a = BungalowApp::current())
                         if (auto* d = a->getDownloadManager())
                             d->startDownload(checkedUrl, filename, contentType);
-                    getWindowElement()->navigate("spacify:downloads");
+                    getWindowElement()->navigate("bungalow:downloads");
                 } else {
                     loadUrl(checkedUrl);
                 }
@@ -344,7 +344,7 @@ SPEmbeddedSiteBrowser* SiteView::ensureBrowser() {
     if (m_browser || m_browserFailed) return m_browser.get();
 
     SPEmbeddedSiteBrowser::Options options;
-    if (auto* app = SpacifyApp::current())
+    if (auto* app = BungalowApp::current())
         options.developerMode = app->isDeveloperMode();
     options.darkColorScheme = getColorScheme() == SP_COLOR_SCHEME_DARK;
     // Run the theme as soon as the document element exists, before page scripts.
@@ -400,22 +400,22 @@ void SiteView::onNavigationRequested(const string& url) {
         getWindowElement()->navigate(uri);
         return;
     }
-    // Plain http has no spacify: URI; show it in place without history.
+    // Plain http has no bungalow: URI; show it in place without history.
     if (isDomainAllowed(url) || showThirdPartyWarning(extractHostname(url)))
         showUrl(url);
 }
 
 void SiteView::onDownloadRequested(const string& url) {
-    auto* app = SpacifyApp::current();
+    auto* app = BungalowApp::current();
     if (!app || !app->getDownloadManager()) return;
     app->getDownloadManager()->checkUrl(url, [this](const string& checkedUrl,
                                                     bool          /*isDownload*/,
                                                     const string& filename,
                                                     const string& contentType) {
-        if (auto* a = SpacifyApp::current())
+        if (auto* a = BungalowApp::current())
             if (auto* d = a->getDownloadManager())
                 d->startDownload(checkedUrl, filename, contentType);
-        getWindowElement()->navigate("spacify:downloads");
+        getWindowElement()->navigate("bungalow:downloads");
     });
 }
 
@@ -453,15 +453,15 @@ int SiteView::onGoClicked(SPObject*, SPEventArgs*) {
 void SiteView::navigateToInputUrl(const string& text) {
     if (text.empty()) return;
     string resolved = text;
-    if (resolved.find("://") == string::npos && !isSpacifyScheme(resolved))
+    if (resolved.find("://") == string::npos && !isBungalowScheme(resolved))
         resolved = "https://" + resolved;
-    string spacifyUri;
+    string bungalowUri;
     if (space::startsWith(resolved, "https://"))
-        spacifyUri = urlToUri(resolved);
-    else if (isSpacifyScheme(resolved))
-        spacifyUri = resolved;
-    if (!spacifyUri.empty())
-        this->getWindowElement()->navigate(spacifyUri);
+        bungalowUri = urlToUri(resolved);
+    else if (isBungalowScheme(resolved))
+        bungalowUri = resolved;
+    if (!bungalowUri.empty())
+        this->getWindowElement()->navigate(bungalowUri);
 }
 
 void SiteView::reload() {

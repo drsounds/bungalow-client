@@ -542,7 +542,7 @@ var library = new Library();
 
 /**
  * The running app. arguments mirror the in-app route:
- * spacify:app:timemachine:year:1990:2000 is served as /year/1990/2000 and
+ * bungalow:app:timemachine:year:1990:2000 is served as /year/1990/2000 and
  * gives arguments ["year", "1990", "2000"] (segments stay URI-encoded).
  */
 function Application() {
@@ -561,7 +561,7 @@ extend(Observable, Application, {
     activate: function () {},
     hideLoadingScreen: function () {},
     showLoadingScreen: function () {},
-    /** Opens a URI in the host (spotify:/spacify:/http links). */
+    /** Opens a URI in the host (spotify:/bungalow:/http links). */
     openURI: function (uri) { openUri(uri); },
     openApp: function (appId) { openUri("spotify:app:" + appId + Array.prototype.slice.call(arguments, 1).map(function (a) { return ":" + a; }).join("")); },
     /** Sets the in-app arguments without reloading the page. */
@@ -612,19 +612,19 @@ function openUri(uri) {
     var spotifyUri = datasource.normalizeUri(uri);
     var parts = spotifyUri.split(":");
     if (parts[0] !== "spotify") return;
-    var spacifyUri = "spacify:" + parts.slice(1).join(":");
+    var bungalowUri = "bungalow:" + parts.slice(1).join(":");
     var own = parts[1] === "app" && parts[2] && parts[2].toLowerCase() === String(sp.core.appId).toLowerCase();
 
-    if (window.spacify && typeof window.spacify.navigate === "function") {
-        window.spacify.navigate(spacifyUri);
+    if (window.bungalow && typeof window.bungalow.navigate === "function") {
+        window.bungalow.navigate(bungalowUri);
     } else if (own) {
         navigateInApp(parts.slice(3));
     } else {
-        console.log("[models] open (no host):", spacifyUri);
+        console.log("[models] open (no host):", bungalowUri);
     }
 }
 
-function isAppUri(href) { return /^(spotify|spacify|bungalow|space|musik):/i.test(href || ""); }
+function isAppUri(href) { return /^(spotify|bungalow|bungalow|space|musik):/i.test(href || ""); }
 
 // spotify: links and `location = "spotify:..."` would otherwise be ignored
 // by the browser; route them through openUri.

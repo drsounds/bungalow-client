@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include <objbase.h>
 
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 #include "PlayContext.h"
 #include "SPElement.h"
 #include "Database.h"
@@ -40,24 +40,24 @@
 #include <fstream>
 #include <sstream>
 
-SpacifyApp* SpacifyApp::s_instance = nullptr;
+BungalowApp* BungalowApp::s_instance = nullptr;
 
 namespace {
     VOID CALLBACK positionTimerProc(HWND, UINT, UINT_PTR, DWORD) {
-        if (auto* app = SpacifyApp::current()) app->onPositionTimer();
+        if (auto* app = BungalowApp::current()) app->onPositionTimer();
     }
 }
 
-SpacifyApp::SpacifyApp() {
+BungalowApp::BungalowApp() {
     s_instance = this;
 }
 
-SpacifyApp::~SpacifyApp() {
+BungalowApp::~BungalowApp() {
     shutdown();
     if (s_instance == this) s_instance = nullptr;
 }
 
-space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::SPWindowElement* windowElement) {
+space::MainElement* BungalowApp::initialize(space::Space* spaceInstance, space::SPWindowElement* windowElement) {
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     space::win::initUiDispatcher();
     space::SPApplicationContext::setCurrent(this);
@@ -98,12 +98,12 @@ space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::S
     apps.scan();
 
     // Use an existing bundled database, otherwise create one in the user data dir.
-    fs::path dbPath = resourcesDir / "spacify.db";
+    fs::path dbPath = resourcesDir / "bungalow.db";
     if (!fs::exists(dbPath)) {
         fs::path dataDir = fs::u8path(space::platform::userDataDir());
         std::error_code ec;
         fs::create_directories(dataDir, ec);
-        dbPath = dataDir / "spacify.db";
+        dbPath = dataDir / "bungalow.db";
     }
     m_databasePath = dbPath.generic_string();
     m_database = std::make_unique<Database>(m_databasePath);
@@ -195,7 +195,7 @@ space::MainElement* SpacifyApp::initialize(space::Space* spaceInstance, space::S
     return m_main;
 }
 
-void SpacifyApp::shutdown() {
+void BungalowApp::shutdown() {
     if (space::SPApplicationContext::current() == this)
         space::SPApplicationContext::setCurrent(nullptr);
     stopPositionTimer();
@@ -209,22 +209,22 @@ void SpacifyApp::shutdown() {
     m_currentPlayable = nullptr;
 }
 
-void SpacifyApp::startPositionTimer() {
+void BungalowApp::startPositionTimer() {
     if (m_timerId) return;
     m_timerId = SetTimer(nullptr, 0, 500, positionTimerProc);
 }
 
-void SpacifyApp::stopPositionTimer() {
+void BungalowApp::stopPositionTimer() {
     if (!m_timerId) return;
     KillTimer(nullptr, static_cast<UINT_PTR>(m_timerId));
     m_timerId = 0;
 }
 
-std::string SpacifyApp::currentPlayableUri() const {
+std::string BungalowApp::currentPlayableUri() const {
     return m_currentPlayable ? m_currentPlayable->uri : std::string();
 }
 
-SPMediaService* SpacifyApp::getMediaServiceForUri(const std::string& uri) const {
+SPMediaService* BungalowApp::getMediaServiceForUri(const std::string& uri) const {
     for (SPMediaService* svc : m_mediaServices) {
         if (svc && svc->acceptsUri(uri))
             return svc;
@@ -232,11 +232,11 @@ SPMediaService* SpacifyApp::getMediaServiceForUri(const std::string& uri) const 
     return nullptr;
 }
 
-void SpacifyApp::navigate(const std::string& uri) {
+void BungalowApp::navigate(const std::string& uri) {
     if (m_main) m_main->navigate(uri);
 }
 
-void SpacifyApp::showError(const std::string& msg) {
+void BungalowApp::showError(const std::string& msg) {
     if (m_main) m_main->showMessage(space::Error, msg);
 }
 
@@ -248,7 +248,7 @@ static std::string uriBasename(const std::string& uri) {
     return name;
 }
 
-void SpacifyApp::stopCurrentPlayback() {
+void BungalowApp::stopCurrentPlayback() {
     stopPositionTimer();
     if (m_currentPlayable && m_currentPlayable->service)
         m_currentPlayable->service->stop();
@@ -257,7 +257,7 @@ void SpacifyApp::stopCurrentPlayback() {
     m_positionMs      = 0;
 }
 
-void SpacifyApp::playContext(PlayContext ctx) {
+void BungalowApp::playContext(PlayContext ctx) {
     stopCurrentPlayback();
 
     for (SPPlayable* p : m_queuePlayables)
@@ -286,7 +286,7 @@ void SpacifyApp::playContext(PlayContext ctx) {
     playFromIndex(static_cast<int>(ctx.startIndex));
 }
 
-void SpacifyApp::playFromIndex(int idx) {
+void BungalowApp::playFromIndex(int idx) {
     const int size = static_cast<int>(m_queueEntries.size());
 
     while (idx < size && !m_queueEntries[idx].playable)
@@ -323,7 +323,7 @@ void SpacifyApp::playFromIndex(int idx) {
     startPositionTimer();
 }
 
-void SpacifyApp::playQueueAtIndex(int idx) {
+void BungalowApp::playQueueAtIndex(int idx) {
     if (idx < 0 || idx >= static_cast<int>(m_queueEntries.size())) return;
     if (!m_queueEntries[idx].playable) return;
 
@@ -331,7 +331,7 @@ void SpacifyApp::playQueueAtIndex(int idx) {
     playFromIndex(idx);
 }
 
-void SpacifyApp::playTrackId(int64_t trackId) {
+void BungalowApp::playTrackId(int64_t trackId) {
     if (!m_database) return;
     SPDBConnection conn(*m_database);
 
@@ -377,7 +377,7 @@ void SpacifyApp::playTrackId(int64_t trackId) {
     playContext(std::move(ctx));
 }
 
-void SpacifyApp::playUri(const std::string& uri) {
+void BungalowApp::playUri(const std::string& uri) {
     PlayQueueEntry e;
     e.displayTitle = uriBasename(uri);
     e.uri          = uri;
@@ -389,7 +389,7 @@ void SpacifyApp::playUri(const std::string& uri) {
     playContext(std::move(ctx));
 }
 
-void SpacifyApp::togglePlayPause() {
+void BungalowApp::togglePlayPause() {
     if (!m_currentPlayable) return;
 
     m_isPlaying = !m_isPlaying;
@@ -408,7 +408,7 @@ void SpacifyApp::togglePlayPause() {
     dispatchPlaybackChanged();
 }
 
-void SpacifyApp::seekTo(int posMs) {
+void BungalowApp::seekTo(int posMs) {
     if (!m_currentPlayable) return;
 
     m_positionMs = posMs;
@@ -418,7 +418,7 @@ void SpacifyApp::seekTo(int posMs) {
     dispatchPlaybackChanged();
 }
 
-void SpacifyApp::playbackNext() {
+void BungalowApp::playbackNext() {
     stopCurrentPlayback();
 
     const int next = m_queueIndex + 1;
@@ -428,7 +428,7 @@ void SpacifyApp::playbackNext() {
         dispatchPlaybackChanged();
 }
 
-void SpacifyApp::playbackPrev() {
+void BungalowApp::playbackPrev() {
     if (m_positionMs > 3000) {
         seekTo(0);
         return;
@@ -448,13 +448,13 @@ void SpacifyApp::playbackPrev() {
         playFromIndex(m_queueIndex);
 }
 
-void SpacifyApp::dispatchPlaybackChanged() {
+void BungalowApp::dispatchPlaybackChanged() {
     auto* args = new space::SPPlaybackStateEventArgs(
         m_isPlaying, m_positionMs, m_durationMs);
     m_playbackEvents.dispatchEvent("playback:changed", args, nullptr);
 }
 
-void SpacifyApp::onPositionTimer() {
+void BungalowApp::onPositionTimer() {
     if (!m_isPlaying || !m_currentPlayable) return;
 
     SPMediaService* svc = m_currentPlayable->service;
@@ -476,11 +476,11 @@ void SpacifyApp::onPositionTimer() {
     dispatchPlaybackChanged();
 }
 
-void SpacifyApp::setDeveloperMode(bool enabled) {
+void BungalowApp::setDeveloperMode(bool enabled) {
     m_developerMode = enabled;
 }
 
-void SpacifyApp::setFullWidthAddressBar(bool fullWidth) {
+void BungalowApp::setFullWidthAddressBar(bool fullWidth) {
     if (!m_main) return;
     m_main->setFullWidthAddressBar(fullWidth);
     if (m_windowElement) {
@@ -490,12 +490,12 @@ void SpacifyApp::setFullWidthAddressBar(bool fullWidth) {
     }
 }
 
-void SpacifyApp::showWebInspector() {
+void BungalowApp::showWebInspector() {
     if (auto* sv = space::views::SiteView::getActiveInstance())
         sv->showInspector();
 }
 
-void SpacifyApp::reloadWebPage() {
+void BungalowApp::reloadWebPage() {
     if (auto* sv = space::views::SiteView::getActiveInstance())
         sv->reload();
 }

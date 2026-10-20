@@ -14,7 +14,7 @@
   </component>
   <component name="CMakeRunConfigurationManager">
     <generated>
-      <config projectName="LibSpacify" targetName="spider" />
+      <config projectName="LibBungalow" targetName="spider" />
     </generated>
   </component>
   <component name="CMakeSettings">
@@ -29,7 +29,7 @@
       <change beforePath="$PROJECT_DIR$/../.cmake/api/v1/reply/codemodel-v2-c520ef43b5aeb00df317.json" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../.cmake/api/v1/reply/directory-.-f5ebdc15457944623624.json" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../.cmake/api/v1/reply/index-2025-12-03T06-22-57-0028.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.cmake/api/v1/reply/target-spacify-client-20823ff3eded3c2850ba.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../.cmake/api/v1/reply/target-bungalow-client-20823ff3eded3c2850ba.json" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../build.ninja" beforeDir="false" afterPath="$PROJECT_DIR$/../build.ninja" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
     </list>
@@ -84,7 +84,7 @@
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="spider" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="LibSpacify" TARGET_NAME="spider" CONFIG_NAME="Debug">
+    <configuration name="spider" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="LibBungalow" TARGET_NAME="spider" CONFIG_NAME="Debug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>

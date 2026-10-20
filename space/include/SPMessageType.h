@@ -2,8 +2,8 @@
 // Created by Alexander Forselius on 2025-12-03.
 //
 
-#ifndef LIBSPACIFY_MESSAGETYPE_H
-#define LIBSPACIFY_MESSAGETYPE_H
+#ifndef LIBBUNGALOW_MESSAGETYPE_H
+#define LIBBUNGALOW_MESSAGETYPE_H
 
 namespace space {
     enum SPMessageType {
@@ -11,4 +11,4 @@ namespace space {
     };
 }
 
-#endif //LIBSPACIFY_MESSAGETYPE_H
+#endif //LIBBUNGALOW_MESSAGETYPE_H

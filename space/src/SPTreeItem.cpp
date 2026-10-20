@@ -8,7 +8,7 @@ namespace space {
     SPTreeItem::SPTreeItem(SPUri *uri) {
         this->uri = uri;
         this->setText("Loading...");
-        if (uri && std::regex_match(uri->getAddress(), std::regex("spacify:internal:start"))) {
+        if (uri && std::regex_match(uri->getAddress(), std::regex("bungalow:internal:start"))) {
             this->setText("Start");
         }
     }

@@ -1,6 +1,6 @@
 #include "SPPlayerCanvasElement.h"
 #include "SPPlaybackEventArgs.h"
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 
 #include <Windows.h>
 
@@ -31,7 +31,7 @@ SPPlayerCanvasElement::SPPlayerCanvasElement(SPElement* parent)
 {
     setTagName("playercanvas");
 
-    if (auto* app = SpacifyApp::current()) {
+    if (auto* app = BungalowApp::current()) {
         app->getPlaybackEvents().addEventListener(
             "playback:changed",
             reinterpret_cast<SPCallback>(&SPPlayerCanvasElement::onPlaybackChanged),

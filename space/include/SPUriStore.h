@@ -56,7 +56,7 @@ struct SPUriAction {
 };
 
 /**
- * Redux-lite global store for URI entities (mostly spacify: URIs).
+ * Redux-lite global store for URI entities (mostly bungalow: URIs).
  *
  * State is a map of URI -> SPUriEntry, changed only through dispatch() and
  * the pure reduce() function. Entities are persisted as JSON files, so a

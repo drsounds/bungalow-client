@@ -2,8 +2,8 @@
 // Created by Alexander Forselius on 2025-12-14.
 //
 
-#ifndef SPACIFYCLIENT_SPSPIDERVIEW_H
-#define SPACIFYCLIENT_SPSPIDERVIEW_H
+#ifndef BUNGALOWCLIENT_SPSPIDERVIEW_H
+#define BUNGALOWCLIENT_SPSPIDERVIEW_H
 
 #include "SPTabBarViewElement.h"
 
@@ -23,4 +23,4 @@ public:
 }
 
 
-#endif //SPACIFYCLIENT_SPSPIDERVIEW_H
+#endif //BUNGALOWCLIENT_SPSPIDERVIEW_H

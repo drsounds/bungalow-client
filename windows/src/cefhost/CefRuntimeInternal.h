@@ -15,11 +15,11 @@ inline constexpr char kAppScheme[] = "sp";
 inline constexpr char kStartupScriptKey[] = "startupScript";
 
 // Browser -> renderer: extra_info key marking a site browser. Its startup
-// script runs in main frames of any origin, without the spacify bridge.
+// script runs in main frames of any origin, without the bungalow bridge.
 inline constexpr char kSiteBrowserKey[] = "siteBrowser";
 
-// Renderer -> browser: window.spacify.navigate(uri). Argument 0 is the URI.
-inline constexpr char kNavigateMessage[] = "spacify.navigate";
+// Renderer -> browser: window.bungalow.navigate(uri). Argument 0 is the URI.
+inline constexpr char kNavigateMessage[] = "bungalow.navigate";
 
 // Root of all CEF profile data; each app gets a subdirectory.
 std::wstring cacheRoot();

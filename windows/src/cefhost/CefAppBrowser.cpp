@@ -31,8 +31,8 @@ bool startsWith(const std::string& s, const std::string& prefix) {
     return s.rfind(prefix, 0) == 0;
 }
 
-bool isSpacifyUri(const std::string& uri) {
-    return startsWith(uri, "spacify:") || startsWith(uri, "space:") ||
+bool isBungalowUri(const std::string& uri) {
+    return startsWith(uri, "bungalow:") || startsWith(uri, "space:") ||
            startsWith(uri, "bungalow:") || startsWith(uri, "musik:");
 }
 
@@ -141,7 +141,7 @@ public:
                                   CefRefPtr<CefProcessMessage> message) override {
         if (message->GetName() != kNavigateMessage) return false;
         std::string uri = message->GetArgumentList()->GetString(0);
-        if (isSpacifyUri(uri))
+        if (isBungalowUri(uri))
             post([uri](const Callbacks& cb) { if (cb.navigateRequested) cb.navigateRequested(uri); });
         return true;
     }
@@ -164,7 +164,7 @@ private:
     }
 
     void leaveBundle(const std::string& url) {
-        if (isSpacifyUri(url))
+        if (isBungalowUri(url))
             post([url](const Callbacks& cb) { if (cb.navigateRequested) cb.navigateRequested(url); });
         else if (startsWith(url, "https://") || startsWith(url, "http://"))
             post([url](const Callbacks& cb) { if (cb.externalUrlRequested) cb.externalUrlRequested(url); });

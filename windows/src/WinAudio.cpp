@@ -5,7 +5,7 @@
 #include <string>
 
 namespace {
-    const wchar_t* kAlias = L"spacify_audio";
+    const wchar_t* kAlias = L"bungalow_audio";
     bool g_open = false;
     bool g_playing = false;
 

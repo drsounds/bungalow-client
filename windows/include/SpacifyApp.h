@@ -22,9 +22,9 @@ namespace space
     class MainElement;
 }
 
-// Win32 counterpart of the wxWidgets SpacifyApp: owns the database, download
+// Win32 counterpart of the wxWidgets BungalowApp: owns the database, download
 // manager, media services and playback queue, and builds the MainElement UI.
-class SpacifyApp : public space::SPApplicationContext
+class BungalowApp : public space::SPApplicationContext
 {
 protected:
     space::Space* m_space = nullptr;
@@ -62,10 +62,10 @@ protected:
     void playFromIndex(int idx);
 
 public:
-    static SpacifyApp* current() { return s_instance; }
+    static BungalowApp* current() { return s_instance; }
 
-    SpacifyApp();
-    ~SpacifyApp() override;
+    BungalowApp();
+    ~BungalowApp() override;
 
     // Builds the UI inside windowElement and loads settings. Returns the MainElement.
     space::MainElement* initialize(space::Space* space, space::SPWindowElement* windowElement);
@@ -116,7 +116,7 @@ public:
     space::SPObservable& getPlaybackEvents() override { return m_playbackEvents; }
 
 private:
-    static SpacifyApp* s_instance;
+    static BungalowApp* s_instance;
 };
 
 #endif

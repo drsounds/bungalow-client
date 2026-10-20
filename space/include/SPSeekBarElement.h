@@ -10,7 +10,7 @@ class SPGraphicsContext;
 /// a "seek" event (with SPSeekEventArgs) when the user clicks on it.
 ///
 /// The owning element should listen for "seek" and forward the position to the
-/// media service via SpacifyApp::seekTo().
+/// media service via BungalowApp::seekTo().
 class SPSeekBarElement : public SPElement {
 public:
     explicit SPSeekBarElement(SPElement* parent);

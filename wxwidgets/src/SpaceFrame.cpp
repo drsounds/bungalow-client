@@ -1,5 +1,5 @@
 #include "SpaceFrame.h"
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 #include "MusicScanner.h"
 
 #include "SpaceWidget.h"
@@ -16,8 +16,8 @@
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-static SpacifyApp* spacifyApp() {
-    return dynamic_cast<SpacifyApp*>(wxTheApp);
+static BungalowApp* bungalowApp() {
+    return dynamic_cast<BungalowApp*>(wxTheApp);
 }
 
 // ── Menu bar construction ─────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ static wxMenuBar* buildMenuBar() {
 #ifndef __WXMAC__
     // On macOS Quit lives in the app-name menu; suppress it here.
     fileMenu->AppendSeparator();
-    fileMenu->Append(wxID_EXIT, "&Quit\tCtrl+Q", "Quit Spacify");
+    fileMenu->Append(wxID_EXIT, "&Quit\tCtrl+Q", "Quit Bungalow");
 #endif
     mb->Append(fileMenu, "&File");
 
@@ -95,7 +95,7 @@ static wxMenuBar* buildMenuBar() {
     wxMenu* appMenu = new wxMenu();
     appMenu->Append(wxID_PREFERENCES, "&Settings\u2026\tCtrl+,",
                     "Open application settings");
-    mb->Append(appMenu, "Spacify");
+    mb->Append(appMenu, "Bungalow");
 #endif
 
     return mb;
@@ -104,7 +104,7 @@ static wxMenuBar* buildMenuBar() {
 // ── Constructor ───────────────────────────────────────────────────────────────
 
 SpaceFrame::SpaceFrame(wxApp *app, space::Space *space)
-    : wxFrame(nullptr, wxID_ANY, "Spacify", wxDefaultPosition, wxSize(1280, 720), wxDEFAULT_FRAME_STYLE)
+    : wxFrame(nullptr, wxID_ANY, "Bungalow", wxDefaultPosition, wxSize(1280, 720), wxDEFAULT_FRAME_STYLE)
 {
     this->m_app = app;
     this->m_space = space;
@@ -170,7 +170,7 @@ SpaceFrame::SpaceFrame(wxApp *app, space::Space *space)
 // ── Navigation helper ─────────────────────────────────────────────────────────
 
 void SpaceFrame::navigateTo(const std::string& uri) {
-    if (auto* a = spacifyApp()) a->navigate(uri);
+    if (auto* a = bungalowApp()) a->navigate(uri);
 }
 
 // ── Window element ────────────────────────────────────────────────────────────
@@ -202,7 +202,7 @@ void SpaceFrame::OnQuitApp(wxCommandEvent&)    { Close(true); }
 // ── File ──────────────────────────────────────────────────────────────────────
 
 void SpaceFrame::OnFileNewPlaylist(wxCommandEvent&) {
-    navigateTo("spacify:library:newplaylist");
+    navigateTo("bungalow:library:newplaylist");
 }
 
 void SpaceFrame::OnFileOpen(wxCommandEvent&) {
@@ -211,36 +211,36 @@ void SpaceFrame::OnFileOpen(wxCommandEvent&) {
                      "|*.mp3;*.flac;*.aac;*.ogg;*.wav|All files (*.*)|*.*",
                      wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (dlg.ShowModal() == wxID_OK)
-        navigateTo("spacify:file:" + dlg.GetPath().ToStdString());
+        navigateTo("bungalow:file:" + dlg.GetPath().ToStdString());
 }
 
 // ── Edit ──────────────────────────────────────────────────────────────────────
 
 void SpaceFrame::OnEditFind(wxCommandEvent&) {
-    navigateTo("spacify:search");
+    navigateTo("bungalow:search");
 }
 
 // ── Playback ──────────────────────────────────────────────────────────────────
 
-void SpaceFrame::OnPlaybackPlayPause(wxCommandEvent&)  { navigateTo("spacify:playback:playpause"); }
-void SpaceFrame::OnPlaybackStop(wxCommandEvent&)       { navigateTo("spacify:playback:stop"); }
-void SpaceFrame::OnPlaybackNext(wxCommandEvent&)       { navigateTo("spacify:playback:next"); }
-void SpaceFrame::OnPlaybackPrev(wxCommandEvent&)       { navigateTo("spacify:playback:prev"); }
-void SpaceFrame::OnPlaybackVolumeUp(wxCommandEvent&)   { navigateTo("spacify:playback:volume:up"); }
-void SpaceFrame::OnPlaybackVolumeDown(wxCommandEvent&) { navigateTo("spacify:playback:volume:down"); }
+void SpaceFrame::OnPlaybackPlayPause(wxCommandEvent&)  { navigateTo("bungalow:playback:playpause"); }
+void SpaceFrame::OnPlaybackStop(wxCommandEvent&)       { navigateTo("bungalow:playback:stop"); }
+void SpaceFrame::OnPlaybackNext(wxCommandEvent&)       { navigateTo("bungalow:playback:next"); }
+void SpaceFrame::OnPlaybackPrev(wxCommandEvent&)       { navigateTo("bungalow:playback:prev"); }
+void SpaceFrame::OnPlaybackVolumeUp(wxCommandEvent&)   { navigateTo("bungalow:playback:volume:up"); }
+void SpaceFrame::OnPlaybackVolumeDown(wxCommandEvent&) { navigateTo("bungalow:playback:volume:down"); }
 
 void SpaceFrame::OnPlaybackShuffle(wxCommandEvent& e) {
-    navigateTo(e.IsChecked() ? "spacify:playback:shuffle:on"
-                              : "spacify:playback:shuffle:off");
+    navigateTo(e.IsChecked() ? "bungalow:playback:shuffle:on"
+                              : "bungalow:playback:shuffle:off");
 }
 void SpaceFrame::OnPlaybackRepeat(wxCommandEvent& e) {
-    navigateTo(e.IsChecked() ? "spacify:playback:repeat:on"
-                              : "spacify:playback:repeat:off");
+    navigateTo(e.IsChecked() ? "bungalow:playback:repeat:on"
+                              : "bungalow:playback:repeat:off");
 }
 
 // ── Library ───────────────────────────────────────────────────────────────────
 
-void SpaceFrame::OnLibraryGo(wxCommandEvent&) { navigateTo("spacify:library"); }
+void SpaceFrame::OnLibraryGo(wxCommandEvent&) { navigateTo("bungalow:library"); }
 
 void SpaceFrame::OnLibraryScan(wxCommandEvent&) {
     wxFileDialog dlg(this, "Select audio files to scan", "", "",
@@ -248,7 +248,7 @@ void SpaceFrame::OnLibraryScan(wxCommandEvent&) {
                      "|*.mp3;*.flac;*.aac;*.ogg;*.wav|All files (*.*)|*.*",
                      wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_MULTIPLE);
     if (dlg.ShowModal() == wxID_OK)
-        navigateTo("spacify:library:scan");
+        navigateTo("bungalow:library:scan");
 }
 
 void SpaceFrame::OnLibraryScanFolder(wxCommandEvent&) {
@@ -258,9 +258,9 @@ void SpaceFrame::OnLibraryScanFolder(wxCommandEvent&) {
 
     std::string folderPath = dirDlg.GetPath().ToStdString();
 
-    // Resolve database path the same way SpacifyApp does
+    // Resolve database path the same way BungalowApp does
     std::string dbPath;
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp))
+    if (auto* app = dynamic_cast<BungalowApp*>(wxTheApp))
         dbPath = app->getDatabasePath();
 
     if (dbPath.empty()) {
@@ -269,7 +269,7 @@ void SpaceFrame::OnLibraryScanFolder(wxCommandEvent&) {
         wxFileName appDir;
         appDir.AssignDir(exe.GetPath() + "/../resources/app");
         appDir.Normalize(wxPATH_NORM_ALL);
-        dbPath = appDir.GetPath().ToStdString() + "/../spacify.db";
+        dbPath = appDir.GetPath().ToStdString() + "/../bungalow.db";
     }
 
     MusicScanDialog scanDlg(this, folderPath, dbPath);
@@ -279,7 +279,7 @@ void SpaceFrame::OnLibraryScanFolder(wxCommandEvent&) {
 // ── App menu / Preferences ────────────────────────────────────────────────────
 
 void SpaceFrame::OnPreferences(wxCommandEvent&) {
-    navigateTo("spacify:config");
+    navigateTo("bungalow:config");
 }
 
 // ── Develop menu ──────────────────────────────────────────────────────────────
@@ -308,9 +308,9 @@ void SpaceFrame::applyDeveloperMode(bool enabled) {
 }
 
 void SpaceFrame::OnDevelopShowInspector(wxCommandEvent&) {
-    if (auto* a = spacifyApp()) a->showWebInspector();
+    if (auto* a = bungalowApp()) a->showWebInspector();
 }
 
 void SpaceFrame::OnDevelopReloadPage(wxCommandEvent&) {
-    if (auto* a = spacifyApp()) a->reloadWebPage();
+    if (auto* a = bungalowApp()) a->reloadWebPage();
 }

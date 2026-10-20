@@ -117,7 +117,7 @@
     // ── sp object ────────────────────────────────────────────────────────
 
     // Low level host services. Everything is mocked until the C++ bridge
-    // exists; window.spacify (installed by the host) is used when present.
+    // exists; window.bungalow (installed by the host) is used when present.
     var core = {
         apiVersion: 1,
         appId: appId(),
@@ -132,10 +132,10 @@
         readFile: function (path) {
             return readText(/^[a-z][a-z0-9+.-]*:\/\//i.test(path) ? path : appRoot() + path.replace(/^\.?\//, ""));
         },
-        // Opens a spotify:/spacify: URI in the host's view stack.
+        // Opens a spotify:/bungalow: URI in the host's view stack.
         navigate: function (uri) {
-            if (global.spacify && typeof global.spacify.navigate === "function")
-                global.spacify.navigate(uri);
+            if (global.bungalow && typeof global.bungalow.navigate === "function")
+                global.bungalow.navigate(uri);
             else
                 console.log("[sp.core] navigate (no host):", uri);
         }

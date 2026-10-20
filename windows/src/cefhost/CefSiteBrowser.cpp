@@ -28,8 +28,8 @@ bool startsWith(const std::string& s, const std::string& prefix) {
     return s.rfind(prefix, 0) == 0;
 }
 
-bool isSpacifyUri(const std::string& uri) {
-    return startsWith(uri, "spacify:") || startsWith(uri, "space:") ||
+bool isBungalowUri(const std::string& uri) {
+    return startsWith(uri, "bungalow:") || startsWith(uri, "space:") ||
            startsWith(uri, "bungalow:") || startsWith(uri, "musik:");
 }
 
@@ -62,7 +62,7 @@ struct AllowedHosts {
 };
 
 // CEF-side handlers of one site browser. Top-level navigations stay in the
-// browser for allowed hosts; spacify: links, new windows and pages on other
+// browser for allowed hosts; bungalow: links, new windows and pages on other
 // hosts are handed to the host element. Subframes and redirects are not
 // filtered, like in a regular browser.
 class SiteClient : public CefClient,
@@ -116,7 +116,7 @@ public:
     bool OnBeforeBrowse(CefRefPtr<CefBrowser>, CefRefPtr<CefFrame> frame, CefRefPtr<CefRequest> request,
                         bool, bool isRedirect) override {
         const std::string url = request->GetURL();
-        if (isSpacifyUri(url)) {
+        if (isBungalowUri(url)) {
             post([url](const Callbacks& cb) { if (cb.navigateRequested) cb.navigateRequested(url); });
             return true;
         }
@@ -178,7 +178,7 @@ private:
     }
 
     void handOver(const std::string& url) {
-        if (isSpacifyUri(url))
+        if (isBungalowUri(url))
             post([url](const Callbacks& cb) { if (cb.navigateRequested) cb.navigateRequested(url); });
         else if (isWebUrl(url))
             post([url](const Callbacks& cb) { if (cb.navigationRequested) cb.navigationRequested(url); });

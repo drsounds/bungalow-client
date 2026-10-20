@@ -80,7 +80,7 @@ SPAppFooterElement::SPAppFooterElement(SPElement *parent) : SPHBoxElement(parent
     m_durLabel->setForegroundColor(SPColor(200, 200, 200, 255));
     this->appendChild(m_durLabel);
 
-    // ── Subscribe to playback events from SpacifyApp ───────────────────────
+    // ── Subscribe to playback events from BungalowApp ───────────────────────
     if (auto* app = SPApplicationContext::current()) {
         app->getPlaybackEvents().addEventListener(
             "playback:changed",

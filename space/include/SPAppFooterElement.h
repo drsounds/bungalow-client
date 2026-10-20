@@ -19,7 +19,7 @@ namespace space {
 
         string getType() override { return "appfooter"; }
 
-        /// Called when SpacifyApp dispatches a "playback:changed" event.
+        /// Called when BungalowApp dispatches a "playback:changed" event.
         int onPlaybackChanged(SPObject* sender, SPEventArgs* args);
 
         /// Called when the seek bar dispatches a "seek" event.

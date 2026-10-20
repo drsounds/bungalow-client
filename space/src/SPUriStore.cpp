@@ -32,7 +32,7 @@ uint64_t fnv1a(const std::string &text) {
 	return hash;
 }
 
-// Reversible, filesystem-safe encoding: spacify:artist:1 -> spacify%3Aartist%3A1
+// Reversible, filesystem-safe encoding: bungalow:artist:1 -> bungalow%3Aartist%3A1
 std::string encodeFileName(const std::string &uri) {
 	static const char *hex = "0123456789ABCDEF";
 	std::string out;

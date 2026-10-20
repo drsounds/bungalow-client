@@ -1,6 +1,6 @@
 # Bungalow Client
 
-BungalownClient is a C++ desktop application.
+BungalowClient is a C++ desktop application.
 
 It uses an own written GUI framework called **Space** which is a lightweight abstract GUI framework that aims to create an alternate protocol for serving content over the internet
 
@@ -47,18 +47,18 @@ with a `manifest.json` and an `index.html`:
 }
 ```
 
-* `spacify:app:myapp:a:b` opens the app at the route `/a/b`. Each app runs in
+* `bungalow:app:myapp:a:b` opens the app at the route `/a/b`. Each app runs in
   its own browser, with isolated storage, which is kept alive while you switch
   views.
 * Files are served from `sp://myapp/...`. A missing extensionless path serves
   `index.html`, so single-page apps can use client-side routes.
-* An app can only load its own `sp://` files, `data:`/`blob:` URLs, `spacify.se`
+* An app can only load its own `sp://` files, `data:`/`blob:` URLs, `bungalow.se`
   and the https hosts in `AllowedHosts`. You are asked to accept each of those
   hosts once.
 * Navigating to another route of a running app calls `window.navigate(path)`.
   A default that uses `history.pushState` is provided; apps may define their
   own. Route changes made by the app appear in the back/forward history.
-* `window.spacify.navigate(uri)` opens a `spacify:` URI in the client.
+* `window.bungalow.navigate(uri)` opens a `bungalow:` URI in the client.
 * Theme colors are exposed as `--sp-bg-color`, `--sp-fg-color` and
   `--sp-color-scheme` CSS variables.
 * In developer mode the app bar has a DevTools button.

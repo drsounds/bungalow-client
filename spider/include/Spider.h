@@ -2,8 +2,8 @@
 // Created by Alexander Forselius on 2025-12-12.
 //
 
-#ifndef SPACIFYCLIENT_SPIDER_H
-#define SPACIFYCLIENT_SPIDER_H
+#ifndef BUNGALOWCLIENT_SPIDER_H
+#define BUNGALOWCLIENT_SPIDER_H
 #include <cstring>
 #include <iostream>
 #include <netinet/in.h>
@@ -24,4 +24,4 @@ namespace spider {
 	};
 }
 
-#endif //SPACIFYCLIENT_SPIDER_H
+#endif //BUNGALOWCLIENT_SPIDER_H

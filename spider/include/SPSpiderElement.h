@@ -2,8 +2,8 @@
 // Created by Alexander Forselius on 2025-12-12.
 //
 
-#ifndef SPACIFYCLIENT_PYSPELEMENT_H
-#define SPACIFYCLIENT_PYSPELEMENT_H
+#ifndef BUNGALOWCLIENT_PYSPELEMENT_H
+#define BUNGALOWCLIENT_PYSPELEMENT_H
 #include <iostream>
 #include <memory>
 #include <lauxlib.h>
@@ -35,4 +35,4 @@ namespace space
 }
 
 
-#endif //SPACIFYCLIENT_PYSPELEMENT_H
+#endif //BUNGALOWCLIENT_PYSPELEMENT_H

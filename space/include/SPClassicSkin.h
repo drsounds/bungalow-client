@@ -2,8 +2,8 @@
 // Created by Alexander Forselius on 2025-12-11.
 //
 
-#ifndef SPACIFYCLIENT_SPCLASSICSKIN_H
-#define SPACIFYCLIENT_SPCLASSICSKIN_H
+#ifndef BUNGALOWCLIENT_SPCLASSICSKIN_H
+#define BUNGALOWCLIENT_SPCLASSICSKIN_H
 #include "SPSkin.h"
 
 
@@ -35,4 +35,4 @@ namespace space
     };
 }
 
-#endif //SPACIFYCLIENT_SPCLASSICSKIN_H
+#endif //BUNGALOWCLIENT_SPCLASSICSKIN_H

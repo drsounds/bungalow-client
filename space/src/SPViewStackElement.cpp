@@ -37,7 +37,7 @@ namespace space {
         SPVBoxElement::pack();
     }
     /**
-     * Main navigation handler inside spacify. Records the current URI in
+     * Main navigation handler inside bungalow. Records the current URI in
      * the history stack before navigating, and clears the forward stack.
      **/
     void SPViewStackElement::navigate(const string& value) {

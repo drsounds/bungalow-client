@@ -6,7 +6,7 @@
 #include "SPGraphicsContext.h"
 #include "WxWidgetsGraphicsContext.h"
 #include "SpaceWidget.h"
-#include "SpacifyApp.h"
+#include "BungalowApp.h"
 
 #include <wx/app.h>
 
@@ -50,7 +50,7 @@ SPMusicVisualizerElement::SPMusicVisualizerElement(SPElement* parent)
 
     m_renderTimer = new RenderTimerHelper(this);
 
-    if (auto* app = dynamic_cast<SpacifyApp*>(wxTheApp)) {
+    if (auto* app = dynamic_cast<BungalowApp*>(wxTheApp)) {
         app->getPlaybackEvents().addEventListener(
             "playback:changed",
             reinterpret_cast<SPCallback>(&SPMusicVisualizerElement::onPlaybackChanged),

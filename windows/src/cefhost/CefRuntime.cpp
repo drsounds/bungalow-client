@@ -21,7 +21,7 @@ namespace cefhost {
 namespace {
 
 // Defines window.navigate(path) for apps that do not bring their own: the host
-// calls it to route the running app (spacify:app:<id>:a:b -> "/a/b").
+// calls it to route the running app (bungalow:app:<id>:a:b -> "/a/b").
 constexpr char kBridgeScript[] = R"js(
 if (typeof window.navigate !== 'function') {
     window.navigate = function (path) {
@@ -32,13 +32,13 @@ if (typeof window.navigate !== 'function') {
 }
 )js";
 
-// Implements window.spacify.navigate(uri) in the renderer.
+// Implements window.bungalow.navigate(uri) in the renderer.
 class NavigateHandler : public CefV8Handler {
 public:
     bool Execute(const CefString&, CefRefPtr<CefV8Value>, const CefV8ValueList& arguments,
                  CefRefPtr<CefV8Value>&, CefString& exception) override {
         if (arguments.size() != 1 || !arguments[0]->IsString()) {
-            exception = "spacify.navigate(uri) expects a spacify: URI string";
+            exception = "bungalow.navigate(uri) expects a bungalow: URI string";
             return true;
         }
         CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(kNavigateMessage);
@@ -91,10 +91,10 @@ public:
         }
         if (url.rfind(std::string(kAppScheme) + "://", 0) != 0) return;
 
-        CefRefPtr<CefV8Value> spacify = CefV8Value::CreateObject(nullptr, nullptr);
-        spacify->SetValue("navigate", CefV8Value::CreateFunction("navigate", new NavigateHandler()),
+        CefRefPtr<CefV8Value> bungalow = CefV8Value::CreateObject(nullptr, nullptr);
+        bungalow->SetValue("navigate", CefV8Value::CreateFunction("navigate", new NavigateHandler()),
                           V8_PROPERTY_ATTRIBUTE_READONLY);
-        context->GetGlobal()->SetValue("spacify", spacify, V8_PROPERTY_ATTRIBUTE_READONLY);
+        context->GetGlobal()->SetValue("bungalow", bungalow, V8_PROPERTY_ATTRIBUTE_READONLY);
 
         context->Eval(std::string(kBridgeScript) + script->second.script.ToString(), url, 0, result, error);
     }
