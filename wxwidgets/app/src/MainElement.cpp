@@ -32,6 +32,7 @@
 #include "SPBookmarkEventArgs.h"
 #include "Database.h"
 #include "SPUri.h"
+#include "SPAppManager.h"
 
 #include "PlatformUi.h"
 
@@ -57,6 +58,8 @@ namespace space {
             { "space:",    "bungalow:" },
             { "bungalow:", "bungalow:" },
             { "musik:",    "bungalow:" },
+            { "spotify:", "bungalow:" },
+            { "spacify:", "bungalow:" },
         };
         for (auto& [alias, canonical] : kAliases) {
             if (uri.rfind(alias, 0) == 0)
@@ -70,7 +73,9 @@ namespace space {
         return uri.rfind("bungalow:", 0) == 0
             || uri.rfind("space:",    0) == 0
             || uri.rfind("bungalow:", 0) == 0
-            || uri.rfind("musik:",    0) == 0;
+            || uri.rfind("musik:",    0) == 0 
+            || uri.rfind("spacify:", 0) == 0
+            || uri.rfind("spotify:", 0) == 0;
     }
 
     // ── Helper: favicon domain from a bungalow URI ─────────────────────────────
@@ -78,24 +83,49 @@ namespace space {
     // appropriate hosted-domain suffix for bare names (app/curator/store).
     // Returns "" for URIs that don't map to a web domain.
     /*static*/ string MainElement::faviconDomain(const string& uri) {
-        struct SchemeEntry { const char* prefix; size_t len; const char* hosted; };
+        struct SchemeEntry { const char* prefix; const char* hosted; };
         static const SchemeEntry kSchemes[] = {
-            { "bungalow:site:",    13, nullptr                },
-            { "bungalow:app:",     12, ".apps.bungalow.se"     },
-            { "bungalow:curator:", 16, ".curator.bungalow.se"  },
-            { "bungalow:store:",   14, ".store.bungalow.se"    },
+            { "bungalow:site:",    nullptr                },
+            { "bungalow:app:",     ".apps.bungalow.se"     },
+            { "bungalow:curator:", ".curator.bungalow.se"  },
+            { "bungalow:store:",   ".store.bungalow.se"    },
         };
 
         for (auto& s : kSchemes) {
             if (uri.rfind(s.prefix, 0) != 0) continue;
-            string remainder = uri.substr(s.len);
+            string remainder = uri.substr(strlen(s.prefix));
             size_t colon = remainder.find(':');
             string domain = (colon == string::npos) ? remainder : remainder.substr(0, colon);
+            // Installed app bundles are served locally and have no web favicon
+            if (uri.rfind("bungalow:app:", 0) == 0 && SPAppManager::instance().findBundle(domain))
+                return "";
             if (s.hosted && domain.find('.') == string::npos && !domain.empty())
                 domain += s.hosted;
             return domain;
         }
         return "";
+    }
+
+    // ── Helper: sidebar label for a saved app or site ────────────────────────
+    // Parent bookmarks created implicitly by onBookmarkToggled store their URI
+    // as the title; show the installed bundle's name or the bare domain instead.
+    static string bookmarkTitle(const string& uri, const string& title) {
+        if (!title.empty() && title != uri) return title;
+        static const string kAppPrefix  = "bungalow:app:";
+        static const string kSitePrefix = "bungalow:site:";
+        string prefix;
+        if (uri.rfind(kAppPrefix, 0) == 0)       prefix = kAppPrefix;
+        else if (uri.rfind(kSitePrefix, 0) == 0) prefix = kSitePrefix;
+        else return uri;
+        string remainder = uri.substr(prefix.size());
+        if (remainder.find(':') != string::npos) return uri; // sub-page: keep full URI
+        if (prefix == kAppPrefix) {
+            if (const SPAppBundle* bundle = SPAppManager::instance().findBundle(remainder)) {
+                string name = bundle->getName();
+                if (!name.empty()) return name;
+            }
+        }
+        return remainder.empty() ? uri : remainder;
     }
 
     // ── Helper: extract domain-level URI ─────────────────────────────────────
@@ -228,13 +258,13 @@ namespace space {
             if (!db) return;
             for (auto& parent : db->getTopLevelBookmarks(prefix)) {
                 auto* parentItem = new SPTreeItem(new SPUri(parent.uri));
-                parentItem->setText(parent.title);
+                parentItem->setText(bookmarkTitle(parent.uri, parent.title));
                 parentItem->setIsBookmark(true);
                 parentItem->setCollapsed(false);
                 parentItem->setIconPath(resolveIcon(parent.uri, defaultIcon));
                 for (auto& child : db->getChildBookmarks(parent.id)) {
                     auto* childItem = new SPTreeItem(new SPUri(child.uri));
-                    childItem->setText(child.title);
+                    childItem->setText(bookmarkTitle(child.uri, child.title));
                     childItem->setIsBookmark(true);
                     childItem->setIconPath(resolveIcon(child.uri, defaultIcon));
                     parentItem->addChild(childItem);
@@ -285,32 +315,15 @@ namespace space {
         itemDownloads->setIconPath("icons/Downloads.svg");
         treeView->addItem(itemDownloads);
         
-        if (false) {
-            // ── APPS ─────────────────────────────────────────────────────────────
-            treeView->addSection("APPS");
+        // ── APPS ─────────────────────────────────────────────────────────────
+        treeView->addSection("APPS");
 
-            auto* itemAppFinder = new SPTreeItem(new SPUri("bungalow:app:finder"));
-            itemAppFinder->setText("App Finder");
-            itemAppFinder->setIconPath(resolveIcon("bungalow:app:finder", "icons/App.svg"));
-            treeView->addItem(itemAppFinder);
+        addBookmarkSection("bungalow:app:", "icons/App.svg");
 
-            addBookmarkSection("bungalow:app:",  "icons/App.svg");
+        // ── SITES ────────────────────────────────────────────────────────────
+        treeView->addSection("SITES");
 
-            // ── CURATORS ──────────────────────────────────────────────────────────
-            treeView->addSection("CURATORS");
-
-            addBookmarkSection("bungalow:curator:", "icons/WebPage.svg");
-
-            // ── STORE ─────────────────────────────────────────────────────────────
-            treeView->addSection("STORE");
-
-            addBookmarkSection("bungalow:store:", "icons/WebPage.svg");
-
-            // ── WEB SITES ─────────────────────────────────────────────────────────
-            treeView->addSection("WEB SITES");
-
-            addBookmarkSection("bungalow:site:", "icons/WebPage.svg");
-        }
+        addBookmarkSection("bungalow:site:", "icons/WebPage.svg");
     }
 
     // ── createElement ─────────────────────────────────────────────────────────
