@@ -37,7 +37,8 @@ find_package(PNG REQUIRED)
 find_package(EXPAT 2.2.8 REQUIRED)
 
 if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
-    find_package(wxWidgets REQUIRED COMPONENTS core base xml webview)
+    # net provides wxWebRequest, which WxWidgetsGraphicsContext::request uses.
+    find_package(wxWidgets REQUIRED COMPONENTS core base xml net webview)
 endif()
 
 if(BUNGALOW_ENABLE_SWIMMING)
@@ -259,9 +260,6 @@ if(BUNGALOW_ENABLE_SWIMMING AND BUNGALOW_BUILD_SWIMMING_VIEWER)
         ${LUA_LIBRARIES}
         elua)
     set_target_properties(swimming-viewer PROPERTIES OUTPUT_NAME swimming)
-    if(MSVC)
-        target_link_options(swimming-viewer PRIVATE /STACK:0x800000)
-    endif()
     install(TARGETS swimming-viewer RUNTIME DESTINATION .)
 endif()
 

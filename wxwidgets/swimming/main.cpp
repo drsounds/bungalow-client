@@ -30,6 +30,8 @@ public:
         m_space = new space::Space();
         m_space->setGraphicsContext(m_graphics);
         m_windowElement = new space::SPWindowElement(m_space, new space::SPClassicSkin());
+        // Space requires a colour scheme on the window.
+        m_windowElement->setColorScheme(SP_COLOR_SCHEME_LIGHT);
         m_space->addWindow(m_windowElement);
         m_app = new space::SPSwimmingElement(m_windowElement);
         m_windowElement->appendChild(m_app);

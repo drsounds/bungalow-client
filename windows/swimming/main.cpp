@@ -50,6 +50,8 @@ namespace
             graphics = new space::Win32GraphicsContext(window);
             space->setGraphicsContext(graphics);
             windowElement = new space::SPWindowElement(space, new space::SPClassicSkin());
+            // Space requires a colour scheme on the window.
+            windowElement->setColorScheme(SP_COLOR_SCHEME_LIGHT);
             space->addWindow(windowElement);
             app = new space::SPSwimmingElement(windowElement);
             windowElement->appendChild(app);

@@ -6,7 +6,6 @@
 #include <memory>
 #include <stdexcept>
 #include <vector>
-#include <xmmintrin.h>
 
 #include "SPColor.h"
 #include "SPFontStyle.h"
@@ -31,12 +30,6 @@ namespace space {
             return SPColor(c[0], c[1], c[2], static_cast<short>(std::lround(c[3] * opacity)));
         }
 
-        std::string trim(const std::string& s) {
-            const size_t begin = s.find_first_not_of(" \t\r\n");
-            if (begin == std::string::npos) return {};
-            return s.substr(begin, s.find_last_not_of(" \t\r\n") - begin + 1);
-        }
-
         void paintBox(const swimming::LayoutBox& b, float ox, float oy, const std::string& family, SPGraphicsContext* c) {
             const float fx = ox + b.x, fy = oy + b.y;
             const int x = static_cast<int>(std::lround(fx)), y = static_cast<int>(std::lround(fy));
@@ -44,22 +37,18 @@ namespace space {
             const swimming::Computed& s = b.computed;
             if (b.id && w > 0 && h > 0) {
                 const int radius = static_cast<int>(std::lround(std::min({s.radius, b.w / 2, b.h / 2})));
-                if (s.background) {
-                    std::cerr << "TRACE fill " << x << "," << y << " " << w << "x" << h << " r" << radius << std::endl;
+                if (s.background)
                     c->fillRoundedRectangle(x, y, w, h, radius, toColor(*s.background, s.opacity));
-                }
                 // Borders are drawn inside the box, one 1px ring at a time.
                 const int border = static_cast<int>(std::lround(s.borderWidth));
                 for (int i = 0; i < border && 2 * i < std::min(w, h); ++i)
                     c->drawRoundedRectangle(x + i, y + i, w - 2 * i, h - 2 * i, std::max(0, radius - i),
                                             toColor(s.borderColor, s.opacity));
             }
-            if (b.text) {
-                const std::string text = trim(*b.text);
-                if (!text.empty()) {
-                    const SPFontStyle font(family, static_cast<int>(std::lround(s.fontSize)), s.bold ? 700 : 400, false, false);
-                    std::cerr << "TRACE text " << text << " " << w << "x" << h << std::endl; c->drawString(text, font, toColor(s.color, s.opacity), x, y, w, h);
-                }
+            // Text keeps its spaces, which separate it from the text boxes beside it.
+            if (b.text && b.text->find_first_not_of(" \t\r\n") != std::string::npos) {
+                const SPFontStyle font(family, static_cast<int>(std::lround(s.fontSize)), s.bold ? 700 : 400, false, false);
+                c->drawString(*b.text, font, toColor(s.color, s.opacity), x, y, w, h);
             }
             for (const swimming::LayoutBox& child : b.children)
                 paintBox(child, fx, fy, family, c);
@@ -131,7 +120,7 @@ namespace space {
             m_bridge->resize(static_cast<float>(width), static_cast<float>(height));
         if (const swimming::LaidOut* layout = engine.layout())
             paintBox(layout->root, static_cast<float>(x), static_cast<float>(y), getStringAttribute("font", "Tahoma"), c);
-        std::cerr << "TRACE paint pending=" << s_tickPending << " sched=" << bool(s_scheduleTick) << std::endl; if (!s_tickPending) scheduleTick(kFrameIntervalMs);
+        if (!s_tickPending) scheduleTick(kFrameIntervalMs);
     }
 
     bool SPSwimmingElement::isShown() const {
@@ -143,9 +132,7 @@ namespace space {
         const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastTick).count();
         m_lastTick = now;
         try {
-            std::cerr << "TRACE mxcsr=" << std::hex << _mm_getcsr() << std::dec << std::endl; const auto t0 = Clock::now();
             m_bridge->tick(static_cast<std::uint32_t>(std::clamp<long long>(elapsed, 0, 0xFFFFFFFFLL)));
-            std::cerr << "TRACE tick elapsed=" << elapsed << " took=" << std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - t0).count() << std::endl;
         } catch (const std::exception& error) {
             std::cerr << "swimming: timer failed: " << error.what() << std::endl;
         }
@@ -179,7 +166,7 @@ namespace space {
     }
 
     void SPSwimmingElement::tickAll() {
-        s_tickPending = false; std::cerr << "TRACE tickAll " << liveElements().size() << std::endl;
+        s_tickPending = false;
         const auto frame = std::chrono::milliseconds(kFrameIntervalMs);
         int next = -1;
         const std::vector<SPSwimmingElement*> elements = liveElements(); // ticks may create or destroy apps

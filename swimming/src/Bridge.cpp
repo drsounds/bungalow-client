@@ -1,7 +1,6 @@
 #include "swimming/Bridge.h"
 
 #include <cmath>
-#include <iostream>
 
 #include <nlohmann/json.hpp>
 
@@ -132,7 +131,7 @@ if (typeof URL === "undefined") {
 
     void Bridge::runUntilIdle() {
         for (int i = 0; i < 10000; ++i) {
-            std::cerr << "TRACE idle " << i << std::endl; m_js->runJobs(); std::cerr << "TRACE jobs done" << std::endl;
+            m_js->runJobs();
             const auto pending = m_js->callGlobal("__SWIMMING_TICK__", {JsValue(0.0)});
             if (!pending || !pending->isTrue()) break;
         }
