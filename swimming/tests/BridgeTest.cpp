@@ -1,6 +1,5 @@
 #include "swimming/Bridge.h"
 #include "swimming/Loader.h"
-#include "swimming/QuickJsEngine.h"
 
 #include <filesystem>
 #include <fstream>
@@ -72,10 +71,16 @@ void conformance(std::unique_ptr<JsEngine> js) {
 
     // Missing hooks are not an error.
     b.tick(16);
+
+    // No engine has Temporal (V8's needs the temporal_rs Rust crate).
+    b.eval("if (typeof Temporal !== 'undefined') throw new Error('Temporal is defined')");
+
+    // Deep recursion is an exception, not a crash.
+    check(throwsJsError([&] { b.eval("(function f() { f(); })()"); }, ""), name + ": stack overflow throws");
 }
 
-void jsBuildsTreeAndNativeEventsReachJs() {
-    Bridge b(200, 100);
+void jsBuildsTreeAndNativeEventsReachJs(const std::string& engine) {
+    Bridge b(200, 100, createEngine(engine));
     b.eval(R"(
         const n = __SWIMMING_NATIVE__;
         globalThis.clicked = [];
@@ -90,8 +95,8 @@ void jsBuildsTreeAndNativeEventsReachJs() {
     check(b.render().pixel(2, 2) == Rgba{255, 0, 0, 255}, "the box is painted red");
 }
 
-void hostUrlResolvesLikeABrowser() {
-    Bridge b(200, 100);
+void hostUrlResolvesLikeABrowser(const std::string& engine) {
+    Bridge b(200, 100, createEngine(engine));
     b.eval(R"(
         [ new URL("/a/./b/../c?x=1#h", "http://swimming.local").href,
           new URL("d", "http://h:8/a/b").href,
@@ -106,10 +111,10 @@ void hostUrlResolvesLikeABrowser() {
           "URL resolves paths, queries and ports");
 }
 
-void routesReachTheApp() {
+void routesReachTheApp(const std::string& engine) {
     // Stands in for swimming-web-compat's history and swimming-react's
     // reconciler: shows location.pathname in a div.
-    Bridge b(200, 100);
+    Bridge b(200, 100, createEngine(engine));
     b.eval(R"(
         var n = __SWIMMING_NATIVE__, path = "/", listeners = [];
         globalThis.history = { replaceState: function (s, t, url) { path = url; } };
@@ -127,8 +132,8 @@ void routesReachTheApp() {
     check(texts(b) == std::vector<std::string>{"/a/\"b"}, "routes are escaped");
 }
 
-void timersRunWhenTicked() {
-    Bridge b(200, 100);
+void timersRunWhenTicked(const std::string& engine) {
+    Bridge b(200, 100, createEngine(engine));
     // A minimal __SWIMMING_TICK__ like swimming-web-compat's: one interval.
     b.eval(R"(
         var now = 0, fired = 0, at = 1000;
@@ -166,7 +171,7 @@ void checkPage(Bridge& bridge, const std::string& what) {
     check(!root.children.empty() && root.children[0].computed.background == Rgba{255, 0, 0, 255}, what + ": inline styles apply");
 }
 
-void loadsHtmlTreeAndExternalScriptFromHttp() {
+void loadsHtmlTreeAndExternalScriptFromHttp(const std::string& engine) {
     std::vector<std::string> requested;
     const Fetch fetch = [&](const std::string& url) -> std::string {
         requested.push_back(url);
@@ -174,16 +179,16 @@ void loadsHtmlTreeAndExternalScriptFromHttp() {
         if (url == "http://127.0.0.1:8/") return kPage;
         throw std::runtime_error("404 " + url);
     };
-    Bridge bridge(200, 100);
+    Bridge bridge(200, 100, createEngine(engine));
     runSource(bridge, "http://127.0.0.1:8/", fetch);
     check(requested == std::vector<std::string>{"http://127.0.0.1:8/", "http://127.0.0.1:8/app.js"},
           "the page and its script are fetched");
     checkPage(bridge, "http");
 }
 
-void loadsHtmlTreeAndExternalScriptFromFile() {
+void loadsHtmlTreeAndExternalScriptFromFile(const std::string& engine) {
     const fs::path dir = writeFiles("html", {{"index.html", kPage}, {"app.js", "globalThis.externalLoaded = 42;"}});
-    Bridge bridge(200, 100);
+    Bridge bridge(200, 100, createEngine(engine));
     runSource(bridge, (dir / "index.html").u8string());
     checkPage(bridge, "file");
 }
@@ -202,13 +207,20 @@ void resolvesUrlsLikeABrowser() {
 
 int main() {
     try {
-        conformance(std::make_unique<QuickJsEngine>());
-        jsBuildsTreeAndNativeEventsReachJs();
-        hostUrlResolvesLikeABrowser();
-        routesReachTheApp();
-        timersRunWhenTicked();
-        loadsHtmlTreeAndExternalScriptFromHttp();
-        loadsHtmlTreeAndExternalScriptFromFile();
+        check(createEngine("quickjs") != nullptr && !createEngine("nope"), "engines are created by name");
+        // The same behavioural checks for every engine built in.
+        for (const std::string& engine : engineNames()) {
+            auto js = createEngine(engine);
+            std::cerr << "engine: " << engine << " (" << js->name() << ")\n";
+            check(std::string(js->name()) == (engine == "v8" ? "V8" : "QuickJS"), "createEngine(\"" + engine + "\") is that engine");
+            conformance(std::move(js));
+            jsBuildsTreeAndNativeEventsReachJs(engine);
+            hostUrlResolvesLikeABrowser(engine);
+            routesReachTheApp(engine);
+            timersRunWhenTicked(engine);
+            loadsHtmlTreeAndExternalScriptFromHttp(engine);
+            loadsHtmlTreeAndExternalScriptFromFile(engine);
+        }
         resolvesUrlsLikeABrowser();
     } catch (const std::exception& error) {
         std::cerr << "FAILED: " << error.what() << "\n";

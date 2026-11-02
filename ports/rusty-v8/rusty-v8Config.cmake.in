@@ -1,0 +1,22 @@
+# Imported target for the vcpkg rusty-v8 port.
+#
+#   rusty_v8::rusty_v8   V8 with rusty_v8's extern "C" v8__* bindings (link this)
+
+get_filename_component(_RUSTY_V8_PREFIX "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+
+if(NOT TARGET rusty_v8::rusty_v8)
+    add_library(rusty_v8::rusty_v8 STATIC IMPORTED)
+    set_target_properties(rusty_v8::rusty_v8 PROPERTIES
+        IMPORTED_CONFIGURATIONS "RELEASE;DEBUG"
+        IMPORTED_LOCATION_RELEASE "${_RUSTY_V8_PREFIX}/lib/rusty_v8.lib"
+        IMPORTED_LOCATION_DEBUG "${_RUSTY_V8_PREFIX}/debug/lib/rusty_v8.lib"
+        MAP_IMPORTED_CONFIG_MINSIZEREL Release
+        MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release
+        # As rusty_v8's build.rs links them on Windows.
+        INTERFACE_LINK_LIBRARIES "winmm;dbghelp"
+        # Keeps the static CRT, which some of its objects name, out of
+        # dynamic-CRT links.
+        INTERFACE_LINK_OPTIONS "@RUSTY_V8_LINK_OPTIONS@")
+endif()
+
+unset(_RUSTY_V8_PREFIX)

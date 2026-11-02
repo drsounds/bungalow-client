@@ -1,0 +1,8 @@
+{
+  "name": "rusty-v8",
+  "version": "152.2.0",
+  "description": "V8 15.2 as the prebuilt static library published by rusty_v8, with its C binding layer (the same build the swimming Rust crates use).",
+  "homepage": "https://github.com/denoland/rusty_v8",
+  "license": "MIT AND BSD-3-Clause",
+  "supports": "windows & x64 & !uwp"
+}

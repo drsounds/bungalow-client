@@ -1,0 +1,6 @@
+rusty-v8 provides CMake targets:
+
+    find_package(rusty-v8 CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE rusty_v8::rusty_v8)
+
+Call V8 through rusty_v8's extern "C" v8__* bindings, not V8's C++ headers.

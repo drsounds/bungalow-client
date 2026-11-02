@@ -25,11 +25,12 @@ namespace space {
 
         string getType() override { return "swimming"; }
 
-        /// Starts source (see swimming::runSource) in a new JS runtime,
-        /// replacing the running app. Throws std::runtime_error (including
-        /// swimming::JsError) if the runtime or the app fails to start,
-        /// leaving no app running.
-        void start(const std::string& source, const swimming::Fetch& fetch = {});
+        /// Starts source (see swimming::runSource) in a new JS runtime on
+        /// engine (the default engine if null), replacing the running app.
+        /// Throws std::runtime_error (including swimming::JsError) if the
+        /// runtime or the app fails to start, leaving no app running.
+        void start(const std::string& source, const swimming::Fetch& fetch = {},
+                   std::unique_ptr<swimming::JsEngine> engine = nullptr);
         /// Stops the running app, if any.
         void stop();
         /// The running app's bridge, or null.

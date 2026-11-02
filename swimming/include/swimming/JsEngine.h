@@ -12,7 +12,8 @@
 #include <vector>
 
 /// The engine-neutral JavaScript interface used by the bridge. Backends
-/// (QuickJsEngine, ...) implement JsEngine; createDefaultEngine() picks one.
+/// (QuickJsEngine, and V8Engine when built with SWIMMING_ENABLE_V8)
+/// implement JsEngine; createDefaultEngine() picks one.
 namespace swimming {
     /// A value crossing the native/JS boundary. Anything else (objects,
     /// functions, ...) is seen as undefined on the native side.
@@ -86,8 +87,15 @@ namespace swimming {
         virtual void runJobs() = 0;
     };
 
-    /// The engine the bridge uses unless it is given one.
+    /// The engine the bridge uses unless it is given one: QuickJS, or V8 when
+    /// built with SWIMMING_DEFAULT_ENGINE=v8.
     std::unique_ptr<JsEngine> createDefaultEngine();
+
+    /// Creates the engine named "quickjs" or "v8"; null if it is not built in.
+    std::unique_ptr<JsEngine> createEngine(const std::string& name);
+
+    /// Names of the engines built in, e.g. {"quickjs", "v8"}.
+    std::vector<std::string> engineNames();
 }
 
 #endif

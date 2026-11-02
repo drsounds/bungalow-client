@@ -1,6 +1,7 @@
 #include "swimming/Cli.h"
 
 #include <cstdlib>
+#include <stdexcept>
 
 namespace swimming {
     namespace {
@@ -19,6 +20,8 @@ namespace swimming {
             const bool hasValue = i + 1 < args.size();
             if (arg == "--out" && hasValue) {
                 options.out = args[++i];
+            } else if (arg == "--engine" && hasValue) {
+                options.engine = args[++i];
             } else if (arg == "--width" && hasValue) {
                 options.width = parseSize(args[++i], options.width);
             } else if (arg == "--height" && hasValue) {
@@ -32,8 +35,18 @@ namespace swimming {
         return options;
     }
 
+    std::unique_ptr<JsEngine> createEngineFor(const CliOptions& options) {
+        if (options.engine.empty()) return createDefaultEngine();
+        auto engine = createEngine(options.engine);
+        if (engine) return engine;
+        std::string names;
+        for (const std::string& name : engineNames())
+            names += (names.empty() ? "" : ", ") + name;
+        throw std::runtime_error("unknown JavaScript engine '" + options.engine + "' (built in: " + names + ")");
+    }
+
     void renderFrame(const CliOptions& options, const Fetch& fetch) {
-        Bridge bridge(options.width, options.height);
+        Bridge bridge(options.width, options.height, createEngineFor(options));
         runSource(bridge, options.source, fetch);
         savePng(bridge.render(), options.out.value_or("frame.png"));
     }

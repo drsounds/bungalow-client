@@ -69,12 +69,15 @@ namespace space {
         elements.erase(std::remove(elements.begin(), elements.end(), this), elements.end());
     }
 
-    void SPSwimmingElement::start(const std::string& source, const swimming::Fetch& fetch) {
+    void SPSwimmingElement::start(const std::string& source, const swimming::Fetch& fetch,
+                                  std::unique_ptr<swimming::JsEngine> engine) {
         m_bridge.reset();
+        if (!engine) engine = swimming::createDefaultEngine();
         // Until the first paint gives the real size.
         const sp_rectangle bounds = getAbsoluteBounds();
         auto bridge = std::make_unique<swimming::Bridge>(static_cast<float>(bounds.width > 0 ? bounds.width : 800),
-                                                         static_cast<float>(bounds.height > 0 ? bounds.height : 600));
+                                                         static_cast<float>(bounds.height > 0 ? bounds.height : 600),
+                                                         std::move(engine));
         swimming::runSource(*bridge, source, fetch);
         m_bridge = std::move(bridge);
         m_lastTick = Clock::now();

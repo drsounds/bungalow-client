@@ -27,6 +27,15 @@
 				"yoga"
 			]
 		},
+		"v8": {
+			"description": "V8 for the swimming library, from rusty_v8's prebuilt static library (BUNGALOW_ENABLE_V8)",
+			"dependencies": [
+				{
+					"name": "rusty-v8",
+					"platform": "windows & x64"
+				}
+			]
+		},
 		"cef": {
 			"description": "Chromium Embedded Framework for local HTML5 app bundles (BUNGALOW_ENABLE_CEF)",
 			"dependencies": [

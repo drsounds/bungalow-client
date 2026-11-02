@@ -80,8 +80,8 @@ void entryIsResolvedInsideTheBundle() {
 }
 
 /// The test app in Apps/swimmingtest, a React Router app built with
-/// vite-plugin-swimming.
-void theTestAppRendersClicksTicksAndRoutes() {
+/// vite-plugin-swimming, on the given engine.
+void theTestAppRendersClicksTicksAndRoutes(const std::string &engine) {
 	const fs::path root = fs::u8path(BUNGALOW_SOURCE_DIR) / "Apps" / "swimmingtest";
 	std::ifstream manifest(root / "manifest.json");
 	SPAppBundle bundle;
@@ -90,7 +90,7 @@ void theTestAppRendersClicksTicksAndRoutes() {
 	bundle.manifest = nlohmann::json::parse(manifest);
 	check(SPSwimmingApp::isSwimming(bundle), "the test app is a Swimming app");
 
-	swimming::Bridge bridge(800, 600);
+	swimming::Bridge bridge(800, 600, swimming::createEngine(engine));
 	swimming::runSource(bridge, SPSwimmingApp::entryPath(bundle));
 	check(contains(read(bridge), "Swimming Test"), "the home page renders: " + read(bridge));
 	check(contains(read(bridge), "Clicked 0 times"), "the counter starts at zero: " + read(bridge));
@@ -122,7 +122,10 @@ void theTestAppRendersClicksTicksAndRoutes() {
 int main() {
 	try {
 		entryIsResolvedInsideTheBundle();
-		theTestAppRendersClicksTicksAndRoutes();
+		for (const std::string &engine : swimming::engineNames()) {
+			std::cerr << "engine: " << engine << "\n";
+			theTestAppRendersClicksTicksAndRoutes(engine);
+		}
 	} catch (const std::exception &error) {
 		std::cerr << "FAILED: " << error.what() << "\n";
 		return 1;

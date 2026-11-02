@@ -54,7 +54,9 @@ public:
     }
 
     /// Throws std::runtime_error if the app cannot be loaded.
-    void start(const std::string& source) { m_app->start(source, space::SPSwimmingElement::fetchWith(m_graphics)); }
+    void start(const swimming::CliOptions& options) {
+        m_app->start(options.source, space::SPSwimmingElement::fetchWith(m_graphics), swimming::createEngineFor(options));
+    }
 
 private:
     void layout(const wxSize& size) {
@@ -94,7 +96,7 @@ public:
         auto* panel = new SwimmingPanel(frame, options);
         frame->SetClientSize(static_cast<int>(options.width), static_cast<int>(options.height));
         try {
-            panel->start(options.source);
+            panel->start(options);
         } catch (const std::exception& error) {
             std::cerr << "cannot load app: " << error.what() << std::endl;
             frame->Destroy();

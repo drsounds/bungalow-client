@@ -70,6 +70,11 @@ library, which runs React (TSX) apps natively on every backend: QuickJS runs
 the JavaScript, Yoga lays out the elements and Space draws them. It needs the
 `quickjs-ng` and `yoga` packages, which the `swimming` vcpkg feature installs.
 
+On Windows x64, `-DBUNGALOW_ENABLE_V8=ON` also builds a V8 engine, from the
+prebuilt library rusty_v8 publishes (the overlay port in `ports/rusty-v8`).
+QuickJS stays the default; `-DSWIMMING_DEFAULT_ENGINE=v8` makes V8 the
+default, and the viewer's `--engine v8` picks it for one run.
+
 An app with `"AppType": "Swimming"` in its manifest is a Vite bundle built with
 `vite-plugin-swimming`; `"Main"` names its entry (default `dist/bundle.js`, or
 an `.html` file whose classic scripts are run). `bungalow:app:myapp:a:b`
@@ -82,6 +87,7 @@ one app in a window, or renders one frame to a PNG with `--out`:
 ```bash
 swimming Apps/swimmingtest/dist/bundle.js --width 500 --height 300
 swimming Apps/swimmingtest/dist/bundle.js --out frame.png
+swimming Apps/swimmingtest/dist/bundle.js --engine v8
 ```
 
 ## Usage

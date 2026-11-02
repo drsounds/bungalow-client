@@ -45,7 +45,7 @@ jobs:
       - name: Install build dependencies
         shell: pwsh
         run: |
-          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install --triplet x64-windows-static-md --x-feature=swimming
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install --triplet x64-windows-static-md --x-feature=swimming --x-feature=v8
 
       - name: Set up MSVC environment
         uses: ilammy/msvc-dev-cmd@v1
@@ -62,7 +62,8 @@ jobs:
             "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static-md `
             "-DWTL_INCLUDE_DIR=$env:GITHUB_WORKSPACE/vendor/WTL/Include" `
-            -DBUNGALOW_UI_BACKEND=wtl
+            -DBUNGALOW_UI_BACKEND=wtl `
+            -DBUNGALOW_ENABLE_V8=ON
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build build --config Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -2,8 +2,24 @@
 
 #include <quickjs.h>
 
+#include "StackLimit.h"
+
 namespace swimming {
     namespace {
+        /// Measures QuickJS's stack from here, as each entry point may run at
+        /// a different depth, and stops it short of the thread's real stack
+        /// end: its default allowance (1 MiB) is the whole of a Windows main
+        /// thread's stack.
+        void updateStackLimit(JSRuntime* runtime) {
+            JS_UpdateStackTop(runtime);
+            const auto limit = stackLimit();
+            if (!limit) return;
+            char here;
+            const auto top = reinterpret_cast<std::uintptr_t>(&here);
+            // At least one page, as a size of 0 would disable the check.
+            JS_SetMaxStackSize(runtime, top > *limit + 4096 ? top - *limit : 4096);
+        }
+
         JsValue fromJs(JSContext* ctx, JSValueConst value) {
             if (JS_IsBool(value)) return JsValue(JS_ToBool(ctx, value) > 0);
             if (JS_IsNumber(value)) {
@@ -81,7 +97,7 @@ namespace swimming {
 
     void QuickJsEngine::registerObject(const std::string& name,
                                        std::vector<std::pair<std::string, NativeFunction>> functions) {
-        JS_UpdateStackTop(m_runtime);
+        updateStackLimit(m_runtime);
         JSValue object = JS_NewObject(m_context);
         for (auto& [key, native] : functions) {
             const int index = static_cast<int>(m_natives.size());
@@ -96,14 +112,14 @@ namespace swimming {
     }
 
     void QuickJsEngine::eval(const std::string& source, const std::string& fileName) {
-        JS_UpdateStackTop(m_runtime);
+        updateStackLimit(m_runtime);
         JSValue result = JS_Eval(m_context, source.c_str(), source.size(), fileName.c_str(), JS_EVAL_TYPE_GLOBAL);
         if (JS_IsException(result)) throw pendingError(m_context);
         JS_FreeValue(m_context, result);
     }
 
     std::optional<JsValue> QuickJsEngine::callGlobal(const std::string& name, const std::vector<JsValue>& args) {
-        JS_UpdateStackTop(m_runtime);
+        updateStackLimit(m_runtime);
         JSValue global = JS_GetGlobalObject(m_context);
         JSValue function = JS_GetPropertyStr(m_context, global, name.c_str());
         JS_FreeValue(m_context, global);
@@ -126,16 +142,12 @@ namespace swimming {
     }
 
     void QuickJsEngine::runJobs() {
-        JS_UpdateStackTop(m_runtime);
+        updateStackLimit(m_runtime);
         JSContext* ctx = nullptr;
         int ran;
         while ((ran = JS_ExecutePendingJob(m_runtime, &ctx)) != 0) {
             // A job that throws is dropped, like an unhandled rejection in a browser.
             if (ran < 0 && ctx) JS_FreeValue(ctx, JS_GetException(ctx));
         }
-    }
-
-    std::unique_ptr<JsEngine> createDefaultEngine() {
-        return std::make_unique<QuickJsEngine>();
     }
 }

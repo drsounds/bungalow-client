@@ -58,7 +58,7 @@ namespace
             resize();
             try
             {
-                app->start(options.source, space::SPSwimmingElement::fetchWith(graphics));
+                app->start(options.source, space::SPSwimmingElement::fetchWith(graphics), swimming::createEngineFor(options));
             }
             catch (const std::exception &error)
             {
