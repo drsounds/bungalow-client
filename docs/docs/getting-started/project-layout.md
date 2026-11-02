@@ -25,9 +25,8 @@ bungalow-client/
 ├── icons/          Sidebar SVG icons
 ├── resources/      bungalow.db (optional bundled database)
 ├── ports/cef/      vcpkg overlay port for CEF
-├── java/           The Java reference client and its docs (java/docs)
-├── docs/           Short earlier notes, now covered by this site
-└── website/        This documentation site (Docusaurus)
+├── java/           The Java reference client, its docs (java/docs) and the RFCs
+└── docs/           This documentation site (Docusaurus)
 ```
 
 ## Libraries and targets

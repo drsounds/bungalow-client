@@ -14,7 +14,7 @@ It is the atom that playlists, library rows, drag-and-drop payloads and the play
 queue are built from.
 
 The wire format is specified formally in
-[RFC-0002](https://github.com/drsounds/bungalow/blob/main/src/main/java/se/bungalow/app/music/spec/RFC-0002-musik-uri-scheme.md).
+[RFC-0002](../specs/rfc-0002-musik-uri-scheme.md).
 This page is the practical overview: the forms, and how the app resolves them.
 
 ## The forms

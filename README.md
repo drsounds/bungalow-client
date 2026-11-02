@@ -4,6 +4,12 @@ BungalowClient is a C++ music and media manager app.
 
 It uses an own written GUI framework called **Space** which is a lightweight abstract GUI framework that aims to create an alternate protocol for serving content over the internet
 
+## Documentation
+
+The documentation is at https://drsounds.github.io/bungalow-client/. Its
+source is in [`docs/`](docs/); run `npm install && npm start` there to
+preview it locally.
+
 ## Building
 
 Required libraries:

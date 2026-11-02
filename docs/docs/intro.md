@@ -80,6 +80,19 @@ application stack in which an app can be declared in markup, for example:
 </app>
 ```
 
+or in YAML:
+
+```yaml
+app:
+  title: Test
+  features:
+    start:
+      view:
+        section:
+          id: overview
+          text: Hello World
+```
+
 That declarative `<app>` format is the direction of the project, not something
 you can use yet. What is implemented today is described in the
 [architecture](./architecture/overview.md) and [Space](./space/overview.md)
@@ -93,4 +106,5 @@ sections.
 4. [Architecture overview](./architecture/overview.md): the layers, startup and package map.
 5. [Space UI framework](./space/overview.md): elements, XUL, templates, skins and backends.
 6. [Apps](./apps/bundles.md): app bundles, native Lua apps and HTML5 apps.
-7. [Roadmap](./roadmap.md): what works today and what comes next.
+7. [Specifications](./specs/index.md): the `musik:` URI scheme and decentralised playlist links.
+8. [Roadmap](./roadmap.md): what works today and what comes next.
