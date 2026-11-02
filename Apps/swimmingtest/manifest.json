@@ -1,0 +1,12 @@
+{
+    "BundleType": "Application",
+    "BundleIdentifier": "swimmingtest",
+    "AppName": {
+        "en": "Swimming Test"
+    },
+    "AppDescription": {
+        "en": "A test React app rendered natively by the swimming framework."
+    },
+    "AppType": "Swimming",
+    "Main": "dist/bundle.js"
+}

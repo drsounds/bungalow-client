@@ -9,6 +9,10 @@ option(BUNGALOW_ENABLE_CEF "Run local HTML5 app bundles in Chromium Embedded Fra
 if(BUNGALOW_ENABLE_CEF)
     list(APPEND VCPKG_MANIFEST_FEATURES "cef")
 endif()
+option(BUNGALOW_ENABLE_SWIMMING "Run \"AppType\": \"Swimming\" React app bundles natively with the swimming library" ON)
+if(BUNGALOW_ENABLE_SWIMMING)
+    list(APPEND VCPKG_MANIFEST_FEATURES "swimming")
+endif()
 
 project(BungalowNative LANGUAGES C CXX)
 include(CTest)
@@ -36,6 +40,11 @@ if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
     find_package(wxWidgets REQUIRED COMPONENTS core base xml webview)
 endif()
 
+if(BUNGALOW_ENABLE_SWIMMING)
+    add_subdirectory(swimming)
+    option(BUNGALOW_BUILD_SWIMMING_VIEWER "Build the swimming viewer, which runs a swimming app in a window of the selected UI backend" ON)
+endif()
+
 add_library(elua STATIC
     elua/src/cstr.c
     elua/src/elua.c)
@@ -45,6 +54,9 @@ target_include_directories(elua PUBLIC
 target_link_libraries(elua PUBLIC ${LUA_LIBRARIES})
 
 file(GLOB SPACE_SOURCES CONFIGURE_DEPENDS "space/src/*.cpp")
+if(NOT BUNGALOW_ENABLE_SWIMMING)
+    list(FILTER SPACE_SOURCES EXCLUDE REGEX "/SPSwimmingAppElement\\.cpp$")
+endif()
 file(GLOB BUNGALOW_SOURCES CONFIGURE_DEPENDS "bungalow/src/*.cpp")
 file(GLOB SPACE_HEADERS CONFIGURE_DEPENDS "space/include/*.h")
 file(GLOB BUNGALOW_HEADERS CONFIGURE_DEPENDS "bungalow/include/*.h")
@@ -83,6 +95,9 @@ if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
         "wxwidgets/include/*.h"
         "wxwidgets/app/include/*.h")
     set(PLATFORM_LIBRARIES ${wxWidgets_LIBRARIES})
+    if(NOT BUNGALOW_ENABLE_SWIMMING)
+        list(FILTER BACKEND_SOURCES EXCLUDE REGEX "/SwimmingScheduler\\.cpp$")
+    endif()
 else()
     file(GLOB BACKEND_HEADERS CONFIGURE_DEPENDS "windows/include/*.h")
     set(BACKEND_SOURCES
@@ -110,6 +125,9 @@ else()
             wxwidgets/app/src/LocalFilesView.cpp
             wxwidgets/app/src/PlayQueueView.cpp
             wxwidgets/app/src/SPAppView.cpp)
+        if(BUNGALOW_ENABLE_SWIMMING)
+            list(APPEND BACKEND_SOURCES windows/src/SwimmingScheduler.cpp)
+        endif()
         file(GLOB WTL_SHARED_HEADERS CONFIGURE_DEPENDS "wxwidgets/app/include/*.h")
         list(APPEND BACKEND_HEADERS ${WTL_SHARED_HEADERS})
     else()
@@ -199,7 +217,53 @@ if(BUNGALOW_ENABLE_CEF)
     cef_install_runtime(.)
 endif()
 
+if(BUNGALOW_ENABLE_SWIMMING)
+    target_compile_definitions(bungalow-client PRIVATE BUNGALOW_SWIMMING)
+    target_link_libraries(bungalow-client PRIVATE swimming-space)
+endif()
+
 install(TARGETS bungalow-client RUNTIME DESTINATION .)
+
+# The swimming viewer: one swimming app in a Space window of the UI backend,
+# or one frame rendered to a PNG with --out. Space is built without the
+# client, so it gets its own copy of the Space sources.
+if(BUNGALOW_ENABLE_SWIMMING AND BUNGALOW_BUILD_SWIMMING_VIEWER)
+    if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
+        add_executable(swimming-viewer
+            wxwidgets/swimming/main.cpp
+            wxwidgets/src/SwimmingScheduler.cpp
+            wxwidgets/src/WxWidgetsGraphicsContext.cpp)
+        target_include_directories(swimming-viewer PRIVATE wxwidgets/include ${wxWidgets_INCLUDE_DIRS})
+        target_link_libraries(swimming-viewer PRIVATE ${wxWidgets_LIBRARIES})
+    else()
+        add_executable(swimming-viewer
+            windows/swimming/main.cpp
+            windows/src/SwimmingScheduler.cpp
+            windows/src/Win32GraphicsContext.cpp)
+        target_include_directories(swimming-viewer PRIVATE windows/include)
+        target_compile_definitions(swimming-viewer PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0601)
+        target_link_libraries(swimming-viewer PRIVATE winhttp msimg32 comctl32 gdi32 gdiplus user32 ole32 shell32 comdlg32)
+    endif()
+    target_sources(swimming-viewer PRIVATE ${SPACE_SOURCES} ${SPACE_HEADERS})
+    target_include_directories(swimming-viewer PRIVATE
+        ${LUA_INCLUDE_DIR}
+        ${PNG_INCLUDE_DIRS}
+        ${EXPAT_INCLUDE_DIRS}
+        space/include
+        bungalow/include) # for headers some Space sources include, as in the win32 backend
+    target_link_libraries(swimming-viewer PRIVATE
+        swimming-space
+        nlohmann_json::nlohmann_json
+        PNG::PNG
+        EXPAT::EXPAT
+        ${LUA_LIBRARIES}
+        elua)
+    set_target_properties(swimming-viewer PROPERTIES OUTPUT_NAME swimming)
+    if(MSVC)
+        target_link_options(swimming-viewer PRIVATE /STACK:0x800000)
+    endif()
+    install(TARGETS swimming-viewer RUNTIME DESTINATION .)
+endif()
 
 if(BUILD_TESTING)
     add_executable(bungalow-template-test
@@ -252,4 +316,14 @@ if(BUILD_TESTING)
         bungalow/src/search/SearchManager.cpp)
     target_include_directories(bungalow-aspect-test PRIVATE bungalow/include)
     add_test(NAME bungalow-aspect-test COMMAND bungalow-aspect-test)
+
+    if(BUNGALOW_ENABLE_SWIMMING)
+        add_executable(bungalow-swimming-app-test
+            space/tests/SPSwimmingAppTest.cpp
+            space/src/SPSwimmingApp.cpp)
+        target_include_directories(bungalow-swimming-app-test PRIVATE space/include)
+        target_compile_definitions(bungalow-swimming-app-test PRIVATE BUNGALOW_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+        target_link_libraries(bungalow-swimming-app-test PRIVATE swimming-bridge nlohmann_json::nlohmann_json)
+        add_test(NAME bungalow-swimming-app-test COMMAND bungalow-swimming-app-test)
+    endif()
 endif()

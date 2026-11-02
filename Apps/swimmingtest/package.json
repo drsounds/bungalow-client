@@ -1,0 +1,14 @@
+{
+  "name": "swimmingtest",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": { "build": "vite build" },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-router-dom": "^7.18.4",
+    "swimming-react": "*",
+    "swimming-web-compat": "*"
+  },
+  "devDependencies": { "vite": "^6.0.0", "vite-plugin-swimming": "*" }
+}

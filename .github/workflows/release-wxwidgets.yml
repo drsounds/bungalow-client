@@ -44,7 +44,7 @@ jobs:
       - name: Install build dependencies
         shell: pwsh
         run: |
-          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install --triplet x64-windows-static-md --x-feature=wxwidgets
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install --triplet x64-windows-static-md --x-feature=wxwidgets --x-feature=swimming
 
       - name: Set up MSVC environment
         uses: ilammy/msvc-dev-cmd@v1
