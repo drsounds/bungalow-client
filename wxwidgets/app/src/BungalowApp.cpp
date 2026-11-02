@@ -36,6 +36,9 @@
 #include "SPDropdownElement.h"
 #include "SPUriStore.h"
 #include "EntityResolvers.h"
+#ifdef BUNGALOW_SWIMMING
+#include "SwimmingScheduler.h"
+#endif
 
 #include <nlohmann/json.hpp>
 #include <cstdint>
@@ -73,6 +76,10 @@ bool BungalowApp::OnInit(){
         const int id = space::platform::showPopupMenu(items);
         return id > 0 ? id - 1 : -1;
     };
+#ifdef BUNGALOW_SWIMMING
+    // Swimming apps' JS timers and repaints
+    space::platform::wxwidgets::installSwimmingScheduler();
+#endif
 
     // Register media services (searched in order by acceptsUri)
     m_mediaServices.push_back(new LocalMediaService());

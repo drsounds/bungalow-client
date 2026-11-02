@@ -14,6 +14,11 @@
 #include "SPTextElement.h"
 #include "SPVBoxElement.h"
 
+#ifdef BUNGALOW_SWIMMING
+#include "SPSwimmingApp.h"
+#include "SPSwimmingAppElement.h"
+#endif
+
 #ifdef BUNGALOW_CEF
 #include <filesystem>
 #include <fstream>
@@ -226,7 +231,7 @@ string AppView::urlToUri(const string& url) const {
 // ── Installed app bundles ─────────────────────────────────────────────────────
 
 bool AppView::navigateBundle(const string& uri) {
-    bool shown = navigateNativeApp(uri);
+    bool shown = navigateNativeApp(uri) || navigateSwimmingApp(uri);
 #ifdef BUNGALOW_CEF
     if (!shown)
         shown = navigateLocalApp(uri);
@@ -288,6 +293,7 @@ SPNativeAppElement* AppView::nativeAppFor(const SPAppBundle& bundle, bool restar
 
 void AppView::showNativeApp(SPNativeAppElement* app) {
     hideSiteBrowser();
+    hideSwimmingApp();
 #ifdef BUNGALOW_CEF
     if (m_activeApp) {
         m_activeApp->browser->setVisible(false);
@@ -309,10 +315,55 @@ void AppView::showError(const string& message) {
     invalidate();
 }
 
+// ── Swimming app bundles ──────────────────────────────────────────────────────
+
+#ifdef BUNGALOW_SWIMMING
+bool AppView::navigateSwimmingApp(const string& uri, bool restart) {
+    string appId, path;
+    if (!splitAppUri(uri, appId, path)) return false;
+    const SPAppBundle* bundle = SPAppManager::instance().findBundle(appId);
+    if (!bundle || !SPSwimmingApp::isSwimming(*bundle)) return false;
+
+    setCurrentUri(uri);
+    SPSwimmingAppElement* app = swimmingAppFor(*bundle, restart);
+    showNativeApp(nullptr);
+    app->setVisible(true);
+    m_activeSwimmingApp = app;
+    app->navigate(path); // errors replace it with the error view
+    return true;
+}
+
+// An app that failed to load is kept and reports why when navigated, which
+// shows the error view; reloading restarts it.
+SPSwimmingAppElement* AppView::swimmingAppFor(const SPAppBundle& bundle, bool restart) {
+    auto existing = m_swimmingApps.find(bundle.identifier);
+    if (existing != m_swimmingApps.end()) {
+        if (restart) existing->second->restart();
+        return existing->second;
+    }
+    auto* app = new SPSwimmingAppElement(this, bundle);
+    app->setFlex(1);
+    app->setVisible(false);
+    app->setErrorHandler([this](const string& message) { showError(message); });
+    this->appendChild(app);
+    m_swimmingApps[bundle.identifier] = app;
+    return app;
+}
+
+void AppView::hideSwimmingApp() {
+    if (!m_activeSwimmingApp) return;
+    m_activeSwimmingApp->setVisible(false);
+    m_activeSwimmingApp = nullptr;
+}
+#else
+bool AppView::navigateSwimmingApp(const string&, bool) { return false; }
+void AppView::hideSwimmingApp() {}
+#endif
+
 // Keyed on the current URI rather than the shown app, so a native app that
 // is showing an error can be reloaded once the error is fixed.
 void AppView::reload() {
-    if (navigateNativeApp(getCurrentUri(), true)) return;
+    if (navigateNativeApp(getCurrentUri(), true) || navigateSwimmingApp(getCurrentUri(), true)) return;
 #ifdef BUNGALOW_CEF
     if (m_activeApp) {
         m_activeApp->browser->reload();
@@ -414,6 +465,7 @@ void AppView::onRouteChanged(const string& appId, const string& path) {
 // remote path, which shows the site browser again.
 void AppView::showLocalApp(LocalApp* app) {
     hideSiteBrowser();
+    hideSwimmingApp();
     if (m_activeNativeApp) {
         m_activeNativeApp->setVisible(false);
         m_activeNativeApp = nullptr;

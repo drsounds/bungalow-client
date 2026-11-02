@@ -69,6 +69,27 @@ with a `manifest.json` and an `index.html`:
   `--sp-color-scheme` CSS variables.
 * In developer mode the app bar has a DevTools button.
 
+### React apps without a browser (swimming)
+
+`-DBUNGALOW_ENABLE_SWIMMING=ON` (the default) builds the [swimming](swimming/)
+library, which runs React (TSX) apps natively on every backend: QuickJS runs
+the JavaScript, Yoga lays out the elements and Space draws them. It needs the
+`quickjs-ng` and `yoga` packages, which the `swimming` vcpkg feature installs.
+
+An app with `"AppType": "Swimming"` in its manifest is a Vite bundle built with
+`vite-plugin-swimming`; `"Main"` names its entry (default `dist/bundle.js`, or
+an `.html` file whose classic scripts are run). `bungalow:app:myapp:a:b`
+replaces the app's polyfilled history entry with `/a/b` and fires `popstate`,
+so React Router follows it. See [Apps/swimmingtest](Apps/swimmingtest/).
+
+The build also makes a `swimming` viewer for the selected backend, which runs
+one app in a window, or renders one frame to a PNG with `--out`:
+
+```bash
+swimming Apps/swimmingtest/dist/bundle.js --width 500 --height 300
+swimming Apps/swimmingtest/dist/bundle.js --out frame.png
+```
+
 ## Usage
 
 TBA

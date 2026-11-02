@@ -11,6 +11,7 @@
 namespace space {
 struct SPAppBundle;
 class SPNativeAppElement;
+class SPSwimmingAppElement;
 class SPTextElement;
 
 namespace views {
@@ -22,6 +23,10 @@ namespace views {
 // Installed bundles with "AppType": "Native" run as Lua MVC apps rendered
 // with native elements (see SPNativeApp), one per app, kept alive while
 // switching so controllers keep their state.
+//
+// With BUNGALOW_SWIMMING, bundles with "AppType": "Swimming" run as React
+// apps rendered natively by the swimming library (see SPSwimmingAppElement),
+// likewise one per app and kept alive.
 //
 // With BUNGALOW_CEF, other installed bundles that contain an index.html run
 // locally in an embedded browser (one per app, kept alive while switching),
@@ -37,7 +42,8 @@ public:
     void   navigateForward(const string& uri) override;
     string uriToUrl(const string& uri)   const override;
     string urlToUri(const string& url)   const override;
-    // Native apps restart with a fresh Lua state and reloaded routes.
+    // Native apps restart with a fresh Lua state and reloaded routes, Swimming
+    // apps with a fresh JavaScript runtime.
     void   reload() override;
 
 #ifdef BUNGALOW_CEF
@@ -69,6 +75,16 @@ private:
     // app is null to hide all app content (and the site browser).
     void showNativeApp(SPNativeAppElement* app);
     void showError(const string& message);
+
+    // Shows uri in a Swimming app bundle, restarting the app first if asked.
+    // Returns false if uri is not in a Swimming app.
+    bool navigateSwimmingApp(const string& uri, bool restart = false);
+    void hideSwimmingApp();
+#ifdef BUNGALOW_SWIMMING
+    SPSwimmingAppElement* swimmingAppFor(const SPAppBundle& bundle, bool restart);
+    std::map<string, SPSwimmingAppElement*> m_swimmingApps; // by app id; children of this view
+    SPSwimmingAppElement* m_activeSwimmingApp = nullptr;
+#endif
 
 #ifdef BUNGALOW_CEF
     struct LocalApp {

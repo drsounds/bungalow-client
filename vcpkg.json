@@ -20,6 +20,13 @@
 				}
 			]
 		},
+		"swimming": {
+			"description": "QuickJS and Yoga for the swimming library, which runs \"AppType\": \"Swimming\" React app bundles natively (BUNGALOW_ENABLE_SWIMMING)",
+			"dependencies": [
+				"quickjs-ng",
+				"yoga"
+			]
+		},
 		"cef": {
 			"description": "Chromium Embedded Framework for local HTML5 app bundles (BUNGALOW_ENABLE_CEF)",
 			"dependencies": [
