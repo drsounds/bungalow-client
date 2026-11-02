@@ -9,6 +9,7 @@
 }
 
 :root {
+  --ifm-background-color: #fff;
   --ifm-color-primary: #528703;
   --ifm-color-primary-dark: #4a7903;
   --ifm-color-primary-darker: #447003;
