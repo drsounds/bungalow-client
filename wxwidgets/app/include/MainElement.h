@@ -27,6 +27,7 @@ namespace space {
         protected:
             SPTextElement *m_trackLabel = nullptr;
             SPInputElement *searchElement;
+            SPInputElement *addressElement = nullptr;
             SPViewStackElement *viewStack;
             SPTreeViewElement *treeView;
             SPInfoElement *infoElement;
@@ -60,6 +61,7 @@ namespace space {
             int onBookmarkToggled(SPObject* sender, SPEventArgs* args);
             explicit MainElement(SPElement *parent);
             int onSearchEntered(SPObject* sender, SPEventArgs* eventArgs) const;
+            int onAddressEntered(SPObject* sender, SPEventArgs* eventArgs) const;
             void layout();
             ~MainElement() override;
             SPViewStackElement *getViewStack();
@@ -69,6 +71,9 @@ namespace space {
 
         private:
             void rebuildNavItems();
+            // Mirrors the current URI into the address bar, or into the search
+            // field when the address bar is hidden.
+            void showCurrentUri(const string& uri) const;
             // Extract the favicon domain from a bungalow:site: or bungalow:app: URI.
             // Returns empty string for non-site/app URIs.
             static std::string faviconDomain(const std::string& uri);

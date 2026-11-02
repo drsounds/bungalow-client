@@ -318,10 +318,10 @@ namespace space {
 		switch (this->getColorScheme())
 		{
 		case SP_COLOR_SCHEME_LIGHT:
-			def = def.lighten(0.3);
+			def = def.lighten(6.3);
 			break;
 		case SP_COLOR_SCHEME_DARK:
-			def = def.lighten(-0.1);
+			def = def.lighten(-0.5);
 			break;
 		default:
 			break;

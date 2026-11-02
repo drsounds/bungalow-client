@@ -228,7 +228,7 @@ namespace space {
     {
         string normalized = normalizeScheme(uri);
         this->viewStack->navigate(normalized);
-        this->searchElement->setValue(uri);
+        showCurrentUri(normalized);
 
         treeView->forEachItem([&normalized](SPTreeItem* item) {
             if (item->getUri() && !item->getUri()->getUri().empty())
@@ -385,6 +385,14 @@ namespace space {
         searchElement->setColorAttribute("bgcolor", SPColor("#777777"));
         searchElement->addEventListener("enter", reinterpret_cast<SPCallback>(&MainElement::onSearchEntered), this, this);
 
+        // Address bar: shown (and expanded) when "Full Width" is enabled in settings
+        addressElement = (SPInputElement *)this->getElementById("addressInput");
+        addressElement->setFlex(1);
+        addressElement->setHeight(28);
+        addressElement->setColorAttribute("bgcolor", SPColor("#777777"));
+        addressElement->addEventListener("enter", reinterpret_cast<SPCallback>(&MainElement::onAddressEntered), this, this);
+        addressElement->hide();
+
         infoElement = new space::SPInfoElement(this);
         infoElement->setHeight(28);
         infoElement->setId("Info");
@@ -481,11 +489,32 @@ namespace space {
         return 0;
     }
 
+    int MainElement::onAddressEntered(SPObject *, SPEventArgs *eventArgs) const
+    {
+        auto *ie = dynamic_cast<SPInputEventArgs*>(eventArgs);
+        if (!ie) return 0;
+        string uri = ie->getText();
+        if (uri.empty()) return 0;
+        // Anything that isn't a bungalow URI is treated as a search query
+        if (!hasBungalowScheme(uri)) {
+            uri = "bungalow:search:" + uri;
+        }
+        this->navigate(uri);
+        return 0;
+    }
+
+    void MainElement::showCurrentUri(const string& uri) const {
+        if (addressElement && addressElement->isVisible())
+            addressElement->setValue(uri);
+        else
+            searchElement->setValue(uri);
+    }
+
     int MainElement::onBackClicked(SPObject *, SPEventArgs *) {
         if (!viewStack->canGoBack()) return 0;
         viewStack->goBack();
         const string& uri = viewStack->getCurrentUri();
-        searchElement->setValue(uri);
+        showCurrentUri(uri);
         treeView->forEachItem([&uri](SPTreeItem* item) {
             if (item->getUri() && !item->getUri()->getUri().empty())
                 item->setSelected(item->getUri()->getUri() == uri);
@@ -498,7 +527,7 @@ namespace space {
         if (!viewStack->canGoForward()) return 0;
         viewStack->goForward();
         const string& uri = viewStack->getCurrentUri();
-        searchElement->setValue(uri);
+        showCurrentUri(uri);
         treeView->forEachItem([&uri](SPTreeItem* item) {
             if (item->getUri() && !item->getUri()->getUri().empty())
                 item->setSelected(item->getUri()->getUri() == uri);
@@ -517,13 +546,17 @@ namespace space {
     }
 
     void MainElement::setFullWidthAddressBar(bool fullWidth) {
-        if (!searchElement) return;
+        if (!searchElement || !addressElement) return;
+        // The search field keeps its size; the address bar after it takes the
+        // remaining width and shows the current URI.
+        const string uri = viewStack ? viewStack->getCurrentUri() : string();
         if (fullWidth) {
-            searchElement->setFlex(1);
-            searchElement->setWidth(0);
+            addressElement->show();
+            addressElement->setValue(uri);
+            searchElement->setValue("");
         } else {
-            searchElement->setFlex(0);
-            searchElement->setWidth(120);
+            addressElement->hide();
+            searchElement->setValue(uri);
         }
     }
 }

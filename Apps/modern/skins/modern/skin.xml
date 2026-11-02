@@ -198,10 +198,8 @@
     <!-- Unselected tabs have no sprite and show the tab bar through. -->
     <selector match="sp-tabbar-tab" state="selected">
         <property
-            name="skin"
-            value="url(#skin)"
-            slice="80,64;128,80"
-            nine-patch="1,1,1,1"
+            name="background"
+            value="$viewstack"
         />
     </selector>
 </skin>

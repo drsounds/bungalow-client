@@ -410,6 +410,10 @@ void MainElement::layout() {
 									SPCallback(&MainElement::onForwardClicked),
 									this, forwardButton);
 
+	// The address bar from views/app.xml is not supported here yet
+	if (SPElement *addressInput = this->getElementById("addressInput"))
+		addressInput->hide();
+
 	searchElement = (SPInputElement *)this->getElementById("searchInput");
 	searchElement->setWidth(120);
 	searchElement->setHeight(28);

@@ -61,20 +61,20 @@ bool SPClassicSkin::drawElement(SPGraphicsContext* g, SPElement *elm, const stri
         else if (state == "hover")
             bgColor = bgColor.lighten(0.05f);
 
-        /*switch (m_buttonStyle) {
+        switch (m_buttonStyle) {
         case kButtonFlat: {
             g->fillRoundedRectangle(
                 bounds.x, bounds.y, bounds.width, bounds.height, kR,
                 SPColor(bgColor.getR(), bgColor.getG(), bgColor.getB(), 230));
             break;
         }
-        case kButtonGradient: {*/
+        case kButtonGradient: {
             SPGradient grad(bgColor.lighten(0.50f), bgColor.lighten(-0.40f), 0);
             if (state == "active")
                 grad = SPGradient(grad.getEnd(), grad.getStart(), 0);
             g->fillRoundedLinearGradientRectangle(
                 bounds.x, bounds.y, bounds.width, bounds.height, kR, 0, grad);
-            /*break;
+            break;
         }
         case kButtonModernGradient: {
             float h, s, l;
@@ -100,7 +100,7 @@ bool SPClassicSkin::drawElement(SPGraphicsContext* g, SPElement *elm, const stri
                 bounds.width - 4, botH, 3, 0, botSpec);
             break;
         }
-        }*/
+        }
 
     	if (this->m_glossy && state != "active") {
     		SPGradient gradient2(bgColor.lighten(0.2f), bgColor.lighten(0.3f), 0);
@@ -197,7 +197,7 @@ bool SPClassicSkin::drawElement(SPGraphicsContext* g, SPElement *elm, const stri
     if (elm->getType() == "treeview")
     {
     	if (elm->getColorScheme() == SP_COLOR_SCHEME_DARK) {
-    		bgColor = bgColor.lighten(0.28);
+    		bgColor = bgColor.lighten(0.1);
     	}
         result = true;
         auto *treeView = dynamic_cast<SPTreeViewElement *>(elm);
@@ -318,7 +318,7 @@ void SPClassicSkin::drawTabBarToolButton(SPGraphicsContext* g, SPTabBarElement* 
 void SPClassicSkin::drawTabBarTab(SPGraphicsContext* g, SPTabBarElement *tabBar, SPTab* tab, int index, bool active, int x, int y, int width, int height)
 {
     SPColor bgColor = tabBar->getBackgroundColor();
-    SPColor activeBgColor = bgColor; // preserve original for active tab
+    SPColor activeBgColor = tabBar->getParentElement()->getBackgroundColor(); // preserve original for active tab
     SPColor lColor = this->m_lightColor;
     SPColor shadowColor = this->m_shadowColor;
     std::optional<SPColor> tintColor = tabBar->getTintColor();

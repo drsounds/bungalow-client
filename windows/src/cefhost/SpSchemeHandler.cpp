@@ -18,9 +18,12 @@ fs::path fromUtf8(const std::string& s) {
 }
 
 CefRefPtr<CefResourceHandler> errorResponse(int status, const char* statusText) {
-    static char kBody[] = "";
+    // CreateForData returns null for an empty buffer, and CefStreamResourceHandler
+    // CHECK-fails (aborting the process) on a null stream, so the body must not
+    // be empty. The data is copied, so a temporary is fine.
+    std::string body = statusText;
     return new CefStreamResourceHandler(status, statusText, "text/plain", {},
-                                        CefStreamReader::CreateForData(kBody, 0));
+                                        CefStreamReader::CreateForData(body.data(), body.size()));
 }
 
 // Maps a request path inside the bundle to the file to serve, or an empty path.
