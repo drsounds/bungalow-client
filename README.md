@@ -1,6 +1,6 @@
 # Bungalow Client
 
-BungalowClient is a C++ desktop application.
+BungalowClient is a C++ music and media manager app.
 
 It uses an own written GUI framework called **Space** which is a lightweight abstract GUI framework that aims to create an alternate protocol for serving content over the internet
 
