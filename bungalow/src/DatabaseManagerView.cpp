@@ -7,7 +7,7 @@
 #include "SPTabStackElement.h"
 #include "SPTableElement.h"
 
-#include "MainElement.h"
+#include "ui/MainWindow.h"
 #include "PlatformUi.h"
 #include "BungalowApp.h"
 
@@ -161,7 +161,7 @@ void DatabaseManagerView::reload() {
 // The sidebar lists one item per custom table, so rebuild it after changes.
 void DatabaseManagerView::rebuildNavigation() {
 	for (SPElement *e = getParentElement(); e; e = e->getParentElement()) {
-		if (auto *main = dynamic_cast<MainElement *>(e)) {
+		if (auto *main = dynamic_cast<ui::MainWindow *>(e)) {
 			main->rebuildNavItems();
 			return;
 		}

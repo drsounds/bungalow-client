@@ -18,7 +18,7 @@ namespace space
     {
     public:
         // The caption (menu, title, window buttons) overlays the top of the app header,
-        // which reserves this much top padding for it (see MainElement::layout).
+        // which reserves this much top padding for it (see ui::MainWindow::layout).
         static constexpr int CaptionHeight = 25;
 
         NativeApplication();

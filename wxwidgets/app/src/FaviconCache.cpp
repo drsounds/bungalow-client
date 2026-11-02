@@ -31,7 +31,7 @@ FaviconCache::FaviconCache() {
 
 FaviconCache::~FaviconCache() {
     // Cancel all in-flight requests and discard callbacks so no stale
-    // references fire after the owning MainElement is destroyed.
+    // references fire after the owning WebConcept is destroyed.
     for (auto& [domain, req] : m_inFlight)
         req.Cancel();
     m_requests.clear();

@@ -11,7 +11,6 @@ namespace space {
 	class SPSkin;
 	struct sp_event;
 	class SPGraphicsContext;
-	class MainElement;
 	class SPWindowElement : public SPElement {
 		
 	public:

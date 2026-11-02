@@ -19,17 +19,17 @@ namespace space
 {
     class Space;
     class SPWindowElement;
-    class MainElement;
+    namespace ui { class MainWindow; }
 }
 
 // Win32 counterpart of the wxWidgets BungalowApp: owns the database, download
-// manager, media services and playback queue, and builds the MainElement UI.
+// manager, media services and playback queue, and builds the MainWindow UI.
 class BungalowApp : public space::SPApplicationContext
 {
 protected:
     space::Space* m_space = nullptr;
     space::SPWindowElement* m_windowElement = nullptr;
-    space::MainElement* m_main = nullptr;
+    space::ui::MainWindow* m_main = nullptr;
     std::unique_ptr<Database> m_database;
     std::string m_databasePath;
     std::unique_ptr<DownloadManager> m_downloadManager;
@@ -67,8 +67,8 @@ public:
     BungalowApp();
     ~BungalowApp() override;
 
-    // Builds the UI inside windowElement and loads settings. Returns the MainElement.
-    space::MainElement* initialize(space::Space* space, space::SPWindowElement* windowElement);
+    // Builds the UI inside windowElement and loads settings. Returns the MainWindow.
+    space::ui::MainWindow* initialize(space::Space* space, space::SPWindowElement* windowElement);
     void shutdown();
     void onPositionTimer();
 
@@ -92,7 +92,9 @@ public:
     void playContext(PlayContext ctx);
     void playQueueAtIndex(int idx);
     void playTrackId(int64_t trackId);
-    void playUri(const std::string& uri);
+    // Plays a library track (bungalow:track:<id>) or a media service URI.
+    void playUri(const std::string& uri) override;
+    bool canPlayUri(const std::string& uri) const override;
 
     void togglePlayPause() override;
     void seekTo(int posMs) override;

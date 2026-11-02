@@ -9,7 +9,7 @@
 #include "Win32GraphicsContext.h"
 #ifdef BUNGALOW_WTL
 #include "BungalowApp.h"
-#include "MainElement.h"
+#include "ui/MainWindow.h"
 #else
 class BungalowApp {};
 #endif

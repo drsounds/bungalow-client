@@ -24,7 +24,7 @@ namespace space
 {
     class Space;
     class SPWindowElement;
-    class MainElement;
+    namespace ui { class MainWindow; }
 }
 
 class BungalowApp : public wxApp, public space::SPApplicationContext
@@ -33,7 +33,7 @@ protected:
     space::Space* m_space;
     space::SPWindowElement *m_windowElement;
     SpaceFrame* m_frame;
-    space::MainElement* m_main;
+    space::ui::MainWindow* m_main;
     std::unique_ptr<Database> m_database;
     std::string m_databasePath;
     std::unique_ptr<DownloadManager> m_downloadManager;
@@ -116,7 +116,9 @@ public:
 
     /// Compatibility wrappers that build a single-entry PlayContext.
     void playTrackId(int64_t trackId);
-    void playUri(const std::string& uri);
+    // Plays a library track (bungalow:track:<id>) or a media service URI.
+    void playUri(const std::string& uri) override;
+    bool canPlayUri(const std::string& uri) const override;
 
     void togglePlayPause() override;
     void seekTo(int posMs) override;

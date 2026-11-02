@@ -18,6 +18,10 @@ namespace space {
         virtual void togglePlayPause() = 0;
         virtual void playbackPrev() = 0;
         virtual void playbackNext() = 0;
+        /// Whether playUri() can play uri, e.g. bungalow:track:<id> or a
+        /// URI one of the media services accepts.
+        virtual bool canPlayUri(const std::string& /*uri*/) const { return false; }
+        virtual void playUri(const std::string& /*uri*/) {}
 
         static SPApplicationContext* current() { return currentContext; }
         static void setCurrent(SPApplicationContext* context) {
