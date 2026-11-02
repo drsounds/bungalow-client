@@ -1,6 +1,39 @@
 #include "Database.h"
 
 #include <utility>
+#include <random>
+#include <sstream>
+#include <iomanip>
+
+// ── UUID4 generator ───────────────────────────────────────────────────────────
+
+static std::string generateUUID4()
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFFu);
+
+    uint32_t a = dist(gen);
+    uint32_t b = dist(gen);
+    uint32_t c = dist(gen);
+    uint32_t d = dist(gen);
+
+    // Version 4: bits 12-15 of b must be 0100
+    b = (b & 0xFFFF0FFFu) | 0x00004000u;
+    // Variant 10xx: bits 30-31 of c must be 10
+    c = (c & 0x3FFFFFFFu) | 0x80000000u;
+
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0')
+        << std::setw(8) << a                    << '-'
+        << std::setw(4) << ((b >> 16) & 0xFFFFu) << '-'
+        << std::setw(4) << ( b        & 0xFFFFu) << '-'
+        << std::setw(4) << ((c >> 16) & 0xFFFFu) << '-'
+        << std::setw(4) << ( c        & 0xFFFFu)
+        << std::setw(8) << d;
+    return oss.str();
+}
+
 
 // ── Construction / destruction ────────────────────────────────────────────────
 
@@ -13,6 +46,7 @@ Database::Database(const std::string& path) {
     }
     exec("PRAGMA foreign_keys = ON;");
     initialize();
+    initializeCustomTables();
 }
 
 Database::~Database() {
@@ -688,4 +722,384 @@ Database::TrackDetails Database::getTrackDetails(int trackId)
     }
 
     return out;
+}
+
+// ── Custom user-defined table support ─────────────────────────────────────────
+
+// Column definitions are stored in db_tables.columns as a simple
+// pipe-delimited string:  "name1:TYPE1|name2:TYPE2|..."
+// (No JSON library dependency; types are restricted to TEXT/INTEGER/REAL.)
+
+std::string Database::encodeColumns(const std::vector<std::pair<std::string,std::string>>& cols)
+{
+    std::string out;
+    for (size_t i = 0; i < cols.size(); ++i) {
+        if (i) out += '|';
+        out += cols[i].first + ':' + cols[i].second;
+    }
+    return out;
+}
+
+std::vector<std::pair<std::string,std::string>>
+Database::decodeColumns(const std::string& encoded)
+{
+    std::vector<std::pair<std::string,std::string>> cols;
+    if (encoded.empty()) return cols;
+    size_t pos = 0;
+    while (pos <= encoded.size()) {
+        size_t pipe  = encoded.find('|', pos);
+        std::string token = (pipe == std::string::npos)
+            ? encoded.substr(pos)
+            : encoded.substr(pos, pipe - pos);
+        size_t colon = token.find(':');
+        if (colon != std::string::npos) {
+            cols.emplace_back(token.substr(0, colon), token.substr(colon + 1));
+        }
+        if (pipe == std::string::npos) break;
+        pos = pipe + 1;
+    }
+    return cols;
+}
+
+void Database::initializeCustomTables()
+{
+    // ── 1. Ensure the meta-table exists ──────────────────────────────────────
+    exec(R"(
+        CREATE TABLE IF NOT EXISTS db_tables (
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            name    TEXT    NOT NULL UNIQUE,
+            columns TEXT    NOT NULL DEFAULT ''
+        );
+    )");
+
+    // ── 2. Add extended metadata columns if they are missing (idempotent) ────
+    {
+        // Helper: collect existing column names in db_tables
+        std::vector<std::string> existing;
+        {
+            sqlite3_stmt* ps = nullptr;
+            if (sqlite3_prepare_v2(m_db, "PRAGMA table_info(db_tables);",
+                                   -1, &ps, nullptr) == SQLITE_OK) {
+                while (sqlite3_step(ps) == SQLITE_ROW) {
+                    const unsigned char* n = sqlite3_column_text(ps, 1);
+                    if (n) existing.emplace_back(reinterpret_cast<const char*>(n));
+                }
+                sqlite3_finalize(ps);
+            }
+        }
+        auto hasCol = [&](const char* col) {
+            for (auto& e : existing) if (e == col) return true;
+            return false;
+        };
+        auto addCol = [&](const char* ddl) {
+            std::string sql = std::string("ALTER TABLE db_tables ADD COLUMN ") + ddl + ";";
+            sqlite3_exec(m_db, sql.c_str(), nullptr, nullptr, nullptr);
+        };
+        if (!hasCol("display_name"))  addCol("display_name  TEXT NOT NULL DEFAULT ''");
+        if (!hasCol("noun_singular"))  addCol("noun_singular TEXT NOT NULL DEFAULT ''");
+        if (!hasCol("noun_plural"))    addCol("noun_plural   TEXT NOT NULL DEFAULT ''");
+        if (!hasCol("description"))    addCol("description   TEXT NOT NULL DEFAULT ''");
+    }
+
+    // ── 3. Migrate any user_ tables still using the old INTEGER PK ───────────
+    std::vector<std::pair<std::string,std::string>> tables; // {name, encoded_columns}
+    {
+        sqlite3_stmt* s = nullptr;
+        if (sqlite3_prepare_v2(m_db,
+            "SELECT name, columns FROM db_tables;",
+            -1, &s, nullptr) == SQLITE_OK) {
+            while (sqlite3_step(s) == SQLITE_ROW) {
+                const unsigned char* n = sqlite3_column_text(s, 0);
+                const unsigned char* c = sqlite3_column_text(s, 1);
+                std::string name = n ? reinterpret_cast<const char*>(n) : "";
+                std::string cols = c ? reinterpret_cast<const char*>(c) : "";
+                if (!name.empty())
+                    tables.emplace_back(std::move(name), std::move(cols));
+            }
+            sqlite3_finalize(s);
+        }
+    }
+
+    for (auto& [name, encoded] : tables) {
+        bool needsMigration = false;
+        {
+            std::string pragma = "PRAGMA table_info(user_" + name + ");";
+            sqlite3_stmt* ps = nullptr;
+            if (sqlite3_prepare_v2(m_db, pragma.c_str(), -1, &ps, nullptr) == SQLITE_OK) {
+                while (sqlite3_step(ps) == SQLITE_ROW) {
+                    const unsigned char* colName = sqlite3_column_text(ps, 1);
+                    const unsigned char* colType = sqlite3_column_text(ps, 2);
+                    std::string cn = colName ? reinterpret_cast<const char*>(colName) : "";
+                    std::string ct = colType ? reinterpret_cast<const char*>(colType) : "";
+                    if (cn == "id" && ct == "INTEGER") needsMigration = true;
+                }
+                sqlite3_finalize(ps);
+            }
+        }
+        if (!needsMigration) continue;
+
+        std::string drop = "DROP TABLE IF EXISTS user_" + name + ";";
+        sqlite3_exec(m_db, drop.c_str(), nullptr, nullptr, nullptr);
+
+        auto cols = decodeColumns(encoded);
+        std::string ddl = "CREATE TABLE IF NOT EXISTS user_" + name + " (id TEXT PRIMARY KEY";
+        for (auto& col : cols) {
+            std::string safeType = "TEXT"; // BELONGS_TO → TEXT in SQLite
+            if (col.second == "INTEGER") safeType = "INTEGER";
+            else if (col.second == "REAL") safeType = "REAL";
+            ddl += ", " + col.first + " " + safeType;
+        }
+        ddl += ");";
+        exec(ddl.c_str());
+    }
+}
+
+std::vector<CustomTableDef> Database::getCustomTables()
+{
+    std::vector<CustomTableDef> out;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT id, name, columns, display_name, noun_singular, noun_plural, description"
+        " FROM db_tables ORDER BY name;",
+        -1, &stmt, nullptr) != SQLITE_OK) return out;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        CustomTableDef d;
+        d.id      = sqlite3_column_int(stmt, 0);
+        auto txt  = [&](int col) -> std::string {
+            const unsigned char* t = sqlite3_column_text(stmt, col);
+            return t ? reinterpret_cast<const char*>(t) : "";
+        };
+        d.name         = txt(1);
+        d.columns      = decodeColumns(txt(2));
+        d.displayName  = txt(3);
+        d.nounSingular = txt(4);
+        d.nounPlural   = txt(5);
+        d.description  = txt(6);
+        out.push_back(std::move(d));
+    }
+    sqlite3_finalize(stmt);
+    return out;
+}
+
+CustomTableDef Database::getCustomTable(const std::string& name)
+{
+    CustomTableDef d;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT id, name, columns, display_name, noun_singular, noun_plural, description"
+        " FROM db_tables WHERE name = ? LIMIT 1;",
+        -1, &stmt, nullptr) != SQLITE_OK) return d;
+    sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        auto txt = [&](int col) -> std::string {
+            const unsigned char* t = sqlite3_column_text(stmt, col);
+            return t ? reinterpret_cast<const char*>(t) : "";
+        };
+        d.id           = sqlite3_column_int(stmt, 0);
+        d.name         = txt(1);
+        d.columns      = decodeColumns(txt(2));
+        d.displayName  = txt(3);
+        d.nounSingular = txt(4);
+        d.nounPlural   = txt(5);
+        d.description  = txt(6);
+    }
+    sqlite3_finalize(stmt);
+    return d;
+}
+
+int Database::createCustomTable(const std::string& name,
+                                 const std::vector<std::pair<std::string,std::string>>& cols,
+                                 const std::string& displayName,
+                                 const std::string& nounSingular,
+                                 const std::string& nounPlural,
+                                 const std::string& description)
+{
+    if (name.empty() || cols.empty()) return -1;
+
+    // Store meta entry including display metadata
+    std::string encoded = encodeColumns(cols);
+    {
+        sqlite3_stmt* ins = nullptr;
+        if (sqlite3_prepare_v2(m_db,
+            "INSERT INTO db_tables"
+            " (name, columns, display_name, noun_singular, noun_plural, description)"
+            " VALUES (?, ?, ?, ?, ?, ?);",
+            -1, &ins, nullptr) != SQLITE_OK) return -1;
+        sqlite3_bind_text(ins, 1, name.c_str(),         -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(ins, 2, encoded.c_str(),      -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(ins, 3, displayName.c_str(),  -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(ins, 4, nounSingular.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(ins, 5, nounPlural.c_str(),   -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(ins, 6, description.c_str(),  -1, SQLITE_TRANSIENT);
+        int rc = sqlite3_step(ins);
+        sqlite3_finalize(ins);
+        if (rc != SQLITE_DONE) return -1;
+    }
+
+    // Create the physical table with prefix "user_" — UUID4 TEXT primary key
+    // BELONGS_TO columns are stored as plain TEXT in SQLite.
+    std::string ddl = "CREATE TABLE IF NOT EXISTS user_" + name + " (id TEXT PRIMARY KEY";
+    for (auto& col : cols) {
+        std::string safeType = "TEXT";
+        if (col.second == "INTEGER") safeType = "INTEGER";
+        else if (col.second == "REAL") safeType = "REAL";
+        // BELONGS_TO:<target> → TEXT
+        ddl += ", " + col.first + " " + safeType;
+    }
+    ddl += ");";
+    exec(ddl.c_str());
+
+    return static_cast<int>(sqlite3_last_insert_rowid(m_db));
+}
+
+void Database::updateCustomTableMeta(const CustomTableDef& def)
+{
+    if (def.name.empty()) return;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "UPDATE db_tables SET display_name=?, noun_singular=?, noun_plural=?, description=?"
+        " WHERE name=?;",
+        -1, &stmt, nullptr) != SQLITE_OK) return;
+    sqlite3_bind_text(stmt, 1, def.displayName.c_str(),  -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, def.nounSingular.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, def.nounPlural.c_str(),   -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, def.description.c_str(),  -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 5, def.name.c_str(),         -1, SQLITE_TRANSIENT);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+}
+
+void Database::deleteCustomTable(const std::string& name)
+{
+    if (name.empty()) return;
+
+    // Drop physical table
+    std::string ddl = "DROP TABLE IF EXISTS user_" + name + ";";
+    sqlite3_exec(m_db, ddl.c_str(), nullptr, nullptr, nullptr);
+
+    // Remove meta entry
+    sqlite3_stmt* del = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "DELETE FROM db_tables WHERE name = ?;",
+        -1, &del, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(del, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_step(del);
+        sqlite3_finalize(del);
+    }
+}
+
+std::vector<CustomRow> Database::getCustomRows(const std::string& tableName)
+{
+    std::vector<CustomRow> out;
+    if (tableName.empty()) return out;
+
+    std::string sql = "SELECT * FROM user_" + tableName + " ORDER BY id;";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+        return out;
+
+    int colCount = sqlite3_column_count(stmt);
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        CustomRow r;
+        const unsigned char* idTxt = sqlite3_column_text(stmt, 0);
+        r.id = idTxt ? reinterpret_cast<const char*>(idTxt) : "";
+        // columns 1..N are the user columns
+        for (int i = 1; i < colCount; ++i) {
+            const unsigned char* t = sqlite3_column_text(stmt, i);
+            r.values.push_back(t ? reinterpret_cast<const char*>(t) : "");
+        }
+        out.push_back(std::move(r));
+    }
+    sqlite3_finalize(stmt);
+    return out;
+}
+
+CustomRow Database::getCustomRow(const std::string& tableName, const std::string& rowUuid)
+{
+    CustomRow r;
+    if (tableName.empty() || rowUuid.empty()) return r;
+
+    std::string sql = "SELECT * FROM user_" + tableName + " WHERE id=? LIMIT 1;";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+        return r;
+    sqlite3_bind_text(stmt, 1, rowUuid.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        r.id = rowUuid;
+        int colCount = sqlite3_column_count(stmt);
+        for (int i = 1; i < colCount; ++i) {
+            const unsigned char* t = sqlite3_column_text(stmt, i);
+            r.values.push_back(t ? reinterpret_cast<const char*>(t) : "");
+        }
+    }
+    sqlite3_finalize(stmt);
+    return r;
+}
+
+std::string Database::insertCustomRow(const std::string& tableName,
+                               const CustomTableDef& def,
+                               const std::vector<std::string>& values)
+{
+    if (tableName.empty() || def.columns.empty()) return "";
+
+    std::string uuid = generateUUID4();
+
+    // Build "INSERT INTO user_<name> (id, col1, col2, ...) VALUES (?, ?, ?,...)"
+    std::string cols = "id", placeholders = "?";
+    for (size_t i = 0; i < def.columns.size(); ++i) {
+        cols         += ',' + def.columns[i].first;
+        placeholders += ",?";
+    }
+    std::string sql = "INSERT INTO user_" + tableName +
+                      " (" + cols + ") VALUES (" + placeholders + ");";
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) return "";
+    // Bind UUID as first param
+    sqlite3_bind_text(stmt, 1, uuid.c_str(), -1, SQLITE_TRANSIENT);
+    // Bind user column values starting at param 2
+    for (size_t i = 0; i < values.size(); ++i) {
+        sqlite3_bind_text(stmt, static_cast<int>(i + 2),
+                          values[i].c_str(), -1, SQLITE_TRANSIENT);
+    }
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    return uuid;
+}
+
+void Database::updateCustomRow(const std::string& tableName,
+                                const CustomTableDef& def,
+                                const std::string& rowUuid,
+                                const std::vector<std::string>& values)
+{
+    if (tableName.empty() || def.columns.empty() || rowUuid.empty()) return;
+
+    std::string setClause;
+    for (size_t i = 0; i < def.columns.size(); ++i) {
+        if (i) setClause += ',';
+        setClause += def.columns[i].first + "=?";
+    }
+    std::string sql = "UPDATE user_" + tableName + " SET " + setClause + " WHERE id=?;";
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) return;
+    for (size_t i = 0; i < values.size(); ++i) {
+        sqlite3_bind_text(stmt, static_cast<int>(i + 1),
+                          values[i].c_str(), -1, SQLITE_TRANSIENT);
+    }
+    sqlite3_bind_text(stmt, static_cast<int>(values.size() + 1),
+                      rowUuid.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+}
+
+void Database::deleteCustomRow(const std::string& tableName, const std::string& rowUuid)
+{
+    if (tableName.empty() || rowUuid.empty()) return;
+    std::string sql = "DELETE FROM user_" + tableName + " WHERE id=?;";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) return;
+    sqlite3_bind_text(stmt, 1, rowUuid.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
 }

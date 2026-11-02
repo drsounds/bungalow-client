@@ -27,6 +27,9 @@
 #include "CuratorView.h"
 #include "StoreView.h"
 #include "DownloadsView.h"
+#include "DatabaseManagerView.h"
+#include "CustomTableView.h"
+#include "CustomTableEntryTabBarView.h"
 #include "PlayerView.h"
 #include "DownloadManager.h"
 #include "SPBookmarkEventArgs.h"
@@ -314,7 +317,26 @@ namespace space {
         itemDownloads->setText("Downloads");
         itemDownloads->setIconPath("icons/Downloads.svg");
         treeView->addItem(itemDownloads);
-        
+
+        // ── DATABASE ─────────────────────────────────────────────────────────
+        treeView->addSection("DATABASE");
+
+        auto* itemDb = new SPTreeItem(new SPUri("bungalow:database"));
+        itemDb->setText("Table Manager");
+        itemDb->setIconPath("icons/Document.svg");
+        itemDb->setCollapsed(false);
+        treeView->addItem(itemDb);
+
+        // One child item per user-defined table
+        if (db) {
+            for (auto& tbl : db->getCustomTables()) {
+                auto* child = new SPTreeItem(new SPUri("bungalow:table:" + tbl.name));
+                child->setText(tbl.displayName.empty() ? tbl.name : tbl.displayName);
+                child->setIconPath("icons/Document.svg");
+                itemDb->addChild(child);
+            }
+        }
+
         // ── APPS ─────────────────────────────────────────────────────────────
         treeView->addSection("APPS");
 
@@ -438,6 +460,9 @@ namespace space {
         viewStack->appendChild(new views::AppView(viewStack));
         viewStack->appendChild(new views::CuratorView(viewStack));
         viewStack->appendChild(new views::StoreView(viewStack));
+        viewStack->appendChild(new views::DatabaseManagerView(viewStack, db));
+        viewStack->appendChild(new views::CustomTableEntryTabBarView(viewStack, db));
+        viewStack->appendChild(new views::CustomTableView(viewStack, db));
 
         body->appendChild(new SPSplitterElement(body));
         auto *playQueuePanel = new views::PlayQueueView(body);

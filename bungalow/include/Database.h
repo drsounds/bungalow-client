@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <utility>
 
 /**
  * Database — thin wrapper around sqlite3 that owns the connection and
@@ -25,7 +26,38 @@
  *                    saved_at, deleted_at
  *  bookmarks       – id (PK autoincrement), uri (UNIQUE), title,
  *                    parent_id → bookmarks, created_at
+ *  db_tables       – id (PK autoincrement), name (UNIQUE), columns, display_name,
+ *                    noun_singular, noun_plural, description
+ *  user_<name>     – one per user-defined table, id (UUID4 TEXT PK) + columns
  */
+
+// ── Custom user-defined table support ────────────────────────────────────────
+
+/**
+ * Describes one user-defined table stored in the db_tables meta-table.
+ * Columns are ordered pairs of (column_name, stored_type).
+ * Supported stored_types:
+ *   "TEXT"              — plain text
+ *   "INTEGER"           — integer
+ *   "REAL"              — floating-point
+ *   "BELONGS_TO:<name>" — relation: stores bungalow:<name>:<uuid>, joined on display
+ */
+struct CustomTableDef {
+    int         id           = -1;
+    std::string name;         // db table name (without user_ prefix)
+    std::string displayName;  // human display name, e.g. "Music Artists"
+    std::string nounSingular; // e.g. "Artist"
+    std::string nounPlural;   // e.g. "Artists"
+    std::string description;  // purpose of this table
+    std::vector<std::pair<std::string, std::string>> columns; // {col_name, col_type}
+};
+
+/** One data row from a user-defined table. id is the UUID4 TEXT primary key. */
+struct CustomRow {
+    std::string              id;     // UUID4
+    std::vector<std::string> values; // parallel to CustomTableDef::columns
+};
+
 class Database {
 public:
     struct Bookmark {
@@ -155,9 +187,72 @@ public:
     /** Load full details for a track (recording, release, artist relationships). */
     TrackDetails getTrackDetails(int trackId);
 
+    // ── Custom user-defined table CRUD ────────────────────────────────────────
+
+    /** Returns all user-defined table definitions ordered by name. */
+    std::vector<CustomTableDef> getCustomTables();
+
+    /** Returns the definition for a single table, or a default-constructed value if not found. */
+    CustomTableDef getCustomTable(const std::string& name);
+
+    /**
+     * Create a new user table.
+     * @p cols is a list of (column_name, stored_type) pairs.
+     * Returns the new table id, or -1 on failure.
+     */
+    int createCustomTable(const std::string& name,
+                          const std::vector<std::pair<std::string, std::string>>& cols,
+                          const std::string& displayName   = "",
+                          const std::string& nounSingular  = "",
+                          const std::string& nounPlural    = "",
+                          const std::string& description   = "");
+
+    /** Update display-metadata for an existing table (does not touch columns). */
+    void updateCustomTableMeta(const CustomTableDef& def);
+
+    /**
+     * Drop a user-defined table and remove its meta-entry.
+     * No-op if the table does not exist.
+     */
+    void deleteCustomTable(const std::string& name);
+
+    /** Return all rows from a user-defined table, ordered by id. */
+    std::vector<CustomRow> getCustomRows(const std::string& tableName);
+
+    /** Return a single row by UUID; CustomRow::id is empty if not found. */
+    CustomRow getCustomRow(const std::string& tableName, const std::string& rowUuid);
+
+    /**
+     * Insert a new row.  @p values must be parallel to the table's columns.
+     * Returns the newly generated UUID4, or "" on failure.
+     */
+    std::string insertCustomRow(const std::string& tableName,
+                        const CustomTableDef& def,
+                        const std::vector<std::string>& values);
+
+    /**
+     * Update an existing row by UUID.  @p values must be parallel to the table's columns.
+     */
+    void updateCustomRow(const std::string& tableName,
+                         const CustomTableDef& def,
+                         const std::string& rowUuid,
+                         const std::vector<std::string>& values);
+
+    /** Delete a row by UUID. */
+    void deleteCustomRow(const std::string& tableName, const std::string& rowUuid);
+
+    /** Public alias for decodeColumns — usable where only a raw sqlite3* is available. */
+    static std::vector<std::pair<std::string, std::string>>
+    decodeColumnsPublic(const std::string& encoded) { return decodeColumns(encoded); }
+
 private:
     sqlite3* m_db = nullptr;
 
     void initialize();
+    void initializeCustomTables();
     void exec(const char* sql);
+
+    // Helpers for custom-table column encoding/decoding
+    static std::string encodeColumns(const std::vector<std::pair<std::string, std::string>>& cols);
+    static std::vector<std::pair<std::string, std::string>> decodeColumns(const std::string& encoded);
 };

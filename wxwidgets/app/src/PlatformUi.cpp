@@ -1,9 +1,12 @@
 #include "PlatformUi.h"
 
 #include "AddTrackDialog.h"
+#include "CreateTableDialog.h"
+#include "CustomRowDialog.h"
 
 #include <wx/app.h>
 #include <wx/menu.h>
+#include <wx/msgdlg.h>
 #include <wx/dirdlg.h>
 #include <wx/filename.h>
 #include <wx/stdpaths.h>
@@ -36,6 +39,32 @@ bool showAddTrackDialog(sqlite3* db, int trackId) {
     }
     AddTrackDialog dlg(parent, db);
     return dlg.ShowModal() == wxID_OK;
+}
+
+bool showCreateTableDialog(sqlite3* db) {
+    wxWindow* parent = wxTheApp ? wxTheApp->GetTopWindow() : nullptr;
+    if (!parent || !db) return false;
+
+    CreateTableDialog dlg(parent, db);
+    return dlg.ShowModal() == wxID_OK;
+}
+
+bool showCustomRowDialog(sqlite3* db, const std::string& tableName, const std::string& rowUuid) {
+    wxWindow* parent = wxTheApp ? wxTheApp->GetTopWindow() : nullptr;
+    if (!parent || !db || tableName.empty()) return false;
+
+    if (!rowUuid.empty()) {
+        CustomRowDialog dlg(parent, db, tableName, rowUuid);
+        return dlg.ShowModal() == wxID_OK;
+    }
+    CustomRowDialog dlg(parent, db, tableName);
+    return dlg.ShowModal() == wxID_OK;
+}
+
+bool showConfirmDialog(const std::string& title, const std::string& message) {
+    wxWindow* parent = wxTheApp ? wxTheApp->GetTopWindow() : nullptr;
+    return wxMessageBox(wxString::FromUTF8(message), wxString::FromUTF8(title),
+                        wxYES_NO | wxICON_WARNING, parent) == wxYES;
 }
 
 std::string showFolderDialog(const std::string& title, const std::string& initialPath) {
