@@ -14,12 +14,25 @@
         "WTL_INCLUDE_DIR": "${sourceDir}/vcpkg_installed/include",
         "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
       }
+    },
+    {
+      "name": "ninja-nocef",
+      "displayName": "Ninja (without CEF)",
+      "inherits": "ninja",
+      "binaryDir": "${sourceDir}/build/ninja-nocef",
+      "cacheVariables": {
+        "BUNGALOW_ENABLE_CEF": "OFF"
+      }
     }
   ],
   "buildPresets": [
     {
       "name": "ninja",
       "configurePreset": "ninja"
+    },
+    {
+      "name": "ninja-nocef",
+      "configurePreset": "ninja-nocef"
     }
   ],
   "testPresets": [
