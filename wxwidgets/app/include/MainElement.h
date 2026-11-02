@@ -68,9 +68,10 @@ namespace space {
 
             void showMessage(SPMessageType msgType, string msg);
             void setFullWidthAddressBar(bool fullWidth);
+            // Rebuilds the sidebar (bookmarks, custom tables).
+            void rebuildNavItems();
 
         private:
-            void rebuildNavItems();
             // Mirrors the current URI into the address bar, or into the search
             // field when the address bar is hidden.
             void showCurrentUri(const string& uri) const;

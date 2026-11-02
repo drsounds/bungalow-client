@@ -1,6 +1,4 @@
 #include "PlatformUi.h"
-#include "BungalowApp.h"
-#include "Database.h"
 
 #include <Windows.h>
 #include <ShlObj.h>
@@ -9,6 +7,9 @@
 #include <filesystem>
 #include <functional>
 #include <regex>
+
+#include "BungalowApp.h"
+#include "Database.h"
 
 namespace space {
 namespace platform {
