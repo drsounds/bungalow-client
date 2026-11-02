@@ -8,6 +8,7 @@
 #include "Database.h"
 
 #include "SPString.h"
+#include "web/SiteUri.h"
 
 #include <Windows.h>
 #include <shellapi.h>
@@ -33,24 +34,13 @@ static bool isBungalowScheme(const string& uri) {
 }
 
 string SiteView::uriToUrl(const string& uri) const {
-    if (uri.size() <= m_uriPrefix.size()) return "";
-    string remainder = uri.substr(m_uriPrefix.size());
-    string url = "https://";
-    for (char c : remainder)
-        url += (c == ':') ? '/' : c;
-    return url;
+    return web::SiteUri::toUrl(uri, m_uriPrefix);
 }
 
+// Only https pages map back to a bungalow URI.
 string SiteView::urlToUri(const string& url) const {
-    const string scheme = "https://";
-    if (url.rfind(scheme, 0) != 0) return "";
-    string rest = url.substr(scheme.size());
-    string uri = m_uriPrefix;
-    for (char c : rest)
-        uri += (c == '/') ? ':' : c;
-    while (!uri.empty() && uri.back() == ':')
-        uri.pop_back();
-    return uri;
+    if (url.rfind("https://", 0) != 0) return "";
+    return web::SiteUri::toBungalowUri(url, m_uriPrefix);
 }
 
 string SiteView::normalizeUrl(const string& url) {

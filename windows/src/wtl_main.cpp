@@ -7,7 +7,7 @@
 #include "NativeApplication.h"
 
 #ifdef BUNGALOW_CEF
-#include "cefhost/CefRuntime.h"
+#include "web/CefRuntime.h"
 #endif
 
 #include <windowsx.h>
@@ -647,11 +647,11 @@ private:
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
 #ifdef BUNGALOW_CEF
 	// CEF relaunches this executable for its renderer and GPU processes.
-	const int subprocessExitCode = space::cefhost::executeSubprocess(instance);
+	const int subprocessExitCode = space::web::CefRuntime::executeSubprocess(instance);
 	if (subprocessExitCode >= 0)
 		return subprocessExitCode;
 	// On failure app bundles show an error view; the rest of the UI still works.
-	space::cefhost::initialize(instance);
+	space::web::CefRuntime::initialize(instance);
 #endif
 
 	if (FAILED(_Module.Init(nullptr, instance))) {
@@ -687,7 +687,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
 	_Module.RemoveMessageLoop();
 	_Module.Term();
 #ifdef BUNGALOW_CEF
-	space::cefhost::shutdown();
+	space::web::CefRuntime::shutdown();
 #endif
 	return result;
 }

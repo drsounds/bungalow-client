@@ -2,7 +2,7 @@
 #ifndef H_SPACE
 #define H_SPACE
 #include <Windows.h>
-#include "MainElement.h"
+#include "ui/MainWindow.h"
 #include <string>
 #include "WindowElement.h"
 #define MAX_LOADSTRING 100
@@ -12,11 +12,11 @@ namespace space {
 			HINSTANCE hInst;	// current instance
 			HDC memHDC;
 			HWND hWnd;
-			MainElement *mainWindow;
+			ui::MainWindow *mainWindow;
 	public:
 	    void invalidateRegion(rectangle rect);
 	    GraphicsContext *createGraphics();
-        MainElement *getMainWindow() {
+        ui::MainWindow *getMainWindow() {
             return this->mainWindow;
         }
 	    void setHandle(HWND hWnd) {

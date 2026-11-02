@@ -48,8 +48,22 @@ file(GLOB SPACE_SOURCES CONFIGURE_DEPENDS "space/src/*.cpp")
 file(GLOB BUNGALOW_SOURCES CONFIGURE_DEPENDS "bungalow/src/*.cpp")
 file(GLOB SPACE_HEADERS CONFIGURE_DEPENDS "space/include/*.h")
 file(GLOB BUNGALOW_HEADERS CONFIGURE_DEPENDS "bungalow/include/*.h")
+# The client architecture, one directory per package: aspect, feature,
+# concept, search, navigation, ui and web, plus the built-in contributions
+# in app.
+set(BUNGALOW_PACKAGES aspect app concept feature navigation search ui web)
+set(BUNGALOW_PACKAGE_SOURCES)
+set(BUNGALOW_PACKAGE_HEADERS)
+foreach(package IN LISTS BUNGALOW_PACKAGES)
+    file(GLOB_RECURSE package_sources CONFIGURE_DEPENDS "bungalow/src/${package}/*.cpp")
+    file(GLOB_RECURSE package_headers CONFIGURE_DEPENDS "bungalow/include/${package}/*.h")
+    list(APPEND BUNGALOW_PACKAGE_SOURCES ${package_sources})
+    list(APPEND BUNGALOW_PACKAGE_HEADERS ${package_headers})
+endforeach()
 if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
     list(FILTER BUNGALOW_SOURCES EXCLUDE REGEX "/main\\.cpp$")
+    list(APPEND BUNGALOW_SOURCES ${BUNGALOW_PACKAGE_SOURCES})
+    list(APPEND BUNGALOW_HEADERS ${BUNGALOW_PACKAGE_HEADERS})
 else()
     set(BUNGALOW_SOURCES)
     set(BUNGALOW_HEADERS)
@@ -91,7 +105,6 @@ else()
             windows/src/SPPlayerCanvasElement.cpp
             windows/src/SPMusicVisualizerElement.cpp
             windows/src/UiDispatcher.cpp
-            wxwidgets/app/src/MainElement.cpp
             wxwidgets/app/src/AppView.cpp
             wxwidgets/app/src/LibraryView.cpp
             wxwidgets/app/src/LocalFilesView.cpp
@@ -116,8 +129,8 @@ if(BUNGALOW_ENABLE_CEF)
 
     # CEF headers need C++20, so the CEF host is its own library and the
     # client only sees the CEF-free SPEmbeddedBrowser / CefRuntime headers.
-    file(GLOB CEF_HOST_SOURCES CONFIGURE_DEPENDS "windows/src/cefhost/*.cpp" "windows/src/cefhost/*.h")
-    file(GLOB CEF_HOST_HEADERS CONFIGURE_DEPENDS "windows/include/cefhost/*.h")
+    file(GLOB CEF_HOST_SOURCES CONFIGURE_DEPENDS "windows/src/web/cef/*.cpp" "windows/src/web/cef/*.h")
+    file(GLOB CEF_HOST_HEADERS CONFIGURE_DEPENDS "windows/include/web/*.h")
     add_library(bungalow-cef STATIC ${CEF_HOST_SOURCES} ${CEF_HOST_HEADERS} space/include/SPEmbeddedBrowser.h)
     set_target_properties(bungalow-cef PROPERTIES CXX_STANDARD 20)
     target_include_directories(bungalow-cef PRIVATE
@@ -227,4 +240,16 @@ if(BUILD_TESTING)
     target_include_directories(bungalow-xml-parser-test PRIVATE space/include)
     target_link_libraries(bungalow-xml-parser-test PRIVATE EXPAT::EXPAT)
     add_test(NAME bungalow-xml-parser-test COMMAND bungalow-xml-parser-test)
+
+    add_executable(bungalow-site-uri-test
+        bungalow/tests/SiteUriTest.cpp
+        bungalow/src/web/SiteUri.cpp)
+    target_include_directories(bungalow-site-uri-test PRIVATE bungalow/include)
+    add_test(NAME bungalow-site-uri-test COMMAND bungalow-site-uri-test)
+
+    add_executable(bungalow-aspect-test
+        bungalow/tests/AspectTest.cpp
+        bungalow/src/search/SearchManager.cpp)
+    target_include_directories(bungalow-aspect-test PRIVATE bungalow/include)
+    add_test(NAME bungalow-aspect-test COMMAND bungalow-aspect-test)
 endif()

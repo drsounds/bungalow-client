@@ -18,7 +18,7 @@
 #include "SPPlaybackEventArgs.h"
 
 #include "SPColor.h"
-#include "MainElement.h"
+#include "ui/MainWindow.h"
 #include "SPMessageType.h"
 #include "SPWindowElement.h"
 #include "SPSkin.h"
@@ -122,7 +122,7 @@ bool BungalowApp::OnInit(){
     this->m_frame->setSpace(m_space);
     this->m_windowElement->setSpace(m_space);
     this->m_space->addWindow(this->m_windowElement);
-    this->m_main = new space::MainElement(this->m_windowElement);
+    this->m_main = new space::ui::MainWindow(this->m_windowElement);
     this->m_main->setId("main");
 
     space::SPColor tintColor(100, 127, 255, 127);
@@ -271,6 +271,18 @@ static std::string uriBasename(const std::string& uri) {
     return name;
 }
 
+// bungalow:track:<id> names a track of the library.
+static bool parseTrackUri(const std::string& uri, int64_t& trackId) {
+    static const std::string kPrefix = "bungalow:track:";
+    if (uri.rfind(kPrefix, 0) != 0) return false;
+    const std::string id = uri.substr(kPrefix.size());
+    if (id.empty() || id.size() > 18) return false;
+    for (char c : id)
+        if (c < '0' || c > '9') return false;
+    trackId = std::stoll(id);
+    return true;
+}
+
 // ── Playback ──────────────────────────────────────────────────────────────────
 
 void BungalowApp::stopCurrentPlayback() {
@@ -412,6 +424,12 @@ void BungalowApp::playTrackId(int64_t trackId) {
 }
 
 void BungalowApp::playUri(const std::string& uri) {
+    int64_t trackId = 0;
+    if (parseTrackUri(uri, trackId)) {
+        playTrackId(trackId);
+        return;
+    }
+
     PlayQueueEntry e;
     e.displayTitle = uriBasename(uri);
     e.uri          = uri;
@@ -421,6 +439,11 @@ void BungalowApp::playUri(const std::string& uri) {
     ctx.entries.push_back(std::move(e));
     ctx.startIndex = 0;
     playContext(std::move(ctx));
+}
+
+bool BungalowApp::canPlayUri(const std::string& uri) const {
+    int64_t trackId = 0;
+    return parseTrackUri(uri, trackId) || getMediaServiceForUri(uri) != nullptr;
 }
 
 void BungalowApp::togglePlayPause() {
