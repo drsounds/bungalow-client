@@ -11,6 +11,7 @@ const config = {
   baseUrl: '/bungalow-client/',
   organizationName: 'drsounds',
   projectName: 'bungalow-client',
+  clientModules: [require.resolve('./src/clientModules/themeColor.js')],
 
   onBrokenLinks: 'throw',
 
@@ -53,6 +54,7 @@ const config = {
         defaultMode: 'dark',
         respectPrefersColorScheme: false,
       },
+      metadata: [{name: 'theme-color', content: '#211e1a'}],
       navbar: {
         title: 'Bungalow',
         logo: {
