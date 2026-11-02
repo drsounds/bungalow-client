@@ -36,7 +36,7 @@ const config = {
         docs: {
           routeBasePath: '/',
           sidebarPath: require.resolve('./sidebars.js'),
-          editUrl: 'https://github.com/drsounds/bungalow-client/tree/main/website/',
+          editUrl: 'https://github.com/drsounds/bungalow-client/tree/main/docs/',
         },
         blog: false,
         theme: {
