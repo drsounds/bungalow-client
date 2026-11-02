@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap');
+
 @font-face {
   font-family: 'Bungalow Sans';
   src: url('https://app.spacify.se/assets/bungalow-sans-bold-extended-CfaNoKqW.ttf') format('truetype');
@@ -32,6 +34,7 @@
 }
 
 p {
+  font-family: 'Nunito', sans-serif;
   color: rgba(0, 0, 0, 0.8);
 }
 
