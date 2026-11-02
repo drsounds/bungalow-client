@@ -5,13 +5,30 @@ sidebar_position: 1
 
 # URI schemes
 
-Bungalow uses three URI schemes:
+Bungalow uses these URI schemes:
 
 | Scheme | Names | Example |
 |--------|-------|---------|
 | `bungalow:` | views, navigation and library entities | `bungalow:library`, `bungalow:track:42` |
 | `sp://` | files inside an app bundle | `sp://modern/skins/modern/images/skin.png` |
-| `musik:` | portable, service-independent content (planned in C++) | `musik:isrc:GBAYE0601498` |
+| `musik:` | portable, service-independent content ([RFC-0002](../specs/rfc-0002-musik-uri-scheme.md)) | `musik:isrc:GBAYE0601498` |
+| `bungalow:federated:` | decentralised, shareable playlists ([RFC-0001](../specs/rfc-0001-universal-playlist-sharing.md)) | `bungalow:federated:user:@me@example.social:playlist:<uuid>` |
+
+## Aliases
+
+When you navigate (from the search field, the address field, a link or an
+app), `ui::MainWindow` rewrites these prefixes to `bungalow:`:
+
+| Prefix | Becomes |
+|--------|---------|
+| `space:` | `bungalow:` |
+| `musik:` | `bungalow:` |
+| `spotify:` | `bungalow:` |
+| `spacify:` | `bungalow:` |
+
+So `spotify:` links in legacy apps open in Bungalow. The rewrite is purely a
+prefix change. `musik:` URIs aren't interpreted according to RFC-0002 yet; see
+[`musik:`](#musik) below.
 
 ## `bungalow:` navigation URIs
 
@@ -62,17 +79,36 @@ serve `index.html`. See [App bundles](../apps/bundles.md#sp-uris).
 
 ## `musik:`
 
-`musik:` is the Java client's portable content identifier, specified in
-RFC-0002. It names a recording, work, release, artist or facet without tying it
-to a service:
+`musik:` is Bungalow's portable content identifier, specified in
+[RFC-0002](../specs/rfc-0002-musik-uri-scheme.md). It names a recording, work,
+release, artist or facet without tying it to a service:
 
 ```
 musik:isrc:<ISRC>                      a recording
+musik:iswc:<ISWC>                      a work
 musik:upc:<UPC>                        a release
 musik:isni:<ISNI>                      an artist
-musik:artist:<artist>[:release:<release>[:track:<n>]:name:<name>]
+musik:ipi:<IPI>                        a creator
+musik:genre:<slug>, musik:mood:<slug>  facets
+musik:artist:<artist>[:release:<release>[[:track:<n>]:name:<name>[:version:<version>]]]
+musik:track?name=<name>&artist_name=<artist>&release_name=<release>&number=<n>&version=<version>
 ```
 
-The C++ client doesn't parse `musik:` URIs yet; its library already uses the
-same identifiers (ISRC, UPC, ISNI) as keys. See
-[The musik: URI scheme](../java-client/musik-uri-scheme.md).
+The Java client parses and plays these (`MusikUri`). The C++ client only
+rewrites the `musik:` prefix to `bungalow:` (see [Aliases](#aliases)). Its
+library already uses the same identifiers (ISRC, UPC, ISNI) as keys. Parsing
+the RFC-0002 forms is on the [roadmap](../roadmap.md).
+
+## `bungalow:federated:`
+
+A Universal Playlist Sharing Link ([RFC-0001](../specs/rfc-0001-universal-playlist-sharing.md))
+carries a whole playlist, or a reference to a hosted one, attributed to a
+federated handle:
+
+```
+bungalow:federated:user:<@user@instance>:playlist:<uuid>[:<body>][:sig:<signature>]
+https://ups.bungalow.net/user/<handle>/playlist/<uuid>[/<body>][?sig=<signature>]
+```
+
+The Java client parses UPSLs and shows a preview. The C++ client doesn't handle
+them yet. See [Specifications](../specs/index.md).

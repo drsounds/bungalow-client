@@ -67,7 +67,7 @@ even the whole look-and-feel are "apps" that plug in.
    "Play with…" cross-service resolver.
 8. [The `musik:` URI scheme](./musik-uri-scheme.md) — the portable, service-agnostic
    way content is named (recordings, works, releases, artists, facets); formal
-   spec in [RFC-0002](https://github.com/drsounds/bungalow/blob/main/src/main/java/se/bungalow/app/music/spec/RFC-0002-musik-uri-scheme.md).
+   spec in [RFC-0002](../specs/rfc-0002-musik-uri-scheme.md).
 9. [Status & roadmap](./status-and-roadmap.md) — what is wired today, the known
    gaps in the in-progress refactor, and where the ecosystem is headed.
 

@@ -60,6 +60,7 @@ const config = {
         },
         items: [
           {type: 'docSidebar', sidebarId: 'docs', position: 'left', label: 'Docs'},
+          {to: '/specs/', label: 'Specifications', position: 'left'},
           {to: '/java-client/', label: 'Java client', position: 'left'},
           {
             href: 'https://github.com/drsounds/bungalow-client',
@@ -77,6 +78,7 @@ const config = {
               {label: 'Introduction', to: '/'},
               {label: 'Building', to: '/getting-started/building'},
               {label: 'Architecture', to: '/architecture/overview'},
+              {label: 'Specifications', to: '/specs/'},
             ],
           },
           {

@@ -47,7 +47,8 @@ client, and what comes next.
 | `Service`, `ServiceManager`, capability lookup | ⏳ `SPService` / `SPMediaService`, chosen by URI |
 | `MusicService`, `MusicCatalogueService`, `AuthAspect` | ⏳ not yet |
 | `PlaybackCoordinator`, "Play with…", `ResolutionStore` | ⏳ a single service per URI |
-| `musik:` URIs | ⏳ the identifiers are in the schema; no parser yet |
+| `musik:` URIs (`MusikUri`, [RFC-0002](./specs/rfc-0002-musik-uri-scheme.md)) | ⏳ `musik:` is an alias of `bungalow:`; the identifiers are in the schema, but there is no RFC-0002 parser yet |
+| Playlist sharing (`Upsl`, `Base62`, [RFC-0001](./specs/rfc-0001-universal-playlist-sharing.md)) | ⏳ not yet |
 | Chrome / Design | ⏳ one shell (`views/app.xml`) |
 
 ## Known gaps
@@ -72,14 +73,31 @@ client, and what comes next.
 2. **Cross-service resolution**: a vendor-neutral play request resolved over
    every installed music service at play time, with a remembered "Play with…"
    choice.
-3. **`musik:` URIs** in playlists, drag and drop and the queue.
-4. **Catalogue and store aspects**, so catalogues and stores can be installed
+3. **`musik:` URIs** ([RFC-0002](./specs/rfc-0002-musik-uri-scheme.md)):
+   parse the identifier, name and query forms instead of only aliasing the
+   prefix, and use them in playlists, drag and drop and the queue.
+4. **Decentralised playlists** ([RFC-0001](./specs/rfc-0001-universal-playlist-sharing.md)):
+   create, parse and preview `bungalow:federated:` links, then add hosted
+   links, Ed25519 verification and ActivityPub subscriptions.
+5. **Catalogue and store aspects**, so catalogues and stores can be installed
    side by side and searched together.
-5. **Connect the Apps API** to the library, player and search.
-6. **Declarative `<app>` concepts**, so a whole feature (entities, views,
+6. **Connect the Apps API** to the library, player and search.
+7. **Declarative `<app>` concepts**, so a whole feature (entities, views,
    sidebar) can be declared in markup or YAML, as described in the
    [introduction](./intro.md#the-space-ui-idea).
-7. **Chrome and Design**: switchable shells (for example a Windows Media
+8. **JavaScript views**: write views in JavaScript on an embedded V8 engine,
+   so integrations can extend Bungalow without C++ or Lua:
+
+   ```javascript
+   import render from '@bungalow/ui'
+
+   function Page() {
+      return render('view', { flex: 1 },
+         render('text', {}, 'Hello World!'))
+   }
+   ```
+
+9. **Chrome and Design**: switchable shells (for example a Windows Media
    Player-style shell) in addition to skins.
 
 ## Contributor conventions

@@ -52,6 +52,12 @@ const sidebars = {
       label: 'Reference',
       items: ['reference/uri-schemes', 'reference/settings-and-files'],
     },
+    {
+      type: 'category',
+      label: 'Specifications',
+      link: {type: 'doc', id: 'specs/index'},
+      items: ['specs/rfc-0001-universal-playlist-sharing', 'specs/rfc-0002-musik-uri-scheme'],
+    },
     'roadmap',
   ],
   javaClient: [
