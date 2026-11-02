@@ -1,4 +1,11 @@
-/* Frutiger-Aero-ish blue accent, in keeping with the app's default tint. */
+@font-face {
+  font-family: 'Bungalow Sans';
+  src: url('https://app.spacify.se/assets/bungalow-sans-bold-extended-CfaNoKqW.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --ifm-color-primary: #1f7ac9;
   --ifm-color-primary-dark: #1c6eb5;
@@ -7,17 +14,34 @@
   --ifm-color-primary-light: #2c87d8;
   --ifm-color-primary-lighter: #378ddb;
   --ifm-color-primary-lightest: #57a0e1;
+  --ifm-link-hover-color: #00a173;
+  --ifm-heading-font-family: 'Bungalow Sans', sans-serif;
   --ifm-code-font-size: 92%;
 }
 
 [data-theme='dark'] {
-  --ifm-color-primary: #5aa9ec;
-  --ifm-color-primary-dark: #3e9ae9;
-  --ifm-color-primary-darker: #3092e7;
-  --ifm-color-primary-darkest: #177bd1;
-  --ifm-color-primary-light: #76b8ef;
-  --ifm-color-primary-lighter: #84c0f1;
-  --ifm-color-primary-lightest: #addaf5;
+  --ifm-color-primary: #00fcad;
+  --ifm-color-primary-dark: #00e29b;
+  --ifm-color-primary-darker: #00d18f;
+  --ifm-color-primary-darkest: #00a173;
+  --ifm-color-primary-light: #26fcb9;
+  --ifm-color-primary-lighter: #4dfdc5;
+  --ifm-color-primary-lightest: #80fdd5;
+  --ifm-link-hover-color: #00fcad;
+  --ifm-heading-font-family: 'Bungalow Sans', sans-serif;
+}
+
+p {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+[data-theme='dark'] p {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme='light'] a:hover:not(.button) {
+  color: #00a173;
+  background-color: #cae6de;
 }
 
 /* ASCII diagrams should not wrap. */
