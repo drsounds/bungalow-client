@@ -48,6 +48,8 @@ namespace space
         sp_rectangle measureString(const string& text, const SPFontStyle& font) override;
         int getWidth() override;
         int getHeight() override;
+        // The window this context paints; parent for embedded native views.
+        HWND getWindow() const { return window; }
         void drawInputElement(SPElement *element, int x, int y, int width, int height) override;
         void setOrigo(const int& x, const int& y) override;
         void restoreOrigo() override;

@@ -1,0 +1,10 @@
+{
+    "BundleType": "Application",
+    "BundleIdentifier": "testapp",
+    "AppName": {
+        "en": "Testapp"
+    },
+    "AppDescription": {
+        "en": "A test application."
+    }
+}

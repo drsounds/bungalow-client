@@ -282,8 +282,8 @@ namespace space {
         }
 
         explicit SPElement(SPElement *parent);
-        void request(const string &method, const string &uri,
-                     const string &data);
+        virtual void request(const string &method, const string &uri,
+                             const string &data);
         virtual void onLoad();
         void loadXUL(const string &filename);
         void loadSrc(const string & uri);

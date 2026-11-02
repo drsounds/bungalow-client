@@ -1,4 +1,5 @@
 #include "DownloadManager.h"
+#include "AudioImporter.h"
 #include "ConfigView.h"
 
 #include <nlohmann/json.hpp>
@@ -325,49 +326,10 @@ void DownloadManager::onDownloadComplete(DownloadItem& item, const std::string& 
 
 // ── Audio import ──────────────────────────────────────────────────────────────
 
+// Read tags, add to local files and link to a matched or newly created track
 void DownloadManager::importAudioFile(const std::string& filePath) {
     if (!m_db) return;
-
-    sqlite3_stmt* stmt = nullptr;
-
-    // Insert into files (ignore if already present)
-    if (sqlite3_prepare_v2(m_db,
-            "INSERT OR IGNORE INTO files(path) VALUES(?)", -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_step(stmt);
-        sqlite3_finalize(stmt);
-    }
-
-    // Retrieve file id
-    int64_t fileId = 0;
-    if (sqlite3_prepare_v2(m_db,
-            "SELECT id FROM files WHERE path=?", -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
-        if (sqlite3_step(stmt) == SQLITE_ROW) fileId = sqlite3_column_int64(stmt, 0);
-        sqlite3_finalize(stmt);
-    }
-
-    if (fileId == 0) return;
-
-    // Insert into audio_files with stem as name
-    std::string name = fs::path(filePath).stem().string();
-    if (sqlite3_prepare_v2(m_db,
-            "INSERT OR IGNORE INTO audio_files(file_id, name) VALUES(?,?)",
-            -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int64(stmt, 1, fileId);
-        sqlite3_bind_text (stmt, 2, name.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_step(stmt);
-        sqlite3_finalize(stmt);
-    }
-
-    // Insert into playables
-    std::string uri = "file://" + filePath;
-    if (sqlite3_prepare_v2(m_db,
-            "INSERT OR IGNORE INTO playables(uri) VALUES(?)", -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, uri.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_step(stmt);
-        sqlite3_finalize(stmt);
-    }
+    space::AudioImporter::importFile(m_db, filePath);
 }
 
 // ── Database helpers ──────────────────────────────────────────────────────────

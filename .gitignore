@@ -5,8 +5,6 @@ Thumbs.db:encryptable
 ehthumbs.db
 ehthumbs_vista.db
 
-skin.png
-
 # Dump file
 *.stackdump
 
@@ -1051,3 +1049,7 @@ dkms.conf
 # Raspberry Pi Pico disassembler file
 *.dis
 /Default/
+
+# CEF source checkout (reference only; binaries come from ports/cef)
+/cef/
+/chromiumembedded-cef-*.tar.bz2

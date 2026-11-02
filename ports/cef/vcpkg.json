@@ -1,0 +1,14 @@
+{
+  "name": "cef",
+  "version": "151.3.24",
+  "description": "Chromium Embedded Framework: prebuilt libcef binary distribution plus the libcef_dll_wrapper C++ wrapper library.",
+  "homepage": "https://github.com/chromiumembedded/cef",
+  "license": "BSD-3-Clause",
+  "supports": "windows & x64 & !uwp",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    }
+  ]
+}

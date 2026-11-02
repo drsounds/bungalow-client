@@ -27,11 +27,15 @@
 #include "CuratorView.h"
 #include "StoreView.h"
 #include "DownloadsView.h"
+#include "DatabaseManagerView.h"
+#include "CustomTableView.h"
+#include "CustomTableEntryTabBarView.h"
 #include "PlayerView.h"
 #include "DownloadManager.h"
 #include "SPBookmarkEventArgs.h"
 #include "Database.h"
 #include "SPUri.h"
+#include "SPAppManager.h"
 
 #include "PlatformUi.h"
 
@@ -57,6 +61,8 @@ namespace space {
             { "space:",    "bungalow:" },
             { "bungalow:", "bungalow:" },
             { "musik:",    "bungalow:" },
+            { "spotify:", "bungalow:" },
+            { "spacify:", "bungalow:" },
         };
         for (auto& [alias, canonical] : kAliases) {
             if (uri.rfind(alias, 0) == 0)
@@ -70,7 +76,9 @@ namespace space {
         return uri.rfind("bungalow:", 0) == 0
             || uri.rfind("space:",    0) == 0
             || uri.rfind("bungalow:", 0) == 0
-            || uri.rfind("musik:",    0) == 0;
+            || uri.rfind("musik:",    0) == 0 
+            || uri.rfind("spacify:", 0) == 0
+            || uri.rfind("spotify:", 0) == 0;
     }
 
     // ── Helper: favicon domain from a bungalow URI ─────────────────────────────
@@ -78,24 +86,49 @@ namespace space {
     // appropriate hosted-domain suffix for bare names (app/curator/store).
     // Returns "" for URIs that don't map to a web domain.
     /*static*/ string MainElement::faviconDomain(const string& uri) {
-        struct SchemeEntry { const char* prefix; size_t len; const char* hosted; };
+        struct SchemeEntry { const char* prefix; const char* hosted; };
         static const SchemeEntry kSchemes[] = {
-            { "bungalow:site:",    13, nullptr                },
-            { "bungalow:app:",     12, ".apps.bungalow.se"     },
-            { "bungalow:curator:", 16, ".curator.bungalow.se"  },
-            { "bungalow:store:",   14, ".store.bungalow.se"    },
+            { "bungalow:site:",    nullptr                },
+            { "bungalow:app:",     ".apps.bungalow.se"     },
+            { "bungalow:curator:", ".curator.bungalow.se"  },
+            { "bungalow:store:",   ".store.bungalow.se"    },
         };
 
         for (auto& s : kSchemes) {
             if (uri.rfind(s.prefix, 0) != 0) continue;
-            string remainder = uri.substr(s.len);
+            string remainder = uri.substr(strlen(s.prefix));
             size_t colon = remainder.find(':');
             string domain = (colon == string::npos) ? remainder : remainder.substr(0, colon);
+            // Installed app bundles are served locally and have no web favicon
+            if (uri.rfind("bungalow:app:", 0) == 0 && SPAppManager::instance().findBundle(domain))
+                return "";
             if (s.hosted && domain.find('.') == string::npos && !domain.empty())
                 domain += s.hosted;
             return domain;
         }
         return "";
+    }
+
+    // ── Helper: sidebar label for a saved app or site ────────────────────────
+    // Parent bookmarks created implicitly by onBookmarkToggled store their URI
+    // as the title; show the installed bundle's name or the bare domain instead.
+    static string bookmarkTitle(const string& uri, const string& title) {
+        if (!title.empty() && title != uri) return title;
+        static const string kAppPrefix  = "bungalow:app:";
+        static const string kSitePrefix = "bungalow:site:";
+        string prefix;
+        if (uri.rfind(kAppPrefix, 0) == 0)       prefix = kAppPrefix;
+        else if (uri.rfind(kSitePrefix, 0) == 0) prefix = kSitePrefix;
+        else return uri;
+        string remainder = uri.substr(prefix.size());
+        if (remainder.find(':') != string::npos) return uri; // sub-page: keep full URI
+        if (prefix == kAppPrefix) {
+            if (const SPAppBundle* bundle = SPAppManager::instance().findBundle(remainder)) {
+                string name = bundle->getName();
+                if (!name.empty()) return name;
+            }
+        }
+        return remainder.empty() ? uri : remainder;
     }
 
     // ── Helper: extract domain-level URI ─────────────────────────────────────
@@ -198,7 +231,7 @@ namespace space {
     {
         string normalized = normalizeScheme(uri);
         this->viewStack->navigate(normalized);
-        this->searchElement->setValue(uri);
+        showCurrentUri(normalized);
 
         treeView->forEachItem([&normalized](SPTreeItem* item) {
             if (item->getUri() && !item->getUri()->getUri().empty())
@@ -228,13 +261,13 @@ namespace space {
             if (!db) return;
             for (auto& parent : db->getTopLevelBookmarks(prefix)) {
                 auto* parentItem = new SPTreeItem(new SPUri(parent.uri));
-                parentItem->setText(parent.title);
+                parentItem->setText(bookmarkTitle(parent.uri, parent.title));
                 parentItem->setIsBookmark(true);
                 parentItem->setCollapsed(false);
                 parentItem->setIconPath(resolveIcon(parent.uri, defaultIcon));
                 for (auto& child : db->getChildBookmarks(parent.id)) {
                     auto* childItem = new SPTreeItem(new SPUri(child.uri));
-                    childItem->setText(child.title);
+                    childItem->setText(bookmarkTitle(child.uri, child.title));
                     childItem->setIsBookmark(true);
                     childItem->setIconPath(resolveIcon(child.uri, defaultIcon));
                     parentItem->addChild(childItem);
@@ -284,33 +317,35 @@ namespace space {
         itemDownloads->setText("Downloads");
         itemDownloads->setIconPath("icons/Downloads.svg");
         treeView->addItem(itemDownloads);
-        
-        if (false) {
-            // ── APPS ─────────────────────────────────────────────────────────────
-            treeView->addSection("APPS");
 
-            auto* itemAppFinder = new SPTreeItem(new SPUri("bungalow:app:finder"));
-            itemAppFinder->setText("App Finder");
-            itemAppFinder->setIconPath(resolveIcon("bungalow:app:finder", "icons/App.svg"));
-            treeView->addItem(itemAppFinder);
+        // ── DATABASE ─────────────────────────────────────────────────────────
+        treeView->addSection("DATABASE");
 
-            addBookmarkSection("bungalow:app:",  "icons/App.svg");
+        auto* itemDb = new SPTreeItem(new SPUri("bungalow:database"));
+        itemDb->setText("Table Manager");
+        itemDb->setIconPath("icons/Document.svg");
+        itemDb->setCollapsed(false);
+        treeView->addItem(itemDb);
 
-            // ── CURATORS ──────────────────────────────────────────────────────────
-            treeView->addSection("CURATORS");
-
-            addBookmarkSection("bungalow:curator:", "icons/WebPage.svg");
-
-            // ── STORE ─────────────────────────────────────────────────────────────
-            treeView->addSection("STORE");
-
-            addBookmarkSection("bungalow:store:", "icons/WebPage.svg");
-
-            // ── WEB SITES ─────────────────────────────────────────────────────────
-            treeView->addSection("WEB SITES");
-
-            addBookmarkSection("bungalow:site:", "icons/WebPage.svg");
+        // One child item per user-defined table
+        if (db) {
+            for (auto& tbl : db->getCustomTables()) {
+                auto* child = new SPTreeItem(new SPUri("bungalow:table:" + tbl.name));
+                child->setText(tbl.displayName.empty() ? tbl.name : tbl.displayName);
+                child->setIconPath("icons/Document.svg");
+                itemDb->addChild(child);
+            }
         }
+
+        // ── APPS ─────────────────────────────────────────────────────────────
+        treeView->addSection("APPS");
+
+        addBookmarkSection("bungalow:app:", "icons/App.svg");
+
+        // ── SITES ────────────────────────────────────────────────────────────
+        treeView->addSection("SITES");
+
+        addBookmarkSection("bungalow:site:", "icons/WebPage.svg");
     }
 
     // ── createElement ─────────────────────────────────────────────────────────
@@ -372,6 +407,14 @@ namespace space {
         searchElement->setColorAttribute("bgcolor", SPColor("#777777"));
         searchElement->addEventListener("enter", reinterpret_cast<SPCallback>(&MainElement::onSearchEntered), this, this);
 
+        // Address bar: shown (and expanded) when "Full Width" is enabled in settings
+        addressElement = (SPInputElement *)this->getElementById("addressInput");
+        addressElement->setFlex(1);
+        addressElement->setHeight(28);
+        addressElement->setColorAttribute("bgcolor", SPColor("#777777"));
+        addressElement->addEventListener("enter", reinterpret_cast<SPCallback>(&MainElement::onAddressEntered), this, this);
+        addressElement->hide();
+
         infoElement = new space::SPInfoElement(this);
         infoElement->setHeight(28);
         infoElement->setId("Info");
@@ -417,6 +460,9 @@ namespace space {
         viewStack->appendChild(new views::AppView(viewStack));
         viewStack->appendChild(new views::CuratorView(viewStack));
         viewStack->appendChild(new views::StoreView(viewStack));
+        viewStack->appendChild(new views::DatabaseManagerView(viewStack, db));
+        viewStack->appendChild(new views::CustomTableEntryTabBarView(viewStack, db));
+        viewStack->appendChild(new views::CustomTableView(viewStack, db));
 
         body->appendChild(new SPSplitterElement(body));
         auto *playQueuePanel = new views::PlayQueueView(body);
@@ -468,11 +514,32 @@ namespace space {
         return 0;
     }
 
+    int MainElement::onAddressEntered(SPObject *, SPEventArgs *eventArgs) const
+    {
+        auto *ie = dynamic_cast<SPInputEventArgs*>(eventArgs);
+        if (!ie) return 0;
+        string uri = ie->getText();
+        if (uri.empty()) return 0;
+        // Anything that isn't a bungalow URI is treated as a search query
+        if (!hasBungalowScheme(uri)) {
+            uri = "bungalow:search:" + uri;
+        }
+        this->navigate(uri);
+        return 0;
+    }
+
+    void MainElement::showCurrentUri(const string& uri) const {
+        if (addressElement && addressElement->isVisible())
+            addressElement->setValue(uri);
+        else
+            searchElement->setValue(uri);
+    }
+
     int MainElement::onBackClicked(SPObject *, SPEventArgs *) {
         if (!viewStack->canGoBack()) return 0;
         viewStack->goBack();
         const string& uri = viewStack->getCurrentUri();
-        searchElement->setValue(uri);
+        showCurrentUri(uri);
         treeView->forEachItem([&uri](SPTreeItem* item) {
             if (item->getUri() && !item->getUri()->getUri().empty())
                 item->setSelected(item->getUri()->getUri() == uri);
@@ -485,7 +552,7 @@ namespace space {
         if (!viewStack->canGoForward()) return 0;
         viewStack->goForward();
         const string& uri = viewStack->getCurrentUri();
-        searchElement->setValue(uri);
+        showCurrentUri(uri);
         treeView->forEachItem([&uri](SPTreeItem* item) {
             if (item->getUri() && !item->getUri()->getUri().empty())
                 item->setSelected(item->getUri()->getUri() == uri);
@@ -504,13 +571,17 @@ namespace space {
     }
 
     void MainElement::setFullWidthAddressBar(bool fullWidth) {
-        if (!searchElement) return;
+        if (!searchElement || !addressElement) return;
+        // The search field keeps its size; the address bar after it takes the
+        // remaining width and shows the current URI.
+        const string uri = viewStack ? viewStack->getCurrentUri() : string();
         if (fullWidth) {
-            searchElement->setFlex(1);
-            searchElement->setWidth(0);
+            addressElement->show();
+            addressElement->setValue(uri);
+            searchElement->setValue("");
         } else {
-            searchElement->setFlex(0);
-            searchElement->setWidth(120);
+            addressElement->hide();
+            searchElement->setValue(uri);
         }
     }
 }

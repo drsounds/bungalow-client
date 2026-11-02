@@ -231,6 +231,11 @@ void SiteView::runScript(const std::string& js) {
         m_webView->RunScript(wxString::FromUTF8(js));
 }
 
+void SiteView::hideSiteBrowser() {
+    m_webViewHidden = true;
+    if (m_webView) m_webView->Hide();
+}
+
 void SiteView::setNavBarVisible(bool visible) {
     if (!m_navRow) return;
     m_navOffset = visible ? kNavBarHeight : 0;
@@ -262,6 +267,7 @@ bool SiteView::acceptsUri(const string& uri) {
 void SiteView::navigate(const string& uri) {
     m_previousUri = m_currentUri;
     m_currentUri = uri;
+    m_webViewHidden = false;
     updateBookmarkButton(uri);
 
     string url = uriToUrl(uri);
@@ -321,15 +327,17 @@ void SiteView::loadUrl(const string& url) {
         m_pendingUrl = url;
         return;
     }
-    if (isVisible()) m_webView->Show();
+    if (isVisible() && !m_webViewHidden) m_webView->Show();
     if (normalizeUrl(m_webView->GetCurrentURL().ToStdString()) == normalizeUrl(url)) return;
     m_navigatingProgrammatically = true;
     m_webView->LoadURL(url);
 }
 
 void SiteView::navigateBack(const string& uri) {
+    m_webViewHidden = false;
     ensureWebView();
     if (!m_webView) return;
+    if (isVisible()) m_webView->Show();
     m_navigatingProgrammatically = true;
     if (m_webView->CanGoBack()) {
         m_webView->GoBack();
@@ -345,8 +353,10 @@ void SiteView::navigateBack(const string& uri) {
 }
 
 void SiteView::navigateForward(const string& uri) {
+    m_webViewHidden = false;
     ensureWebView();
     if (!m_webView) return;
+    if (isVisible()) m_webView->Show();
     m_navigatingProgrammatically = true;
     if (m_webView->CanGoForward()) {
         m_webView->GoForward();
@@ -368,7 +378,7 @@ void SiteView::setVisible(bool value) {
     else if (s_activeInstance == this)
         s_activeInstance = nullptr;
     if (m_webView) {
-        if (value) {
+        if (value && !m_webViewHidden) {
             positionWebView();
             m_webView->Show();
             applyThemeToWebView();
@@ -387,7 +397,7 @@ void SiteView::pack() {
     if (!m_webView) {
         ensureWebView();
         if (m_webView) {
-            if (isVisible()) m_webView->Show();
+            if (isVisible() && !m_webViewHidden) m_webView->Show();
             if (!m_pendingUrl.empty() && !m_checkingUrl) {
                 string url = m_pendingUrl;
                 m_pendingUrl.clear();

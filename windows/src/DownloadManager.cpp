@@ -1,4 +1,5 @@
 #include "DownloadManager.h"
+#include "AudioImporter.h"
 #include "ConfigView.h"
 #include "PlatformUi.h"
 #include "UiDispatcher.h"
@@ -254,45 +255,11 @@ void DownloadManager::onDownloadComplete(DownloadItem& item, const std::string& 
     notifyUpdate();
 }
 
+// Reads the file's tags, adds it to local files and links it to a track
+// (matched, or created from the tags) so it shows up in the library.
 void DownloadManager::importAudioFile(const std::string& filePath) {
     if (!m_db) return;
-
-    sqlite3_stmt* stmt = nullptr;
-
-    if (sqlite3_prepare_v2(m_db,
-            "INSERT OR IGNORE INTO files(path) VALUES(?)", -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_step(stmt);
-        sqlite3_finalize(stmt);
-    }
-
-    int64_t fileId = 0;
-    if (sqlite3_prepare_v2(m_db,
-            "SELECT id FROM files WHERE path=?", -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, filePath.c_str(), -1, SQLITE_TRANSIENT);
-        if (sqlite3_step(stmt) == SQLITE_ROW) fileId = sqlite3_column_int64(stmt, 0);
-        sqlite3_finalize(stmt);
-    }
-
-    if (fileId == 0) return;
-
-    std::string name = fs::path(filePath).stem().string();
-    if (sqlite3_prepare_v2(m_db,
-            "INSERT OR IGNORE INTO audio_files(file_id, name) VALUES(?,?)",
-            -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int64(stmt, 1, fileId);
-        sqlite3_bind_text (stmt, 2, name.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_step(stmt);
-        sqlite3_finalize(stmt);
-    }
-
-    std::string uri = "file://" + filePath;
-    if (sqlite3_prepare_v2(m_db,
-            "INSERT OR IGNORE INTO playables(uri) VALUES(?)", -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, uri.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_step(stmt);
-        sqlite3_finalize(stmt);
-    }
+    space::AudioImporter::importFile(m_db, filePath);
 }
 
 void DownloadManager::persistNew(const DownloadItem& item) {

@@ -400,8 +400,8 @@ namespace space {
     bool SPXmlSkin::drawElement(SPGraphicsContext* g, SPElement* elm, const string& state, const sp_rectangle& bounds) {
         bool matched = false;
         const Rule* rule = findRule(elm, state, matched);
-        if (!matched)
-            return SPModernSkin::drawElement(g, elm, state, bounds);
+        // if (!matched)
+        //    return SPModernSkin::drawElement(g, elm, state, bounds);
         if (rule) {
             drawRule(g, *rule, elm->getColorScheme(), bounds);
             // Buttons leave their label to the skin.
@@ -442,7 +442,7 @@ namespace space {
         bool matched = false;
         const Rule* rule = findRule(tabBar, "", matched);
         if (!matched) {
-            SPModernSkin::drawTabBar(g, tabBar, x, y, width, height);
+            //SPModernSkin::drawTabBar(g, tabBar, x, y, width, height);
             return;
         }
         if (rule)
@@ -502,7 +502,7 @@ namespace space {
             : std::vector<std::string>{ "" };
         const Rule* rule = findRule({ "sp-tabbar-tab" }, states, tabBar->getColorScheme(), matched);
         if (!matched) {
-            SPModernSkin::drawTabBarTab(g, tabBar, tab, index, active, x, y, width, height);
+            //SPModernSkin::drawTabBarTab(g, tabBar, tab, index, active, x, y, width, height);
             return;
         }
         if (rule)

@@ -31,6 +31,7 @@
 #include "UiDispatcher.h"
 #include "PlatformUi.h"
 #include "SPAppManager.h"
+#include "SPDropdownElement.h"
 #include "SPUriStore.h"
 #include "EntityResolvers.h"
 
@@ -68,6 +69,13 @@ space::MainElement* BungalowApp::initialize(space::Space* spaceInstance, space::
     space::SPElement::s_xulErrorHandler = [this](const std::string& msg) {
         showError(msg);
     };
+    space::SPDropdownElement::s_showMenu = [](const std::vector<std::string>& labels) {
+        space::platform::MenuItems items;
+        for (size_t i = 0; i < labels.size(); ++i)
+            items.emplace_back(static_cast<int>(i) + 1, labels[i]); // id 0 means "dismissed"
+        const int id = space::platform::showPopupMenu(items);
+        return id > 0 ? id - 1 : -1;
+    };
 
     m_mediaServices.push_back(new LocalMediaService());
 
@@ -90,7 +98,7 @@ space::MainElement* BungalowApp::initialize(space::Space* spaceInstance, space::
     // Relative XUL paths resolve against the resources directory.
     SetCurrentDirectoryW(resourcesDir.c_str());
 
-    // Discover app bundles (Apps/, ~/Bungalow/Apps, ~/Documents/Bungalow/Apps)
+    // Discover app bundles (Apps/, ~/Bungalow[/Apps], ~/Documents/Bungalow[/Apps])
     // before creating the skin, which may come from one of them.
     auto& apps = space::SPAppManager::instance();
     apps.addDefaultSearchPaths(resourcesDir.u8string(), space::platform::homeDir(),
@@ -174,9 +182,10 @@ space::MainElement* BungalowApp::initialize(space::Space* spaceInstance, space::
         activeSkin->setGlossy(glossy);
         activeSkin->setButtonStyle(static_cast<space::SPButtonStyle>(buttonStyle));
     } else {
-        // "modern" and installed skin bundles are skin.xml skins; fall back to
-        // procedural drawing if the bundle is missing.
-        activeSkin = space::SPAppManager::instance().createSkin(skinType);
+        // "modern" is the procedural skin; anything else is a skin.xml bundle,
+        // falling back to the procedural skin if the bundle is missing.
+        if (skinType != "modern")
+            activeSkin = space::SPAppManager::instance().createSkin(skinType);
         if (!activeSkin) activeSkin = new space::SPModernSkin();
         activeSkin->setGlossy(glossy);
         activeSkin->setButtonStyle(static_cast<space::SPButtonStyle>(buttonStyle));

@@ -20,7 +20,8 @@ namespace space {
     public:
         static SPAppManager& instance();
 
-        /// Adds <base>/Apps, ~/Bungalow/Apps and <documents>/Bungalow/Apps.
+        /// Adds <base>/Apps, ~/Bungalow, ~/Bungalow/Apps, <documents>/Bungalow
+        /// and <documents>/Bungalow/Apps (later paths win on duplicate ids).
         /// Empty arguments are skipped.
         void addDefaultSearchPaths(const std::string& base, const std::string& home,
                                    const std::string& documents);
@@ -40,6 +41,10 @@ namespace space {
         /// Resolves sp://<bundle>/<path> to an absolute file path. Returns an
         /// empty string if the bundle is unknown or the path escapes it.
         std::string resolve(const std::string& uri) const;
+
+        /// Resolves a path relative to a bundle directory. Returns an empty
+        /// string if the path escapes the bundle. Thread-safe.
+        static std::string resolveInBundle(const std::string& bundleRoot, const std::string& relativePath);
 
         /// Creates the skin for a skin type. Accepts a skin extension
         /// identifier ("modern.skin") or its short form ("modern"). Returns

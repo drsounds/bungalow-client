@@ -8,6 +8,17 @@
 #include "SPBookmarkEventArgs.h"
 #include "Database.h"
 #include "SPString.h"
+#include "SPAppManager.h"
+#include "SPNativeApp.h"
+#include "SPNativeAppElement.h"
+#include "SPTextElement.h"
+#include "SPVBoxElement.h"
+
+#ifdef BUNGALOW_CEF
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#endif
 
 namespace space {
 namespace views {
@@ -18,10 +29,76 @@ static bool getDevMode() {
     return false;
 }
 
+namespace {
+
+constexpr const char* kAppPrefix = "bungalow:app:";
+
+// bungalow:app:<id>:a:b -> id "<id>", path "/a/b"
+bool splitAppUri(const string& uri, string& appId, string& path) {
+    if (!space::startsWith(uri, kAppPrefix)) return false;
+    const string rest = uri.substr(std::char_traits<char>::length(kAppPrefix));
+    const size_t colon = rest.find(':');
+    appId = rest.substr(0, colon);
+    path = "/";
+    if (colon != string::npos)
+        for (char c : rest.substr(colon + 1))
+            path += (c == ':') ? '/' : c;
+    while (path.size() > 1 && path.back() == '/')
+        path.pop_back();
+    return !appId.empty();
+}
+
+#ifdef BUNGALOW_CEF
+// id "<id>", path "/a/b" -> bungalow:app:<id>:a:b
+string appUri(const string& appId, const string& path) {
+    string uri = kAppPrefix + appId;
+    for (char c : path)
+        uri += (c == '/') ? ':' : c;
+    while (uri.back() == ':')
+        uri.pop_back();
+    return uri;
+}
+
+bool hasIndexHtml(const SPAppBundle& bundle) {
+    std::error_code ec;
+    return std::filesystem::is_regular_file(std::filesystem::u8path(bundle.path) / "index.html", ec);
+}
+
+// The Apps API bootstrap (getSpotifyApi, sp.require) from the shared API
+// bundle, run in every app page. Read per app browser, so edits apply to apps
+// opened afterwards. Empty if the bundle is not installed.
+string sharedApiScript() {
+    const SPAppBundle* shared = SPAppManager::instance().findBundle(kSharedApiBundle);
+    if (!shared) return {};
+    std::ifstream in(std::filesystem::u8path(shared->path) / "scripts" / "sp.js", std::ios::binary);
+    if (!in) return {};
+    std::ostringstream script;
+    script << in.rdbuf();
+    return script.str();
+}
+#endif
+
+} // namespace
+
 AppView::AppView(SPElement* parent)
     : SiteView(parent, "bungalow:app:", true, getDevMode(), false) // no bookmark button — we add "Add app" instead
     , m_devMode(getDevMode())
 {
+    m_errorView = new SPVBoxElement(this);
+    m_errorView->setFlex(1);
+    m_errorView->setPadding({ 24, 24, 24, 24 });
+    m_errorView->setGap(8);
+    auto* heading = new SPTextElement(m_errorView);
+    heading->setInnerText("App unavailable");
+    heading->setStringAttribute("size", "20");
+    heading->setHeight(28);
+    m_errorView->appendChild(heading);
+    m_errorText = new SPTextElement(m_errorView);
+    m_errorText->setHeight(20);
+    m_errorView->appendChild(m_errorText);
+    m_errorView->setVisible(false);
+    this->appendChild(m_errorView);
+
     if (!m_navRow) return;
 
     if (!m_devMode) {
@@ -37,6 +114,17 @@ AppView::AppView(SPElement* parent)
     m_addAppButton->addEventListener("click",
         reinterpret_cast<SPCallback>(&AppView::onAddAppClicked), this, m_addAppButton);
     m_navRow->appendChild(m_addAppButton);
+
+#ifdef BUNGALOW_CEF
+    if (m_devMode) {
+        m_devToolsButton = new SPButtonElement(m_navRow);
+        m_devToolsButton->setInnerText("DevTools");
+        m_devToolsButton->setHeight(kNavBarHeight - 8);
+        m_devToolsButton->addEventListener("click",
+            reinterpret_cast<SPCallback>(&AppView::onDevToolsClicked), this, m_devToolsButton);
+        m_navRow->appendChild(m_devToolsButton);
+    }
+#endif
 }
 
 AppView::AppView(SPElement* parent, bool showNavBar)
@@ -50,9 +138,20 @@ bool AppView::acceptsUri(const string& uri) {
 }
 
 void AppView::navigate(const string& uri) {
+    if (navigateBundle(uri)) return;
     SiteView::navigate(uri);
     if (!m_devMode)
         updateAppNavBar(uri);
+}
+
+void AppView::navigateBack(const string& uri) {
+    if (!navigateBundle(uri))
+        SiteView::navigateBack(uri);
+}
+
+void AppView::navigateForward(const string& uri) {
+    if (!navigateBundle(uri))
+        SiteView::navigateForward(uri);
 }
 
 void AppView::updateAppNavBar(const string& uri) {
@@ -66,6 +165,12 @@ int AppView::onAddAppClicked(SPObject* /*sender*/, SPEventArgs* /*args*/) {
     const string& uri = getCurrentUri();
     if (uri.empty()) return 0;
     string title = uri; // fallback; webview title not directly accessible here
+#ifdef BUNGALOW_CEF
+    if (!getPageTitle().empty())
+        title = getPageTitle();
+    if (m_activeApp && !m_activeApp->title.empty())
+        title = m_activeApp->title;
+#endif
     auto* args = new space::SPBookmarkEventArgs(uri, title);
     this->getWindowElement()->notify("bookmarktoggled", this, args);
     setNavBarVisible(false);
@@ -117,6 +222,246 @@ string AppView::urlToUri(const string& url) const {
         uri.pop_back();
     return uri;
 }
+
+// ── Installed app bundles ─────────────────────────────────────────────────────
+
+bool AppView::navigateBundle(const string& uri) {
+    bool shown = navigateNativeApp(uri);
+#ifdef BUNGALOW_CEF
+    if (!shown)
+        shown = navigateLocalApp(uri);
+#endif
+    if (!shown) {
+        showNativeApp(nullptr);
+        return false;
+    }
+    if (!m_devMode)
+        updateAppNavBar(uri);
+    invalidate(); // a local app browser is positioned on the next paint
+    return true;
+}
+
+bool AppView::navigateNativeApp(const string& uri, bool restart) {
+    string appId, path;
+    if (!splitAppUri(uri, appId, path)) return false;
+    const SPAppBundle* bundle = SPAppManager::instance().findBundle(appId);
+    if (!bundle || !SPNativeApp::isNative(*bundle)) return false;
+
+    setCurrentUri(uri);
+    SPNativeAppElement* app = nativeAppFor(*bundle, restart);
+    if (!app) return true; // the error view is showing
+    showNativeApp(app);
+    app->loadSrc(uri); // errors replace it with the error view
+    return true;
+}
+
+// An app that failed to start is not kept, so it is retried on every
+// navigation; restart only applies to a running one.
+SPNativeAppElement* AppView::nativeAppFor(const SPAppBundle& bundle, bool restart) {
+    auto existing = m_nativeApps.find(bundle.identifier);
+    if (existing != m_nativeApps.end()) {
+        if (restart) {
+            try {
+                existing->second->restart();
+            } catch (const std::exception& error) {
+                showError("The app \"" + bundle.identifier + "\" could not be restarted: " + error.what());
+                return nullptr;
+            }
+        }
+        return existing->second;
+    }
+
+    SPNativeAppElement* app = nullptr;
+    try {
+        app = new SPNativeAppElement(this, bundle);
+    } catch (const std::exception& error) {
+        showError("The app \"" + bundle.identifier + "\" could not be started: " + error.what());
+        return nullptr;
+    }
+    app->setFlex(1);
+    app->setVisible(false);
+    app->setErrorHandler([this](const string& message) { showError(message); });
+    this->appendChild(app);
+    m_nativeApps[bundle.identifier] = app;
+    return app;
+}
+
+void AppView::showNativeApp(SPNativeAppElement* app) {
+    hideSiteBrowser();
+#ifdef BUNGALOW_CEF
+    if (m_activeApp) {
+        m_activeApp->browser->setVisible(false);
+        m_activeApp = nullptr;
+    }
+#endif
+    if (m_activeNativeApp && m_activeNativeApp != app)
+        m_activeNativeApp->setVisible(false);
+    m_activeNativeApp = app;
+    if (app) app->setVisible(true);
+    m_errorView->setVisible(false);
+    invalidate();
+}
+
+void AppView::showError(const string& message) {
+    showNativeApp(nullptr);
+    m_errorText->setInnerText(message);
+    m_errorView->setVisible(true);
+    invalidate();
+}
+
+// Keyed on the current URI rather than the shown app, so a native app that
+// is showing an error can be reloaded once the error is fixed.
+void AppView::reload() {
+    if (navigateNativeApp(getCurrentUri(), true)) return;
+#ifdef BUNGALOW_CEF
+    if (m_activeApp) {
+        m_activeApp->browser->reload();
+        return;
+    }
+#endif
+    SiteView::reload();
+}
+
+#ifdef BUNGALOW_CEF
+// ── Local HTML5 app bundles ───────────────────────────────────────────────────
+
+bool AppView::navigateLocalApp(const string& uri) {
+    string appId, path;
+    if (!splitAppUri(uri, appId, path)) return false;
+
+    const SPAppBundle* bundle = SPAppManager::instance().findBundle(appId);
+    if (bundle && !hasIndexHtml(*bundle)) {
+        // Not an HTML5 bundle: keep the remote https://<id>.apps.bungalow.se path.
+        showLocalApp(nullptr);
+        return false;
+    }
+
+    setCurrentUri(uri);
+    if (!bundle) {
+        showError("No app with the id \"" + appId + "\" is installed.");
+        return true;
+    }
+    LocalApp* app = localAppFor(*bundle);
+    if (!app) {
+        showError("Apps cannot be shown because the embedded browser failed to start.");
+        return true;
+    }
+
+    showLocalApp(app);
+    if (app->route.empty())
+        app->browser->loadPath(path);
+    else if (app->route != path)
+        app->browser->navigateRoute(path);
+    app->route = path;
+    return true;
+}
+
+AppView::LocalApp* AppView::localAppFor(const SPAppBundle& bundle) {
+    const string appId = bundle.identifier;
+    auto existing = m_localApps.find(appId);
+    if (existing != m_localApps.end()) return &existing->second;
+
+    SPEmbeddedBrowser::Options options;
+    options.developerMode = m_devMode;
+    options.darkColorScheme = getColorScheme() == SP_COLOR_SCHEME_DARK;
+    // Run the theme as soon as the document element exists, before app scripts.
+    options.startupScript =
+        "(function(apply){if(document.documentElement){apply();return;}"
+        "new MutationObserver(function(_,o){if(document.documentElement){o.disconnect();apply();}})"
+        ".observe(document,{childList:true});})(function(){" + themeScript() + "});";
+    // The shared bundle itself has no app pages to bootstrap.
+    if (appId != kSharedApiBundle)
+        options.startupScript += "\n" + sharedApiScript();
+    // Besides bungalow.se, apps may fetch from the https hosts their manifest
+    // lists under AllowedHosts, once the user has accepted each of them.
+    options.allowedHosts.insert("bungalow.se");
+    auto hosts = bundle.manifest.find("AllowedHosts");
+    if (hosts != bundle.manifest.end() && hosts->is_array()) {
+        for (const auto& entry : *hosts) {
+            if (!entry.is_string()) continue;
+            const string host = entry.get<string>();
+            if (isDomainAllowed("https://" + host) || showThirdPartyWarning(host))
+                options.allowedHosts.insert(host);
+        }
+    }
+
+    SPEmbeddedBrowser::Callbacks callbacks;
+    callbacks.routeChanged = [this, appId](const string& path) { onRouteChanged(appId, path); };
+    callbacks.navigateRequested = [this](const string& target) { getWindowElement()->navigate(target); };
+    callbacks.externalUrlRequested = [this](const string& url) { openExternalUrl(url); };
+    callbacks.titleChanged = [this, appId](const string& title) {
+        auto app = m_localApps.find(appId);
+        if (app != m_localApps.end()) app->second.title = title;
+    };
+
+    auto browser = createEmbeddedAppBrowser(bundle, this, std::move(options), std::move(callbacks));
+    if (!browser) return nullptr;
+    LocalApp& app = m_localApps[appId];
+    app.browser = std::move(browser);
+    return &app;
+}
+
+// The app changed its own route: record it in the view stack history.
+void AppView::onRouteChanged(const string& appId, const string& path) {
+    auto it = m_localApps.find(appId);
+    if (it == m_localApps.end() || it->second.route == path) return;
+    it->second.route = path;
+    if (&it->second == m_activeApp && isVisible())
+        getWindowElement()->navigate(appUri(appId, path));
+}
+
+// app is null when showing the error view or before falling back to the
+// remote path, which shows the site browser again.
+void AppView::showLocalApp(LocalApp* app) {
+    hideSiteBrowser();
+    if (m_activeNativeApp) {
+        m_activeNativeApp->setVisible(false);
+        m_activeNativeApp = nullptr;
+    }
+    if (m_activeApp && m_activeApp != app)
+        m_activeApp->browser->setVisible(false);
+    m_activeApp = app;
+    if (m_errorView) m_errorView->setVisible(false);
+    invalidate();
+}
+
+void AppView::setVisible(bool value) {
+    SiteView::setVisible(value);
+    if (!m_activeApp) return;
+    if (value) {
+        // Pick up theme changes made while hidden (e.g. in the settings view).
+        m_activeApp->browser->setDarkColorScheme(getColorScheme() == SP_COLOR_SCHEME_DARK);
+        m_activeApp->browser->executeScript(themeScript());
+        invalidate();
+    } else {
+        m_activeApp->browser->setVisible(false); // hidden views are not painted
+    }
+}
+
+// Absolute bounds are only known once painted, so the native browser is
+// positioned and shown from here; layout changes and window resizes both end
+// in a repaint.
+void AppView::paint(int x, int y, SPGraphicsContext* c) {
+    SiteView::paint(x, y, c);
+    if (!m_activeApp || !isVisible()) return;
+    const auto bounds = getAbsoluteBounds();
+    const int navOffset = getNavOffset();
+    m_activeApp->browser->setBounds(bounds.x, bounds.y + navOffset, bounds.width, bounds.height - navOffset);
+    m_activeApp->browser->setVisible(true);
+}
+
+void AppView::showInspector() {
+    if (m_activeApp)
+        m_activeApp->browser->showDevTools();
+    else
+        SiteView::showInspector();
+}
+
+int AppView::onDevToolsClicked(SPObject* /*sender*/, SPEventArgs* /*args*/) {
+    if (m_activeApp) m_activeApp->browser->showDevTools();
+    return 0;
+}
+#endif
 
 } // namespace views
 } // namespace space

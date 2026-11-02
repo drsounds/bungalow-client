@@ -31,6 +31,9 @@ namespace space
         void keyEvent(int keyCode, bool commandDown);
         void command(WPARAM wParam, LPARAM lParam);
         void timer();
+        // Develop menu: act on the visible web page or app.
+        void showWebInspector();
+        void reloadWebPage();
 
     private:
         HWND windowHandle = nullptr;

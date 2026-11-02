@@ -57,6 +57,14 @@ static SPButtonElement* makeButton(SPElement* parent, const string& label,
     return btn;
 }
 
+static SPDropdownElement* makeDropdown(SPElement* parent, int width, int height) {
+    auto *dropdown = new SPDropdownElement(parent);
+    dropdown->setWidth(width);
+    dropdown->setHeight(height);
+    parent->appendChild(dropdown);
+    return dropdown;
+}
+
 // ── constructor ───────────────────────────────────────────────────────────────
 
 ConfigView::ConfigView() {}
@@ -100,32 +108,19 @@ ConfigView::ConfigView(SPElement *parent) : SPViewElement(parent) {
     );
 
     // ── Button Style section ───────────────────────────────────────────────
-    // makeLabel(this, "Button Style", 20);
+    makeLabel(this, "Button Style", 20);
 
-    auto* btnStyleRow = new SPHBoxElement(this);
-    btnStyleRow->setHeight(28);
-    btnStyleRow->setGap(5);
-    //this->appendChild(btnStyleRow);
-
-    m_btnStyleFlatBtn = makeButton(btnStyleRow, "Flat", 56, 28);
-    m_btnStyleFlatBtn->addEventListener("click",
-        reinterpret_cast<SPCallback>(&ConfigView::onButtonFlatClicked),
-        this, m_btnStyleFlatBtn);
-
-    m_btnStyleGradientBtn = makeButton(btnStyleRow, "Gradient", 80, 28);
-    m_btnStyleGradientBtn->addEventListener("click",
-        reinterpret_cast<SPCallback>(&ConfigView::onButtonGradientClicked),
-        this, m_btnStyleGradientBtn);
-
-    m_btnStyleModernGradBtn = makeButton(btnStyleRow, "Modern Grad", 100, 28);
-    m_btnStyleModernGradBtn->addEventListener("click",
-        reinterpret_cast<SPCallback>(&ConfigView::onButtonModernGradientClicked),
-        this, m_btnStyleModernGradBtn);
-
-    m_btnStyleAquaBtn = makeButton(btnStyleRow, "Aqua", 60, 28);
-    m_btnStyleAquaBtn->addEventListener("click",
-        reinterpret_cast<SPCallback>(&ConfigView::onButtonAquaClicked),
-        this, m_btnStyleAquaBtn);
+    m_buttonStyleDropdown = makeDropdown(this, 160, 28);
+    m_buttonStyleDropdown->setOptions({
+        { std::to_string(kButtonFlat),           "Flat"            },
+        { std::to_string(kButtonGradient),       "Gradient"        },
+        { std::to_string(kButtonModernGradient), "Modern Gradient" },
+        { std::to_string(kButtonAqua),           "Aqua"            },
+    });
+    m_buttonStyleDropdown->onChange = [this](const string& value) {
+        m_pendingButtonStyle = static_cast<SPButtonStyle>(std::stoi(value));
+        this->invalidate();
+    };
 
     // ── Tint Color section ─────────────────────────────────────────────────
     //makeLabel(this, "Tint Color", 20);
@@ -148,44 +143,18 @@ ConfigView::ConfigView(SPElement *parent) : SPViewElement(parent) {
     // ── Skin section ───────────────────────────────────────────────────────
     makeLabel(this, "Skin", 20);
 
-    auto *skinRow = new SPHBoxElement(this);
-    skinRow->setHeight(28);
-    skinRow->setGap(6);
-    this->appendChild(skinRow);
-
-    m_classicSkinButton = makeButton(skinRow, "Classic", 76, 28);
-    m_classicSkinButton->addEventListener(
-        "click",
-        reinterpret_cast<SPCallback>(&ConfigView::onClassicSkinClicked),
-        this, m_classicSkinButton
-    );
-
-    m_modernSkinButton = makeButton(skinRow, "Modern", 76, 28);
-    m_modernSkinButton->addEventListener(
-        "click",
-        reinterpret_cast<SPCallback>(&ConfigView::onModernSkinClicked),
-        this, m_modernSkinButton
-    );
-
-    m_frutigerAeroSkinButton = makeButton(skinRow, "Frutiger Aero", 120, 28);
-    m_frutigerAeroSkinButton->addEventListener(
-        "click",
-        reinterpret_cast<SPCallback>(&ConfigView::onFrutigerAeroSkinClicked),
-        this, m_frutigerAeroSkinButton
-    );
-
-    // Additional skins installed as app bundles. modern.skin is the "Modern" button.
-    for (const SPAppExtension* ext : SPAppManager::instance().getExtensions("Skin")) {
-        if (ext->identifier == "modern.skin") continue;
-        const string name = ext->getName();
-        auto *btn = makeButton(skinRow, name, static_cast<int>(name.size()) * 7 + 24, 28);
-        btn->addEventListener(
-            "click",
-            reinterpret_cast<SPCallback>(&ConfigView::onBundleSkinClicked),
-            this, btn
-        );
-        m_bundleSkinButtons.emplace_back(btn, ext->identifier);
-    }
+    m_skinDropdown = makeDropdown(this, 160, 28);
+    m_skinDropdown->addOption("classic",       "Classic");
+    m_skinDropdown->addOption("modern",        "Modern");
+    m_skinDropdown->addOption("frutiger-aero", "Frutiger Aero");
+    // XML skins (SPXmlSkin) installed as app bundles, e.g. "Modern Skin" (modern.skin)
+    for (const SPAppExtension* ext : SPAppManager::instance().getExtensions("Skin"))
+        m_skinDropdown->addOption(ext->identifier, ext->getName());
+    m_skinDropdown->onChange = [this](const string& value) {
+        m_pendingSkinType = value;
+        updateAeroSectionVisibility();
+        this->invalidate();
+    };
 
     // ── Frutiger Aero options (hidden unless aero skin active) ─────────────
     m_aeroSection = new SPVBoxElement(this);
@@ -372,17 +341,6 @@ void ConfigView::updateGlossyButton() {
     applyToggleButton(m_glossyButton, m_pendingGlossy, "Glossy: On", "Glossy: Off");
 }
 
-void ConfigView::updateButtonStyleButtons() {
-    auto set = [&](SPButtonElement* btn, SPButtonStyle style) {
-        if (btn) btn->setBackgroundColor(
-            m_pendingButtonStyle == style ? kSelectedColor : kDeselectedColor);
-    };
-    set(m_btnStyleFlatBtn,       kButtonFlat);
-    set(m_btnStyleGradientBtn,   kButtonGradient);
-    set(m_btnStyleModernGradBtn, kButtonModernGradient);
-    set(m_btnStyleAquaBtn,       kButtonAqua);
-}
-
 void ConfigView::updateAeroHeaderStyleButtons() {
     auto set = [&](SPButtonElement* btn, AeroHeaderStyle style) {
         if (btn) btn->setBackgroundColor(
@@ -473,9 +431,11 @@ void ConfigView::loadSettings() {
 
     updateModeButtons();
     updateGlossyButton();
-    updateButtonStyleButtons();
+    if (m_buttonStyleDropdown)
+        m_buttonStyleDropdown->setSelectedValue(std::to_string(m_pendingButtonStyle));
+    if (m_skinDropdown)
+        m_skinDropdown->setSelectedValue(m_pendingSkinType);
     updateDeveloperModeButton();
-    updateSkinButtons();
     updateFullWidthAddressBarButton();
     updateAeroHeaderStyleButtons();
     updateAeroSectionVisibility();
@@ -533,9 +493,10 @@ void ConfigView::saveSettings() {
         newSkin->setGlossy(m_pendingGlossy);
         newSkin->setButtonStyle(m_pendingButtonStyle);
     } else {
-        // "modern" and installed skin bundles are skin.xml skins; fall back to
-        // procedural drawing if the bundle is missing.
-        newSkin = SPAppManager::instance().createSkin(m_pendingSkinType);
+        // "modern" is the procedural skin; anything else is a skin.xml bundle,
+        // falling back to the procedural skin if the bundle is missing.
+        if (m_pendingSkinType != "modern")
+            newSkin = SPAppManager::instance().createSkin(m_pendingSkinType);
         if (!newSkin) newSkin = new SPModernSkin();
         newSkin->setGlossy(m_pendingGlossy);
         newSkin->setButtonStyle(m_pendingButtonStyle);
@@ -606,58 +567,9 @@ int ConfigView::onDeveloperModeClicked(SPObject* /*sender*/, SPEventArgs* /*e*/)
     return 0;
 }
 
-void ConfigView::updateSkinButtons() {
-    auto set = [&](SPButtonElement* btn, const string& type) {
-        if (btn) btn->setBackgroundColor(
-            m_pendingSkinType == type ? kSelectedColor : kDeselectedColor);
-    };
-    set(m_classicSkinButton,      "classic");
-    set(m_modernSkinButton,       "modern");
-    set(m_frutigerAeroSkinButton, "frutiger-aero");
-    for (const auto& [btn, type] : m_bundleSkinButtons)
-        set(btn, type);
-}
-
 void ConfigView::updateFullWidthAddressBarButton() {
     applyToggleButton(m_fullWidthAddressBarButton, m_pendingFullWidthAddressBar,
                       "Full Width: On", "Full Width: Off");
-}
-
-int ConfigView::onClassicSkinClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
-    m_pendingSkinType = "classic";
-    updateSkinButtons();
-    updateAeroSectionVisibility();
-    this->invalidate();
-    return 0;
-}
-
-int ConfigView::onModernSkinClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
-    m_pendingSkinType = "modern";
-    updateSkinButtons();
-    updateAeroSectionVisibility();
-    this->invalidate();
-    return 0;
-}
-
-int ConfigView::onFrutigerAeroSkinClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
-    m_pendingSkinType = "frutiger-aero";
-    updateSkinButtons();
-    updateAeroSectionVisibility();
-    this->invalidate();
-    return 0;
-}
-
-int ConfigView::onBundleSkinClicked(SPObject* sender, SPEventArgs* /*e*/) {
-    for (const auto& [btn, type] : m_bundleSkinButtons) {
-        if (static_cast<SPObject*>(btn) == sender) {
-            m_pendingSkinType = type;
-            break;
-        }
-    }
-    updateSkinButtons();
-    updateAeroSectionVisibility();
-    this->invalidate();
-    return 0;
 }
 
 int ConfigView::onFullWidthAddressBarClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
@@ -711,36 +623,6 @@ int ConfigView::onAeroHeaderAccentGlossyClicked(SPObject* /*sender*/, SPEventArg
 int ConfigView::onAeroHeaderDarkGlossyClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
     m_pendingAeroHeaderStyle = kAeroHeaderDarkGlossy;
     updateAeroHeaderStyleButtons();
-    this->invalidate();
-    return 0;
-}
-
-// ── Button style callbacks ────────────────────────────────────────────────────
-
-int ConfigView::onButtonFlatClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
-    m_pendingButtonStyle = kButtonFlat;
-    updateButtonStyleButtons();
-    this->invalidate();
-    return 0;
-}
-
-int ConfigView::onButtonGradientClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
-    m_pendingButtonStyle = kButtonGradient;
-    updateButtonStyleButtons();
-    this->invalidate();
-    return 0;
-}
-
-int ConfigView::onButtonModernGradientClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
-    m_pendingButtonStyle = kButtonModernGradient;
-    updateButtonStyleButtons();
-    this->invalidate();
-    return 0;
-}
-
-int ConfigView::onButtonAquaClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
-    m_pendingButtonStyle = kButtonAqua;
-    updateButtonStyleButtons();
     this->invalidate();
     return 0;
 }

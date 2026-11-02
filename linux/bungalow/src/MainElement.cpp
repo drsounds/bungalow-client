@@ -70,7 +70,8 @@ static string normalizeScheme(const string &uri) {
 // ── Helper: returns true if the string starts with a known bungalow scheme ─
 static bool hasBungalowScheme(const string &uri) {
 	return uri.rfind("bungalow:", 0) == 0 || uri.rfind("space:", 0) == 0 ||
-		   uri.rfind("bungalow:", 0) == 0 || uri.rfind("musik:", 0) == 0;
+		   uri.rfind("bungalow:", 0) == 0 || uri.rfind("musik:", 0) == 0 || 
+		   uri.rfind("spacify:", 0) == 0 || uri.rfind("spotify:", 0) == 0; 
 }
 
 // ── Helper: favicon domain from a bungalow URI ─────────────────────────────
@@ -408,6 +409,10 @@ void MainElement::layout() {
 	forwardButton->addEventListener("click",
 									SPCallback(&MainElement::onForwardClicked),
 									this, forwardButton);
+
+	// The address bar from views/app.xml is not supported here yet
+	if (SPElement *addressInput = this->getElementById("addressInput"))
+		addressInput->hide();
 
 	searchElement = (SPInputElement *)this->getElementById("searchInput");
 	searchElement->setWidth(120);

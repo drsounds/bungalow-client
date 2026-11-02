@@ -99,10 +99,14 @@ namespace space {
                                              const std::string& documents) {
         if (!base.empty())
             addSearchPath((fs::u8path(base) / "Apps").u8string());
-        if (!home.empty())
-            addSearchPath((fs::u8path(home) / "Bungalow" / "Apps").u8string());
-        if (!documents.empty())
-            addSearchPath((fs::u8path(documents) / "Bungalow" / "Apps").u8string());
+        // Bundles may sit directly in a Bungalow folder or in its Apps/ subfolder.
+        // Subfolders without a manifest.json (such as Apps/ itself) are skipped.
+        for (const std::string& root : { home, documents }) {
+            if (root.empty()) continue;
+            const fs::path bungalow = fs::u8path(root) / "Bungalow";
+            addSearchPath(bungalow.u8string());
+            addSearchPath((bungalow / "Apps").u8string());
+        }
     }
 
     void SPAppManager::addSearchPath(const std::string& dir) {
@@ -199,9 +203,12 @@ namespace space {
 
         const SPAppBundle* bundle = findBundle(host);
         if (!bundle) return {};
+        return resolveInBundle(bundle->path, rest);
+    }
 
-        const fs::path root = fs::u8path(bundle->path);
-        const fs::path target = (root / fs::u8path(rest)).lexically_normal();
+    std::string SPAppManager::resolveInBundle(const std::string& bundleRoot, const std::string& relativePath) {
+        const fs::path root = fs::u8path(bundleRoot).lexically_normal();
+        const fs::path target = (root / fs::u8path(relativePath)).lexically_normal();
         // Reject paths that climb out of the bundle (sp://app/../../secret).
         const fs::path rel = target.lexically_relative(root);
         if (rel.empty() || *rel.begin() == "..")

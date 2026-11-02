@@ -22,7 +22,7 @@ public:
     void pack() override;
 
     void showInspector();
-    void reload();
+    virtual void reload();
 
     static SiteView* getActiveInstance() { return s_activeInstance; }
 
@@ -40,6 +40,11 @@ protected:
     void updateBookmarkButton(const string& uri);
     void setNavBarVisible(bool visible);
     const string& getCurrentUri() const { return m_currentUri; }
+    void setCurrentUri(const string& uri) { m_currentUri = uri; }
+
+    /// Hides the web view until the next site navigation, for subclasses
+    /// that show other content in its place.
+    void hideSiteBrowser();
 
     /// Execute a JavaScript snippet in the embedded web view.
     /// No-ops if the web view does not exist yet.
@@ -61,6 +66,7 @@ private:
 
     // Webview — native overlay positioned below the nav row
     wxWebView* m_webView = nullptr;
+    bool m_webViewHidden = false; // see hideSiteBrowser()
 
     bool   m_navigatingProgrammatically = false;
     string m_pendingUrl;

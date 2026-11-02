@@ -1,0 +1,11 @@
+{
+    "BundleType": "Framework",
+    "BundleIdentifier": "import",
+    "BundleVersion": "0.1.0",
+    "AppName": {
+        "en": "Apps API"
+    },
+    "AppDescription": {
+        "en": "Shared JavaScript API (sp://import/) for Bungalow apps: require(), models, views and auth."
+    }
+}

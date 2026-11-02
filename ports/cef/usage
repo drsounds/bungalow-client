@@ -1,0 +1,5 @@
+cef provides CMake targets:
+
+    find_package(cef CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE cef::cef)
+    cef_copy_runtime(main)   # libcef.dll, resources and locales next to main

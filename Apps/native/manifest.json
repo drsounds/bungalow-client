@@ -1,0 +1,16 @@
+{
+    "BundleType": "Application",
+    "BundleIdentifier": "native",
+    "AppName": {
+        "en": "Native"
+    },
+    "AppDescription": {
+        "en": "A test native app"
+    },
+    "AppType": "Native",
+    "Features": {
+        "test": {
+            "Routes": "feature/test/routes.json"
+        }
+    }
+}

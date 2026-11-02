@@ -5,6 +5,7 @@
 #include "SPColorChooser.h"
 #include "SPAeroColorSlider.h"
 #include "SPButtonElement.h"
+#include "SPDropdownElement.h"
 #include "SPInputElement.h"
 #include "SPElement.h"
 #include "SPVBoxElement.h"
@@ -41,10 +42,6 @@ public:
     int onBrowseDownloadsClicked(SPObject* sender, SPEventArgs* e);
     int onBrowseMusicClicked(SPObject* sender, SPEventArgs* e);
     int onDeveloperModeClicked(SPObject* sender, SPEventArgs* e);
-    int onClassicSkinClicked(SPObject* sender, SPEventArgs* e);
-    int onModernSkinClicked(SPObject* sender, SPEventArgs* e);
-    int onFrutigerAeroSkinClicked(SPObject* sender, SPEventArgs* e);
-    int onBundleSkinClicked(SPObject* sender, SPEventArgs* e);
     int onFullWidthAddressBarClicked(SPObject* sender, SPEventArgs* e);
 
     // Aero header-style callbacks
@@ -53,12 +50,6 @@ public:
     int onAeroHeaderGlossyClicked(SPObject* sender, SPEventArgs* e);
     int onAeroHeaderAccentGlossyClicked(SPObject* sender, SPEventArgs* e);
     int onAeroHeaderDarkGlossyClicked(SPObject* sender, SPEventArgs* e);
-
-    // Button style callbacks
-    int onButtonFlatClicked(SPObject* sender, SPEventArgs* e);
-    int onButtonGradientClicked(SPObject* sender, SPEventArgs* e);
-    int onButtonModernGradientClicked(SPObject* sender, SPEventArgs* e);
-    int onButtonAquaClicked(SPObject* sender, SPEventArgs* e);
 
 private:
     SPColorChooser*  m_colorChooser           = nullptr;
@@ -71,11 +62,7 @@ private:
     SPButtonElement* m_browseDownloadsBtn     = nullptr;
     SPButtonElement* m_browseMusicBtn         = nullptr;
     SPButtonElement* m_developerModeButton    = nullptr;
-    SPButtonElement* m_classicSkinButton      = nullptr;
-    SPButtonElement* m_modernSkinButton       = nullptr;
-    SPButtonElement* m_frutigerAeroSkinButton = nullptr;
-    // Skins from app bundles other than the default modern skin, with their skin type.
-    std::vector<std::pair<SPButtonElement*, string>> m_bundleSkinButtons;
+    SPDropdownElement* m_skinDropdown         = nullptr;
     SPButtonElement* m_fullWidthAddressBarButton = nullptr;
 
     // Aero header style buttons
@@ -85,11 +72,7 @@ private:
     SPButtonElement* m_aeroHeaderAccentGlossyBtn = nullptr;
     SPButtonElement* m_aeroHeaderDarkGlossyBtn   = nullptr;
 
-    // Button style picker
-    SPButtonElement* m_btnStyleFlatBtn          = nullptr;
-    SPButtonElement* m_btnStyleGradientBtn      = nullptr;
-    SPButtonElement* m_btnStyleModernGradBtn    = nullptr;
-    SPButtonElement* m_btnStyleAquaBtn          = nullptr;
+    SPDropdownElement* m_buttonStyleDropdown    = nullptr;
 
     // Aero colour sliders
     SPAeroColorSlider* m_hueSlider        = nullptr;
@@ -116,11 +99,9 @@ private:
     void updateModeButtons();
     void updateGlossyButton();
     void updateDeveloperModeButton();
-    void updateSkinButtons();
     void updateFullWidthAddressBarButton();
     void updateAeroHeaderStyleButtons();
     void updateAeroSectionVisibility();
-    void updateButtonStyleButtons();
     void syncSliderContext();
 };
 

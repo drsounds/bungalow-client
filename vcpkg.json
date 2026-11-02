@@ -19,6 +19,18 @@
 					"features": ["webview"]
 				}
 			]
+		},
+		"cef": {
+			"description": "Chromium Embedded Framework for local HTML5 app bundles (BUNGALOW_ENABLE_CEF)",
+			"dependencies": [
+				{
+					"name": "cef",
+					"platform": "windows & x64"
+				}
+			]
 		}
+	},
+	"vcpkg-configuration": {
+		"overlay-ports": ["./ports"]
 	}
 }

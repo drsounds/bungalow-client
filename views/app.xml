@@ -4,6 +4,7 @@
     <button id="backButton">&lt;</button>
     <button id="forwardButton">&gt;</button>
     <input id="searchInput" />
+    <input id="addressInput" />
   </appheader>
   <hbox flex="1" id="body">
     <vbox width="300" id="leftSidebar">
