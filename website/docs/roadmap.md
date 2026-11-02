@@ -1,0 +1,94 @@
+---
+title: Status and roadmap
+sidebar_position: 100
+---
+
+# Status and roadmap
+
+The C++ client is being refactored to follow the Java client's package
+structure. This page lists what is implemented, how it compares with the Java
+client, and what comes next.
+
+## What works today
+
+- **The aspect model**: `BaseAspectManager<T>` with `FeatureManager`,
+  `ConceptManager` and `SearchManager`. Concepts are activated with a recording
+  context, and everything they add is removed when they are unregistered.
+- **Built-ins as features and concepts**: Start, Settings, Library, Downloads,
+  Database, Web and Search, registered by `app::registerBuiltins()`.
+- **Navigation**: the view stack, `bungalow:` URIs, history, and a sidebar
+  built from feature nodes with merged sections.
+- **Unified search** across search providers, grouped by entity kind.
+- **The Space framework**: XUL, Lua templates with postbacks, the URI store with
+  a disk cache, and skins (modern, classic, Frutiger Aero, `skin.xml` bundles).
+- **App bundles**: native Lua apps with routing and a sandbox, HTML5 apps in
+  CEF with isolated storage and host consent, and the `sp://import` JS API.
+- **Web**: sites, stores and curators in an embedded browser, hierarchical
+  bookmarks, favicons and downloads.
+- **Library**: a SQLite library keyed by ISRC, UPC and ISNI, local file import
+  and user tables.
+- **Backends**: wxWidgets, Win32 and WTL (with CEF), with CI and release
+  workflows for Windows.
+
+## Compared with the Java client
+
+| Java client | C++ client |
+|-------------|------------|
+| `Aspect`, `BaseAspectManager` | ✅ `space::aspect` |
+| `Feature`, `FeatureManager` | ✅ `space::feature` |
+| `Concept`, `ConceptContext`, `ConceptManager` | ✅ `space::concepts` |
+| `SidebarNode` | ✅ `space::navigation` (sections are merged; there is no `SidebarHandle`, features return their current nodes instead) |
+| `SearchProvider`, `SearchManager` | ✅ `space::search` |
+| `View`, `ViewStack` | ✅ `SPViewElement`, `SPViewStackElement` (last match wins rather than first) |
+| Spider templates (LuaJ) | ✅ `SPTemplate`, `SPNativeApp` |
+| `SiteUri`, bookmarks, `CefRuntime` | ✅ `space::web`, `windows/include/web` |
+| Skins, themes (`Taste`, `ThemeManager`) | ✅ `SPSkin` with HSL tint; no separate Chrome/Design layer yet |
+| `Plugin`, `PluginManager`, jar plugins | ⏳ app bundles cover apps and skins; there are no compiled plugins |
+| `Service`, `ServiceManager`, capability lookup | ⏳ `SPService` / `SPMediaService`, chosen by URI |
+| `MusicService`, `MusicCatalogueService`, `AuthAspect` | ⏳ not yet |
+| `PlaybackCoordinator`, "Play with…", `ResolutionStore` | ⏳ a single service per URI |
+| `musik:` URIs | ⏳ the identifiers are in the schema; no parser yet |
+| Chrome / Design | ⏳ one shell (`views/app.xml`) |
+
+## Known gaps
+
+1. **Legacy views outside the packages.** Many views, data sources and models
+   are still at the top level of `bungalow/`. They are registered through
+   features but haven't been moved into `app/<domain>`.
+2. **The `linux/` tree** is an older copy of the client and framework. It is
+   being merged into the shared trees.
+3. **The `spider/` prototype** is replaced by `SPTemplate` and `SPNativeApp`
+   and can be removed.
+4. **Template routing** in `SPElement::request` only knows the `start` and
+   `artist` routes. Other templates need a lookup mechanism.
+5. **Shared API data** in `sp://import` comes from a fictional catalogue until
+   the C++ bridge is connected.
+
+## Roadmap
+
+1. **Services by capability**: a `ServiceManager` with `getServices<T>()`,
+   so callers ask for a capability (play, search a catalogue, sign in) instead
+   of a specific service.
+2. **Cross-service resolution**: a vendor-neutral play request resolved over
+   every installed music service at play time, with a remembered "Play with…"
+   choice.
+3. **`musik:` URIs** in playlists, drag and drop and the queue.
+4. **Catalogue and store aspects**, so catalogues and stores can be installed
+   side by side and searched together.
+5. **Connect the Apps API** to the library, player and search.
+6. **Declarative `<app>` concepts**, so a whole feature (entities, views,
+   sidebar) can be declared in markup or YAML, as described in the
+   [introduction](./intro.md#the-space-ui-idea).
+7. **Chrome and Design**: switchable shells (for example a Windows Media
+   Player-style shell) in addition to skins.
+
+## Contributor conventions
+
+- Everything pluggable implements `aspect::Aspect` and is registered with a
+  manager.
+- Concepts contribute **only** through their `ConceptContext`, so removing
+  them is clean. Anything acquired outside it is released in `onDeactivate()`.
+- Views are reached by `bungalow:` URI, never by direct reference.
+- Feature sidebar nodes are computed from current state. Call
+  `refreshSidebar()` when that state changes.
+- Comments explain *why* and match the surrounding code's level of detail.
