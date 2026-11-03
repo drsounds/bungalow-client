@@ -40,6 +40,7 @@
 namespace space {
 	std::function<void(const std::string&)> SPElement::s_xulErrorHandler;
 	SPElement* SPElement::s_capturedElement = nullptr;
+	SPElement::SPCursorHint SPElement::s_cursorHint = SPElement::SPCursorHint::Arrow;
 
 	std::optional<SPColor> SPElement::getActiveColor()
 	{

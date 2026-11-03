@@ -96,6 +96,15 @@ namespace space {
         static void setMouseCapture(SPElement* el) { s_capturedElement = el; }
         static void releaseMouseCapture()          { s_capturedElement = nullptr; }
 
+        /// Cursor hint for the platform layer: elements set this while the
+        /// pointer hovers (or drags) them so the OS cursor can be swapped,
+        /// e.g. to a resize arrow over a splitter. Reset to Arrow before each
+        /// mousemove dispatch.
+        enum class SPCursorHint { Arrow, ResizeHorizontal };
+        static SPCursorHint s_cursorHint;
+        static void setCursorHint(SPCursorHint hint) { s_cursorHint = hint; }
+        static SPCursorHint getCursorHint()          { return s_cursorHint; }
+
     	void setState(int value) {
     		this->m_state = value;
     		this->invalidate();

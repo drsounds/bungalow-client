@@ -77,8 +77,12 @@ bool SPModernSkin::drawElement(SPGraphicsContext* g, SPElement* elm, const strin
 
     if (elm->getType() == "splitter") {
         result = true;
+        // Darker than a plain separator so the drag handle reads as interactive.
+        SPColor splitterColor = elm->getColorScheme() == SP_COLOR_SCHEME_DARK
+            ? SPColor(255, 255, 255, 60)
+            : SPColor(0, 0, 0, 70);
         g->fillRectangle(bounds.x, bounds.y, bounds.width, bounds.height,
-                         sepColor(elm->getColorScheme()));
+                         splitterColor);
     }
 
     if (elm->getType() == "button") {

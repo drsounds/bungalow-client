@@ -216,6 +216,11 @@ namespace ui {
         body->setFlex(1);
         leftSidebar = (SPVBoxElement *)this->getElementById("leftSidebar");
 
+        auto *sidebarSplitter = (SPSplitterElement *)this->getElementById("sidebarSplitter");
+        sidebarSplitter->setTarget(leftSidebar);
+        sidebarSplitter->setMinWidth(180);
+        sidebarSplitter->setMaxWidth(600);
+
         SPElement *leftTabBar = leftSidebar->getElementById("leftTabBar");
         tabBar = (SPTabBarElement *)leftTabBar;
         treeView = (SPTreeViewElement *)this->getElementById("treeview");

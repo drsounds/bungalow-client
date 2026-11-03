@@ -85,7 +85,12 @@
         <property name="background" value="$sidebar" />
     </selector>
     <selector match="sp-nowplayingbarheader">
-        <property name="background" value="$sidebar" />
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="32,64;80,80"
+            nine-patch="1,1,1,1"
+        />
     </selector>
     <selector match="#leftSidebar">
         <property name="background" value="$sidebar" />

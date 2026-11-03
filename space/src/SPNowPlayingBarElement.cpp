@@ -73,9 +73,13 @@ int SPNowPlayingBarElement::onPlaybackChanged(SPObject* /*sender*/, SPEventArgs*
 }
 
 void SPNowPlayingBarElement::pack() {
+    // The image view below the header is square (1:1 with the pane's
+    // width), so the bar's total height tracks the width plus whatever
+    // room the heading needs. Set the height before delegating to the
+    // vbox layout so the flex image view is sized against the new height.
+    int headerHeight = m_header ? m_header->getHeight() : 0;
+    this->setHeight(this->getWidth() + headerHeight);
     SPVBoxElement::pack();
-    if (m_header) m_header->pack();
-    this->setHeight(this->getWidth() + 100);
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────

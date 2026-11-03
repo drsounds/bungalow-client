@@ -1,6 +1,7 @@
 #include "NativeApplication.h"
 
 #include "SPClassicSkin.h"
+#include "SPElement.h"
 #include "SPEventArgs.h"
 #include "SPMouseEventArgs.h"
 #include "SPTextElement.h"
@@ -87,6 +88,8 @@ namespace space
     {
         if (!space || !windowElement)
             return;
+        if (std::string(name) == "mousemove")
+            space::SPElement::setCursorHint(space::SPElement::SPCursorHint::Arrow);
         auto *args = new SPMouseEventArgs(button, x, y, commandDown);
         space->dispatchEvent(name, args, windowElement);
         if (std::string(name) == "mouseup" &&

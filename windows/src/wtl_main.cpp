@@ -5,6 +5,7 @@
 #include <atltypes.h>
 
 #include "NativeApplication.h"
+#include "SPElement.h"
 
 #ifdef BUNGALOW_CEF
 #include "web/CefRuntime.h"
@@ -321,6 +322,10 @@ public:
 		if (item != CaptionItem::None || pressedItem != CaptionItem::None)
 			return;
 		app.mouseEvent("mousemove", point.x, point.y, 0, IsCommandDown());
+
+		const bool resizeCursor =
+			space::SPElement::getCursorHint() == space::SPElement::SPCursorHint::ResizeHorizontal;
+		::SetCursor(::LoadCursorW(nullptr, resizeCursor ? MAKEINTRESOURCEW(32644) : MAKEINTRESOURCEW(32512)));
 	}
 
 	LRESULT OnMouseLeave(UINT, WPARAM, LPARAM, BOOL &) {
