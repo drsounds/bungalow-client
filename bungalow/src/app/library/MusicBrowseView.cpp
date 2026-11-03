@@ -91,8 +91,14 @@ void MusicBrowseView::navigate(const std::string& /*uri*/) {
 }
 
 void MusicBrowseView::setHash(const std::string& hash) {
+	// A URI without a hash arrives as "overview" (SPUri's default), which is not
+	// one of our page ids; anything unknown falls back to the first page.
 	std::string id = hash;
-	if (id.empty() && !m_pages.empty())
+	bool known = false;
+	for (const auto& page : m_pages)
+		if (page->id == id)
+			known = true;
+	if (!known && !m_pages.empty())
 		id = m_pages.front()->id;
 	SPTabBarViewElement::setHash(id);
 	// Keep the tab highlight in step when the page is chosen by URI.
