@@ -1,0 +1,28 @@
+{
+  "id": "space/uri-store",
+  "title": "URI store",
+  "description": "space::SPUriStore (space/include/SPUriStore.h) is a small global store, in",
+  "source": "@site/docs/space/uri-store.md",
+  "sourceDirName": "space",
+  "slug": "/space/uri-store",
+  "permalink": "/bungalow-client/space/uri-store",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/space/uri-store.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "title": "URI store",
+    "sidebar_position": 4
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Templates",
+    "permalink": "/bungalow-client/space/templates"
+  },
+  "next": {
+    "title": "Skins",
+    "permalink": "/bungalow-client/space/skins"
+  }
+}

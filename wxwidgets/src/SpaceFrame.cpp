@@ -1,4 +1,5 @@
 #include "SpaceFrame.h"
+#include "AudioImporter.h"
 #include "BungalowApp.h"
 #include "MusicScanner.h"
 
@@ -247,8 +248,22 @@ void SpaceFrame::OnLibraryScan(wxCommandEvent&) {
                      "Audio files (*.mp3;*.flac;*.aac;*.ogg;*.wav)"
                      "|*.mp3;*.flac;*.aac;*.ogg;*.wav|All files (*.*)|*.*",
                      wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_MULTIPLE);
-    if (dlg.ShowModal() == wxID_OK)
-        navigateTo("bungalow:library:scan");
+    if (dlg.ShowModal() != wxID_OK) return;
+
+    auto* app = dynamic_cast<BungalowApp*>(wxTheApp);
+    Database* db = app ? app->getDatabase() : nullptr;
+    if (!db) return;
+
+    // Each file's tags are broken out into recording, artists, release and
+    // track rows, and the track is saved to the library.
+    wxArrayString paths;
+    dlg.GetPaths(paths);
+    {
+        wxBusyCursor busy;
+        for (const wxString& path : paths)
+            space::AudioImporter::importFile(db->handle(), path.ToStdString());
+    }
+    navigateTo("bungalow:library");
 }
 
 void SpaceFrame::OnLibraryScanFolder(wxCommandEvent&) {

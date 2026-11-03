@@ -1,0 +1,26 @@
+{
+  "id": "java-client/index",
+  "title": "Java reference client",
+  "description": "These pages document the Java/Swing client",
+  "source": "@site/docs/java-client/index.md",
+  "sourceDirName": "java-client",
+  "slug": "/java-client/",
+  "permalink": "/bungalow-client/java-client/",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/java-client/index.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 0,
+  "frontMatter": {
+    "slug": "/java-client/",
+    "title": "Java reference client",
+    "sidebar_label": "Overview",
+    "sidebar_position": 0
+  },
+  "sidebar": "javaClient",
+  "next": {
+    "title": "Architecture Overview",
+    "permalink": "/bungalow-client/java-client/architecture"
+  }
+}

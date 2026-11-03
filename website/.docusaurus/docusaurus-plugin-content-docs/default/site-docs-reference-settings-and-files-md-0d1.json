@@ -1,0 +1,28 @@
+{
+  "id": "reference/settings-and-files",
+  "title": "Settings and files",
+  "description": "User data directory",
+  "source": "@site/docs/reference/settings-and-files.md",
+  "sourceDirName": "reference",
+  "slug": "/reference/settings-and-files",
+  "permalink": "/bungalow-client/reference/settings-and-files",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/reference/settings-and-files.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "title": "Settings and files",
+    "sidebar_position": 2
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "URI schemes",
+    "permalink": "/bungalow-client/reference/uri-schemes"
+  },
+  "next": {
+    "title": "Overview",
+    "permalink": "/bungalow-client/specs/"
+  }
+}

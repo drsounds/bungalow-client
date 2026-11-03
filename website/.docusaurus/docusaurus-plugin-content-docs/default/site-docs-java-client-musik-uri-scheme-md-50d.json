@@ -1,0 +1,28 @@
+{
+  "id": "java-client/musik-uri-scheme",
+  "title": "The musik: URI Scheme",
+  "description": "musik: is Bungalow's portable, service-agnostic content identifier — the way",
+  "source": "@site/docs/java-client/musik-uri-scheme.md",
+  "sourceDirName": "java-client",
+  "slug": "/java-client/musik-uri-scheme",
+  "permalink": "/bungalow-client/java-client/musik-uri-scheme",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/java-client/musik-uri-scheme.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 9,
+  "frontMatter": {
+    "title": "The musik: URI Scheme",
+    "sidebar_position": 9
+  },
+  "sidebar": "javaClient",
+  "previous": {
+    "title": "Playback & Resolution",
+    "permalink": "/bungalow-client/java-client/playback-and-resolution"
+  },
+  "next": {
+    "title": "Status & Roadmap",
+    "permalink": "/bungalow-client/java-client/status-and-roadmap"
+  }
+}

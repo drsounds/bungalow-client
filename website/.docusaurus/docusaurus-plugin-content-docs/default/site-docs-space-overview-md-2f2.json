@@ -1,0 +1,28 @@
+{
+  "id": "space/overview",
+  "title": "Space overview",
+  "description": "Space is the UI framework Bungalow is built on. It lives in space/ and",
+  "source": "@site/docs/space/overview.md",
+  "sourceDirName": "space",
+  "slug": "/space/overview",
+  "permalink": "/bungalow-client/space/overview",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/space/overview.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "title": "Space overview",
+    "sidebar_position": 1
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Data and the library",
+    "permalink": "/bungalow-client/architecture/data"
+  },
+  "next": {
+    "title": "Elements and XUL",
+    "permalink": "/bungalow-client/space/elements-and-xul"
+  }
+}

@@ -256,6 +256,16 @@ public abstract class AbstractMusicListView extends View {
 	protected void onCellClicked(int row, String columnKey) {
 	}
 
+	/** Extra context-menu entries for a row (e.g. "Go to Release"); default none. */
+	protected List<MusicTable.RowAction> rowActionsAt(int row) {
+		return List.of();
+	}
+
+	/** Convenience: a context-menu entry navigating to {@code uri}. */
+	public MusicTable.RowAction goTo(String label, String uri) {
+		return new MusicTable.RowAction(label, () -> getViewStack().navigate(uri));
+	}
+
 	// ── Library-membership toggle (✓/＋) — consistent across track lists ──────────
 
 	/** Whether this view shows the library-membership toggle column. Constant. */
@@ -371,6 +381,7 @@ public abstract class AbstractMusicListView extends View {
 		@Override public void toggleLibraryAt(int row)      { AbstractMusicListView.this.toggleLibraryAt(row); }
 		@Override public void onActivate(int row)           { AbstractMusicListView.this.onActivate(row); }
 		@Override public void onCellClicked(int row, String columnKey) { AbstractMusicListView.this.onCellClicked(row, columnKey); }
+		@Override public List<MusicTable.RowAction> rowActions(int row) { return AbstractMusicListView.this.rowActionsAt(row); }
 		@Override public List<MusicTable.Grouping> groupings() { return AbstractMusicListView.this.groupings(); }
 	}
 

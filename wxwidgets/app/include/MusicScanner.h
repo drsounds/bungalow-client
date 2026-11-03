@@ -10,11 +10,13 @@
 #include <atomic>
 #include <string>
 
+#include "AudioImporter.h"
+
 // ── Custom events (posted from worker thread → dialog) ────────────────────────
 wxDECLARE_EVENT(EVT_SCAN_PROGRESS, wxCommandEvent);
 wxDECLARE_EVENT(EVT_SCAN_DONE,     wxCommandEvent);
 
-// ── Raw metadata extracted from an audio file ─────────────────────────────────
+// ── Metadata sent to a MusicBrainz lookup (from AudioImporter's tag read) ─────
 struct AudioMetadata {
     std::string title;    // cleaned title (version suffix removed)
     std::string version;  // extracted version string, e.g. "Radio Edit"
@@ -43,25 +45,17 @@ private:
 
     // ── File classification ──────────────────────────────────────────────────
     static bool isAudioFile(const std::string& ext);
-    static bool isTaggableAudio(const std::string& ext); // supports ID3 / iTunes atoms
-
-    // ── Metadata extraction ──────────────────────────────────────────────────
-    AudioMetadata readTags(const std::string& path);
-    AudioMetadata readID3v2(const std::string& path);
-    AudioMetadata readID3v1(const std::string& path);
-
-    // ── Version extraction (mutates title, returns version string) ───────────
-    static std::string extractVersion(std::string& title);
 
     // ── Database helpers (thread-local connection) ───────────────────────────
     static sqlite3_int64 upsertFile(sqlite3* db, const std::string& path);
     static sqlite3_int64 upsertAudioFile(sqlite3* db, sqlite3_int64 fileId,
                                           const AudioMetadata& meta);
     static sqlite3_int64 upsertPlayable(sqlite3* db, const std::string& path);
-    static bool matchAndLink(sqlite3* db, const AudioMetadata& meta,
-                              sqlite3_int64 audioFileId, sqlite3_int64 playableId);
+    static bool isLinked(sqlite3* db, const std::string& path);
 
-    // ── MusicBrainz helpers ──────────────────────────────────────────────────
+    // ── MusicBrainz helpers (for files without embedded tags) ────────────────
+    bool identifyWithMusicBrainz(sqlite3* db, const std::string& path,
+                                 const space::AudioFileMetadata& tags);
     bool musicBrainzLookup(sqlite3* db, const AudioMetadata& meta,
                             sqlite3_int64 audioFileId, sqlite3_int64 playableId);
     static bool createFromMBJson(sqlite3* db, const std::string& jsonStr,

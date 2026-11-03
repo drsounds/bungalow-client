@@ -1,0 +1,28 @@
+{
+  "id": "apps/html5-apps",
+  "title": "HTML5 apps",
+  "description": "An HTML5 app is an app bundle with an index.html. On the WTL backend with",
+  "source": "@site/docs/apps/html5-apps.md",
+  "sourceDirName": "apps",
+  "slug": "/apps/html5-apps",
+  "permalink": "/bungalow-client/apps/html5-apps",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/apps/html5-apps.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "title": "HTML5 apps",
+    "sidebar_position": 3
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Native apps",
+    "permalink": "/bungalow-client/apps/native-apps"
+  },
+  "next": {
+    "title": "Sites and bookmarks",
+    "permalink": "/bungalow-client/apps/sites-and-bookmarks"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "java-client/navigation-and-views",
+  "title": "Navigation & Views",
+  "description": "Every screen in Bungalow is a View bound to a bungalow: URI. Navigation",
+  "source": "@site/docs/java-client/navigation-and-views.md",
+  "sourceDirName": "java-client",
+  "slug": "/java-client/navigation-and-views",
+  "permalink": "/bungalow-client/java-client/navigation-and-views",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/java-client/navigation-and-views.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "title": "Navigation & Views",
+    "sidebar_position": 5
+  },
+  "sidebar": "javaClient",
+  "previous": {
+    "title": "Aspects & Services",
+    "permalink": "/bungalow-client/java-client/aspects-and-services"
+  },
+  "next": {
+    "title": "Spider Templates",
+    "permalink": "/bungalow-client/java-client/spider-templates"
+  }
+}

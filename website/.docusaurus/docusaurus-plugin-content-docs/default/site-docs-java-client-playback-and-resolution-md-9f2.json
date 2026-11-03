@@ -1,0 +1,28 @@
+{
+  "id": "java-client/playback-and-resolution",
+  "title": "Playback & Resolution",
+  "description": "Listening is deliberately separated from which vendor plays the bytes. The",
+  "source": "@site/docs/java-client/playback-and-resolution.md",
+  "sourceDirName": "java-client",
+  "slug": "/java-client/playback-and-resolution",
+  "permalink": "/bungalow-client/java-client/playback-and-resolution",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/java-client/playback-and-resolution.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 8,
+  "frontMatter": {
+    "title": "Playback & Resolution",
+    "sidebar_position": 8
+  },
+  "sidebar": "javaClient",
+  "previous": {
+    "title": "Look & Feel",
+    "permalink": "/bungalow-client/java-client/look-and-feel"
+  },
+  "next": {
+    "title": "The musik: URI Scheme",
+    "permalink": "/bungalow-client/java-client/musik-uri-scheme"
+  }
+}

@@ -100,16 +100,26 @@ namespace space {
             const int trackId = m_dataSource->getTrackIdForRow(rowArgs->getRow());
             if (trackId <= 0) return 0;
 
-            enum { ID_PLAY = 10100, ID_EDIT };
-            const int sel = platform::showPopupMenu({ { ID_PLAY, "Play" }, { ID_EDIT, "Edit..." } });
+            enum { ID_PLAY = 10100, ID_EDIT, ID_REMOVE };
+            const int sel = platform::showPopupMenu({ { ID_PLAY, "Play" }, { ID_EDIT, "Edit..." },
+                                                      { 0, "" }, { ID_REMOVE, "Remove from Library" } });
 
+            bool changed = false;
             if (sel == ID_PLAY) {
                 playRowInContext(rowArgs->getRow());
             } else if (sel == ID_EDIT) {
-                if (platform::showAddTrackDialog(m_db, trackId)) {
-                    if (m_dataSource) m_dataSource->reload(m_db);
-                    if (m_table)      m_table->invalidate();
+                changed = platform::showAddTrackDialog(m_db, trackId);
+            } else if (sel == ID_REMOVE) {
+                // Soft delete: the track stays in the database (see All Tracks).
+                auto* app = BungalowApp::current();
+                if (app && app->getDatabase()) {
+                    app->getDatabase()->removeSave(trackId);
+                    changed = true;
                 }
+            }
+            if (changed) {
+                if (m_dataSource) m_dataSource->reload(m_db);
+                if (m_table)      m_table->invalidate();
             }
             return 0;
         }

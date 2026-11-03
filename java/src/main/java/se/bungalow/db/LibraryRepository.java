@@ -1,6 +1,9 @@
 package se.bungalow.db;
 
 import com.j256.ormlite.dao.Dao;
+import com.j256.ormlite.stmt.DeleteBuilder;
+import com.j256.ormlite.stmt.UpdateBuilder;
+import se.bungalow.app.media.model.MusicServiceTrack;
 import se.bungalow.app.music.model.*;
 
 import java.sql.SQLException;
@@ -101,6 +104,20 @@ public final class LibraryRepository {
         }
     }
 
+    /** The first primary artist credited on a recording, or null if none. */
+    public static Artist primaryArtistEntityForRecording(Recording r) {
+        try {
+            return db().dao(RecordingCreatorCredit.class).queryForEq("recording_id", r.getId()).stream()
+                .filter(RecordingCreatorCredit::isPrimary)
+                .map(RecordingCreatorCredit::getArtist)
+                .filter(a -> a != null && a.getName() != null)
+                .findFirst()
+                .orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     /** Comma-joined titles of releases this recording appears on (via tracks). */
     public static String albumForRecording(Recording r) {
         try {
@@ -158,5 +175,83 @@ public final class LibraryRepository {
             Artist a = findOrCreateArtist(n);
             dao.create(new ReleaseCreatorCredit(r, a, true, "performer"));
         }
+    }
+
+    // ── Browsing ────────────────────────────────────────────────────────────────
+
+    /** A release's tracks in {@link #ALBUM_ORDER}. */
+    public static List<Track> tracksForRelease(MusicRelease r) throws SQLException {
+        List<Track> tracks = new ArrayList<>(db().dao(Track.class).queryForEq("release_id", r.getId()));
+        tracks.sort(ALBUM_ORDER);
+        return tracks;
+    }
+
+    /** Every appearance (track) of a recording, one per release it is on. */
+    public static List<Track> tracksForRecording(Recording r) throws SQLException {
+        return db().dao(Track.class).queryForEq("recording_id", r.getId());
+    }
+
+    /** Recordings an artist is credited on, by name. */
+    public static List<Recording> recordingsForArtist(Artist a) throws SQLException {
+        List<Recording> out = new ArrayList<>();
+        for (RecordingCreatorCredit c : db().dao(RecordingCreatorCredit.class).queryForEq("artist_id", a.getId())) {
+            if (c.getRecording() != null && out.stream().noneMatch(r -> r.getId() == c.getRecording().getId()))
+                out.add(c.getRecording());
+        }
+        out.sort(Comparator.comparing(Recording::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+        return out;
+    }
+
+    /** The next free track number on a release (one past the highest). */
+    public static int nextTrackNumber(MusicRelease r) throws SQLException {
+        int max = 0;
+        for (Track t : db().dao(Track.class).queryForEq("release_id", r.getId()))
+            max = Math.max(max, t.getTrackNumber());
+        return max + 1;
+    }
+
+    // ── Cascading deletes ───────────────────────────────────────────────────────
+    //
+    // ORMLite doesn't enforce foreign keys on SQLite, so deleting a row would
+    // leave credits/tracks pointing at nothing (they then render as blank rows).
+    // These remove an entity together with the rows that only make sense with it.
+
+    /** Delete an artist and their credits; the credited recordings and releases stay. */
+    public static void deleteArtist(Artist a) throws SQLException {
+        deleteWhere(RecordingCreatorCredit.class, "artist_id", a.getId());
+        deleteWhere(ReleaseCreatorCredit.class, "artist_id", a.getId());
+        db().dao(Artist.class).delete(a);
+    }
+
+    /** Delete a recording with its credits, local files and tracks. */
+    public static void deleteRecording(Recording r) throws SQLException {
+        for (Track t : tracksForRecording(r)) deleteTrack(t);
+        deleteWhere(RecordingCreatorCredit.class, "recording_id", r.getId());
+        deleteWhere(RecordingFile.class, "recording_id", r.getId());
+        db().dao(Recording.class).delete(r);
+    }
+
+    /** Delete a release with its credits and tracks; the recordings stay. */
+    public static void deleteRelease(MusicRelease r) throws SQLException {
+        for (Track t : db().dao(Track.class).queryForEq("release_id", r.getId())) deleteTrack(t);
+        deleteWhere(ReleaseCreatorCredit.class, "release_id", r.getId());
+        db().dao(MusicRelease.class).delete(r);
+    }
+
+    /**
+     * Delete a track. A remembered "Play with…" pick bound to it is unbound
+     * rather than deleted: it still matches the track by ISRC/URI.
+     */
+    public static void deleteTrack(Track t) throws SQLException {
+        UpdateBuilder<MusicServiceTrack, Integer> unbind = db().dao(MusicServiceTrack.class).updateBuilder();
+        unbind.updateColumnValue("track_id", null).where().eq("track_id", t.getId());
+        unbind.update();
+        db().dao(Track.class).delete(t);
+    }
+
+    private static <T> void deleteWhere(Class<T> entity, String column, int id) throws SQLException {
+        DeleteBuilder<T, Integer> delete = db().dao(entity).deleteBuilder();
+        delete.where().eq(column, id);
+        delete.delete();
     }
 }

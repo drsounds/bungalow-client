@@ -5,8 +5,10 @@
 namespace space {
 namespace app {
 
-/// Searches the saved tracks of the local library by song, artist and release
-/// name. Results are bungalow:track:<id> URIs, which play the track.
+/// Searches the local library: artists, releases and recordings by name (or
+/// exact ISNI/UPC/ISRC), which open their bungalow:library:<kind>:<key> detail
+/// pages, and saved tracks by song, artist and release name, whose
+/// bungalow:track:<id> URIs play the track.
 class LibrarySearchProvider : public search::SearchProvider {
 public:
     std::string getId() const override { return "search.library"; }

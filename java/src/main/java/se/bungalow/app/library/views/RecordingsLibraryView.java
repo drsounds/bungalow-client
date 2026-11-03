@@ -5,7 +5,6 @@ import se.bungalow.app.music.views.AbstractMusicListView;
 import se.bungalow.db.DatabaseManager;
 import se.bungalow.db.LibraryRepository;
 import se.bungalow.app.music.model.Recording;
-import se.bungalow.app.music.model.RecordingCreatorCredit;
 import se.bungalow.navigation.ViewStack;
 import se.bungalow.service.media.PlayRequest;
 
@@ -13,7 +12,10 @@ import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Library view listing recordings (name, artists) with full CRUD. */
+/**
+ * Library view listing recordings (name, artists) with full CRUD. Double-click
+ * plays; the context menu opens the recording's page.
+ */
 public class RecordingsLibraryView extends AbstractMusicListView {
 
     public RecordingsLibraryView(ViewStack viewStack) {
@@ -50,17 +52,17 @@ public class RecordingsLibraryView extends AbstractMusicListView {
 
     @Override
     protected void onAdd() {
-        JTextField title    = new JTextField();
+        JTextField name     = new JTextField();
         JTextField artists  = new JTextField();
         JTextField isrc     = new JTextField();
         JTextField duration = new JTextField();
         JTextField filePath = new JTextField();
         if (!FormDialog.show(getComponent(), "New Recording",
-                new String[]{"Title", "Artists (comma-separated)", "ISRC", "Duration (m:ss)", "File path"},
-                new JComponent[]{title, artists, isrc, duration, filePath})) return;
-        if (title.getText().isBlank()) return;
+                new String[]{"Name", "Artists (comma-separated)", "ISRC", "Duration (m:ss)", "File path"},
+                new JComponent[]{name, artists, isrc, duration, filePath})) return;
+        if (name.getText().isBlank()) return;
         try {
-            Recording r = new Recording(title.getText().trim());
+            Recording r = new Recording(name.getText().trim());
             r.setIsrc(blankToNull(isrc.getText()));
             r.setDurationMs(parseDuration(duration.getText()));
             DatabaseManager.getInstance().dao(Recording.class).create(r);
@@ -74,17 +76,17 @@ public class RecordingsLibraryView extends AbstractMusicListView {
     @Override
     protected void onEdit(int row) {
         Recording r = rows.get(row);
-        JTextField title    = new JTextField(r.getName());
+        JTextField name     = new JTextField(r.getName());
         JTextField artists  = new JTextField(LibraryRepository.artistNamesForRecording(r));
         JTextField isrc     = new JTextField(r.getIsrc());
         JTextField duration = new JTextField(fmtDuration(r.getDurationMs()));
         JTextField filePath = new JTextField(LibraryRepository.filePathForRecording(r));
         if (!FormDialog.show(getComponent(), "Edit Recording",
-                new String[]{"Title", "Artists (comma-separated)", "ISRC", "Duration (m:ss)", "File path"},
-                new JComponent[]{title, artists, isrc, duration, filePath})) return;
-        if (title.getText().isBlank()) return;
+                new String[]{"Name", "Artists (comma-separated)", "ISRC", "Duration (m:ss)", "File path"},
+                new JComponent[]{name, artists, isrc, duration, filePath})) return;
+        if (name.getText().isBlank()) return;
         try {
-            r.setName(title.getText().trim());
+            r.setName(name.getText().trim());
             r.setIsrc(blankToNull(isrc.getText()));
             r.setDurationMs(parseDuration(duration.getText()));
             DatabaseManager.getInstance().dao(Recording.class).update(r);
@@ -98,11 +100,9 @@ public class RecordingsLibraryView extends AbstractMusicListView {
     @Override
     protected void onDelete(int row) {
         Recording r = rows.get(row);
-        if (!confirmDelete("recording \"" + r.getName() + "\"")) return;
+        if (!confirmDelete("recording \"" + r.getName() + "\" and its tracks")) return;
         try {
-            DatabaseManager.getInstance().dao(RecordingCreatorCredit.class).delete(
-                DatabaseManager.getInstance().dao(RecordingCreatorCredit.class).queryForEq("recording_id", r.getId()));
-            DatabaseManager.getInstance().dao(Recording.class).delete(r);
+            LibraryRepository.deleteRecording(r);
         } catch (Exception e) {
             showError(e);
         }
@@ -114,6 +114,11 @@ public class RecordingsLibraryView extends AbstractMusicListView {
         // No local Track here; the saved "Play with…" pick is keyed by ISRC/URI.
         return new PlayRequest(null, r.getIsrc(), r.getName(),
                 LibraryRepository.primaryArtistForRecording(r), r.getPlayUri(), r.getDurationMs());
+    }
+
+    @Override
+    protected List<MusicTable.RowAction> rowActionsAt(int row) {
+        return List.of(goTo("Go to Recording", RecordingDetailView.uriFor(rows.get(row))));
     }
 
     private static String blankToNull(String s) {

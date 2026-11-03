@@ -1,0 +1,28 @@
+{
+  "id": "architecture/features-and-concepts",
+  "title": "Features and concepts",
+  "description": "Two kinds of contribution make up the client's screens:",
+  "source": "@site/docs/architecture/features-and-concepts.md",
+  "sourceDirName": "architecture",
+  "slug": "/architecture/features-and-concepts",
+  "permalink": "/bungalow-client/architecture/features-and-concepts",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/architecture/features-and-concepts.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "title": "Features and concepts",
+    "sidebar_position": 3
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Aspects",
+    "permalink": "/bungalow-client/architecture/aspects"
+  },
+  "next": {
+    "title": "Navigation and views",
+    "permalink": "/bungalow-client/architecture/navigation"
+  }
+}

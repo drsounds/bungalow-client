@@ -1,0 +1,28 @@
+{
+  "id": "java-client/look-and-feel",
+  "title": "Look & Feel",
+  "description": "The entire appearance is pluggable too. A Design is a premix of a Chrome",
+  "source": "@site/docs/java-client/look-and-feel.md",
+  "sourceDirName": "java-client",
+  "slug": "/java-client/look-and-feel",
+  "permalink": "/bungalow-client/java-client/look-and-feel",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/java-client/look-and-feel.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 7,
+  "frontMatter": {
+    "title": "Look & Feel",
+    "sidebar_position": 7
+  },
+  "sidebar": "javaClient",
+  "previous": {
+    "title": "Spider Templates",
+    "permalink": "/bungalow-client/java-client/spider-templates"
+  },
+  "next": {
+    "title": "Playback & Resolution",
+    "permalink": "/bungalow-client/java-client/playback-and-resolution"
+  }
+}

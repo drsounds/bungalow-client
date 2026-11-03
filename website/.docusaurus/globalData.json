@@ -1,0 +1,219 @@
+{
+  "docusaurus-plugin-content-docs": {
+    "default": {
+      "path": "/bungalow-client/",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/bungalow-client/",
+          "mainDocId": "intro",
+          "docs": [
+            {
+              "id": "apps/bundles",
+              "path": "/bungalow-client/apps/bundles",
+              "sidebar": "docs"
+            },
+            {
+              "id": "apps/html5-apps",
+              "path": "/bungalow-client/apps/html5-apps",
+              "sidebar": "docs"
+            },
+            {
+              "id": "apps/native-apps",
+              "path": "/bungalow-client/apps/native-apps",
+              "sidebar": "docs"
+            },
+            {
+              "id": "apps/sites-and-bookmarks",
+              "path": "/bungalow-client/apps/sites-and-bookmarks",
+              "sidebar": "docs"
+            },
+            {
+              "id": "architecture/aspects",
+              "path": "/bungalow-client/architecture/aspects",
+              "sidebar": "docs"
+            },
+            {
+              "id": "architecture/data",
+              "path": "/bungalow-client/architecture/data",
+              "sidebar": "docs"
+            },
+            {
+              "id": "architecture/features-and-concepts",
+              "path": "/bungalow-client/architecture/features-and-concepts",
+              "sidebar": "docs"
+            },
+            {
+              "id": "architecture/navigation",
+              "path": "/bungalow-client/architecture/navigation",
+              "sidebar": "docs"
+            },
+            {
+              "id": "architecture/overview",
+              "path": "/bungalow-client/architecture/overview",
+              "sidebar": "docs"
+            },
+            {
+              "id": "architecture/playback",
+              "path": "/bungalow-client/architecture/playback",
+              "sidebar": "docs"
+            },
+            {
+              "id": "architecture/search",
+              "path": "/bungalow-client/architecture/search",
+              "sidebar": "docs"
+            },
+            {
+              "id": "background",
+              "path": "/bungalow-client/background",
+              "sidebar": "docs"
+            },
+            {
+              "id": "getting-started/building",
+              "path": "/bungalow-client/getting-started/building",
+              "sidebar": "docs"
+            },
+            {
+              "id": "getting-started/project-layout",
+              "path": "/bungalow-client/getting-started/project-layout",
+              "sidebar": "docs"
+            },
+            {
+              "id": "intro",
+              "path": "/bungalow-client/",
+              "sidebar": "docs"
+            },
+            {
+              "id": "java-client/architecture",
+              "path": "/bungalow-client/java-client/architecture",
+              "sidebar": "javaClient"
+            },
+            {
+              "id": "java-client/aspects-and-services",
+              "path": "/bungalow-client/java-client/aspects-and-services",
+              "sidebar": "javaClient"
+            },
+            {
+              "id": "java-client/index",
+              "path": "/bungalow-client/java-client/",
+              "sidebar": "javaClient"
+            },
+            {
+              "id": "java-client/look-and-feel",
+              "path": "/bungalow-client/java-client/look-and-feel",
+              "sidebar": "javaClient"
+            },
+            {
+              "id": "java-client/musik-uri-scheme",
+              "path": "/bungalow-client/java-client/musik-uri-scheme",
+              "sidebar": "javaClient"
+            },
+            {
+              "id": "java-client/navigation-and-views",
+              "path": "/bungalow-client/java-client/navigation-and-views",
+              "sidebar": "javaClient"
+            },
+            {
+              "id": "java-client/playback-and-resolution",
+              "path": "/bungalow-client/java-client/playback-and-resolution",
+              "sidebar": "javaClient"
+            },
+            {
+              "id": "java-client/plugin-system",
+              "path": "/bungalow-client/java-client/plugin-system",
+              "sidebar": "javaClient"
+            },
+            {
+              "id": "java-client/spider-templates",
+              "path": "/bungalow-client/java-client/spider-templates",
+              "sidebar": "javaClient"
+            },
+            {
+              "id": "java-client/status-and-roadmap",
+              "path": "/bungalow-client/java-client/status-and-roadmap",
+              "sidebar": "javaClient"
+            },
+            {
+              "id": "reference/settings-and-files",
+              "path": "/bungalow-client/reference/settings-and-files",
+              "sidebar": "docs"
+            },
+            {
+              "id": "reference/uri-schemes",
+              "path": "/bungalow-client/reference/uri-schemes",
+              "sidebar": "docs"
+            },
+            {
+              "id": "roadmap",
+              "path": "/bungalow-client/roadmap",
+              "sidebar": "docs"
+            },
+            {
+              "id": "space/backends",
+              "path": "/bungalow-client/space/backends",
+              "sidebar": "docs"
+            },
+            {
+              "id": "space/elements-and-xul",
+              "path": "/bungalow-client/space/elements-and-xul",
+              "sidebar": "docs"
+            },
+            {
+              "id": "space/overview",
+              "path": "/bungalow-client/space/overview",
+              "sidebar": "docs"
+            },
+            {
+              "id": "space/skins",
+              "path": "/bungalow-client/space/skins",
+              "sidebar": "docs"
+            },
+            {
+              "id": "space/templates",
+              "path": "/bungalow-client/space/templates",
+              "sidebar": "docs"
+            },
+            {
+              "id": "space/uri-store",
+              "path": "/bungalow-client/space/uri-store",
+              "sidebar": "docs"
+            },
+            {
+              "id": "specs/index",
+              "path": "/bungalow-client/specs/",
+              "sidebar": "docs"
+            },
+            {
+              "id": "specs/rfc-0001-universal-playlist-sharing",
+              "path": "/bungalow-client/specs/rfc-0001",
+              "sidebar": "docs"
+            },
+            {
+              "id": "specs/rfc-0002-musik-uri-scheme",
+              "path": "/bungalow-client/specs/rfc-0002",
+              "sidebar": "docs"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "docs": {
+              "link": {
+                "path": "/bungalow-client/",
+                "label": "intro"
+              }
+            },
+            "javaClient": {
+              "link": {
+                "path": "/bungalow-client/java-client/",
+                "label": "Java reference client"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    }
+  }
+}

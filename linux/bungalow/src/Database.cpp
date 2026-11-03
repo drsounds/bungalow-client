@@ -1,5 +1,6 @@
 #include "Database.h"
 
+#include <unordered_map>
 #include <utility>
 #include <random>
 #include <sstream>
@@ -283,6 +284,11 @@ void Database::initialize() {
             sqlite3_exec(m_db, "PRAGMA foreign_keys = ON;", nullptr, nullptr, nullptr);
         }
     }
+
+    // Migration: track position on its release. Runs after the rebuild above,
+    // which copies only the original three columns (ignored if it exists).
+    sqlite3_exec(m_db, "ALTER TABLE tracks ADD COLUMN number INTEGER NOT NULL DEFAULT 0",
+                 nullptr, nullptr, nullptr);
 }
 
 // ── Bookmark CRUD ─────────────────────────────────────────────────────────────
@@ -663,51 +669,346 @@ Database::TrackDetails Database::getTrackDetails(int trackId)
         }
     }
 
-    // Recording artists
-    {
-        sqlite3_stmt* s = nullptr;
-        if (sqlite3_prepare_v2(m_db, R"(
-            SELECT a.isni, a.name, ra.is_primary, ra.number
-            FROM recording_artists ra
-            JOIN artists a ON a.isni = ra.artist_id
-            WHERE ra.recording_id = ?
-            ORDER BY ra.number;
-        )", -1, &s, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(s, 1, out.recording.isrc.c_str(), -1, SQLITE_TRANSIENT);
-            while (sqlite3_step(s) == SQLITE_ROW) {
-                out.recordingArtists.push_back({
-                    colText(s,0), colText(s,1),
-                    sqlite3_column_int(s,2) != 0,
-                    sqlite3_column_int(s,3)
-                });
-            }
-            sqlite3_finalize(s);
-        }
-    }
-
-    // Release artists
-    if (!out.release.upc.empty()) {
-        sqlite3_stmt* s = nullptr;
-        if (sqlite3_prepare_v2(m_db, R"(
-            SELECT a.isni, a.name, ra.is_primary, ra.number
-            FROM release_artists ra
-            JOIN artists a ON a.isni = ra.artist_id
-            WHERE ra.release_id = ?
-            ORDER BY ra.number;
-        )", -1, &s, nullptr) == SQLITE_OK) {
-            sqlite3_bind_text(s, 1, out.release.upc.c_str(), -1, SQLITE_TRANSIENT);
-            while (sqlite3_step(s) == SQLITE_ROW) {
-                out.releaseArtists.push_back({
-                    colText(s,0), colText(s,1),
-                    sqlite3_column_int(s,2) != 0,
-                    sqlite3_column_int(s,3)
-                });
-            }
-            sqlite3_finalize(s);
-        }
-    }
+    out.recordingArtists = getRecordingArtists(out.recording.isrc);
+    if (!out.release.upc.empty())
+        out.releaseArtists = getReleaseArtists(out.release.upc);
 
     return out;
+}
+
+// ── Music browsing ────────────────────────────────────────────────────────────
+
+// Run a statement taking one text parameter (writes only; result rows ignored).
+static void execWithText(sqlite3* db, const char* sql, const std::string& v)
+{
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &s, nullptr) != SQLITE_OK) return;
+    sqlite3_bind_text(s, 1, v.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_step(s);
+    sqlite3_finalize(s);
+}
+
+// Comma-joined credited artist names per content key, in credit order.
+// One query per junction table instead of one per row; GROUP_CONCAT would
+// not guarantee the credit order.
+static std::unordered_map<std::string, std::string>
+artistNamesByKey(sqlite3* db, const std::string& junction, const std::string& keyCol)
+{
+    std::unordered_map<std::string, std::string> out;
+    const std::string sql =
+        "SELECT j." + keyCol + ", a.name FROM " + junction + " j"
+        " JOIN artists a ON a.isni = j.artist_id"
+        " ORDER BY j." + keyCol + ", j.number, a.name;";
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &s, nullptr) != SQLITE_OK) return out;
+    while (sqlite3_step(s) == SQLITE_ROW) {
+        std::string& names = out[colText(s, 0)];
+        if (!names.empty()) names += ", ";
+        names += colText(s, 1);
+    }
+    sqlite3_finalize(s);
+    return out;
+}
+
+static std::vector<Database::ArtistRelationship>
+creditsFor(sqlite3* db, const char* sql, const std::string& key)
+{
+    std::vector<Database::ArtistRelationship> out;
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &s, nullptr) != SQLITE_OK) return out;
+    sqlite3_bind_text(s, 1, key.c_str(), -1, SQLITE_TRANSIENT);
+    while (sqlite3_step(s) == SQLITE_ROW) {
+        out.push_back({ colText(s, 0), colText(s, 1),
+                        sqlite3_column_int(s, 2) != 0,
+                        sqlite3_column_int(s, 3) });
+    }
+    sqlite3_finalize(s);
+    return out;
+}
+
+// Shared SELECT for every track list; callers append WHERE / ORDER BY.
+static const char* kTrackRowSelect = R"(
+    SELECT t.id, COALESCE(t.number, 0),
+           rec.isrc, rec.name, COALESCE(rec.version, ''),
+           COALESCE(rel.upc, ''), COALESCE(rel.name, ''),
+           COALESCE((SELECT p.uri FROM playable_tracks pt
+                     JOIN playables p ON p.id = pt.playable_id
+                     WHERE pt.track_id = t.id LIMIT 1), ''),
+           EXISTS (SELECT 1 FROM saves s
+                   WHERE s.track_id = t.id AND s.deleted_at IS NULL)
+    FROM tracks t
+    JOIN recordings    rec ON rec.isrc = t.recording_id
+    LEFT JOIN releases rel ON rel.upc  = t.release_id
+)";
+
+// @p key is bound to every ?1 in @p tail when non-empty.
+static std::vector<Database::TrackRow>
+queryTrackRows(sqlite3* db, const std::string& tail, const std::string& key = "")
+{
+    std::vector<Database::TrackRow> out;
+    const std::string sql = std::string(kTrackRowSelect) + tail;
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &s, nullptr) != SQLITE_OK) return out;
+    if (!key.empty())
+        sqlite3_bind_text(s, 1, key.c_str(), -1, SQLITE_TRANSIENT);
+
+    auto names = artistNamesByKey(db, "recording_artists", "recording_id");
+    while (sqlite3_step(s) == SQLITE_ROW) {
+        Database::TrackRow r;
+        r.id          = sqlite3_column_int(s, 0);
+        r.number      = sqlite3_column_int(s, 1);
+        r.isrc        = colText(s, 2);
+        r.name        = colText(s, 3);
+        r.version     = colText(s, 4);
+        r.upc         = colText(s, 5);
+        r.releaseName = colText(s, 6);
+        r.playUri     = colText(s, 7);
+        r.saved       = sqlite3_column_int(s, 8) != 0;
+        auto it = names.find(r.isrc);
+        if (it != names.end()) r.artists = it->second;
+        out.push_back(std::move(r));
+    }
+    sqlite3_finalize(s);
+    return out;
+}
+
+static std::vector<Database::ReleaseSummary>
+queryReleaseSummaries(sqlite3* db, const std::string& tail, const std::string& key = "")
+{
+    std::vector<Database::ReleaseSummary> out;
+    const std::string sql =
+        "SELECT rel.upc, rel.name, COALESCE(rel.release_date, ''),"
+        "       (SELECT COUNT(*) FROM tracks t WHERE t.release_id = rel.upc)"
+        " FROM releases rel " + tail;
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &s, nullptr) != SQLITE_OK) return out;
+    if (!key.empty())
+        sqlite3_bind_text(s, 1, key.c_str(), -1, SQLITE_TRANSIENT);
+
+    auto names = artistNamesByKey(db, "release_artists", "release_id");
+    while (sqlite3_step(s) == SQLITE_ROW) {
+        Database::ReleaseSummary r;
+        r.release    = { colText(s, 0), colText(s, 1), colText(s, 2) };
+        r.trackCount = sqlite3_column_int(s, 3);
+        auto it = names.find(r.release.upc);
+        if (it != names.end()) r.artists = it->second;
+        out.push_back(std::move(r));
+    }
+    sqlite3_finalize(s);
+    return out;
+}
+
+std::string Database::generateLocalId()
+{
+    return "local:" + generateUUID4();
+}
+
+Database::ArtistRecord Database::getArtist(const std::string& isni)
+{
+    ArtistRecord out;
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(m_db, "SELECT isni, name FROM artists WHERE isni = ?;",
+                           -1, &s, nullptr) != SQLITE_OK) return out;
+    sqlite3_bind_text(s, 1, isni.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(s) == SQLITE_ROW)
+        out = { colText(s, 0), colText(s, 1) };
+    sqlite3_finalize(s);
+    return out;
+}
+
+Database::RecordingRecord Database::getRecording(const std::string& isrc)
+{
+    RecordingRecord out;
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT isrc, name, COALESCE(version,'') FROM recordings WHERE isrc = ?;",
+        -1, &s, nullptr) != SQLITE_OK) return out;
+    sqlite3_bind_text(s, 1, isrc.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(s) == SQLITE_ROW)
+        out = { colText(s, 0), colText(s, 1), colText(s, 2) };
+    sqlite3_finalize(s);
+    return out;
+}
+
+Database::ReleaseRecord Database::getRelease(const std::string& upc)
+{
+    ReleaseRecord out;
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT upc, name, COALESCE(release_date,'') FROM releases WHERE upc = ?;",
+        -1, &s, nullptr) != SQLITE_OK) return out;
+    sqlite3_bind_text(s, 1, upc.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(s) == SQLITE_ROW)
+        out = { colText(s, 0), colText(s, 1), colText(s, 2) };
+    sqlite3_finalize(s);
+    return out;
+}
+
+std::vector<Database::ArtistSummary> Database::getArtistSummaries()
+{
+    std::vector<ArtistSummary> out;
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(m_db, R"(
+        SELECT a.isni, a.name,
+               (SELECT COUNT(*) FROM recording_artists ra WHERE ra.artist_id = a.isni),
+               (SELECT COUNT(*) FROM release_artists   rl WHERE rl.artist_id = a.isni)
+        FROM artists a
+        ORDER BY a.name COLLATE NOCASE;
+    )", -1, &s, nullptr) != SQLITE_OK) return out;
+    while (sqlite3_step(s) == SQLITE_ROW) {
+        ArtistSummary a;
+        a.artist         = { colText(s, 0), colText(s, 1) };
+        a.recordingCount = sqlite3_column_int(s, 2);
+        a.releaseCount   = sqlite3_column_int(s, 3);
+        out.push_back(std::move(a));
+    }
+    sqlite3_finalize(s);
+    return out;
+}
+
+std::vector<Database::RecordingSummary> Database::getRecordingSummaries()
+{
+    std::vector<RecordingSummary> out;
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT isrc, name, COALESCE(version,'') FROM recordings ORDER BY name COLLATE NOCASE;",
+        -1, &s, nullptr) != SQLITE_OK) return out;
+    auto names = artistNamesByKey(m_db, "recording_artists", "recording_id");
+    while (sqlite3_step(s) == SQLITE_ROW) {
+        RecordingSummary r;
+        r.recording = { colText(s, 0), colText(s, 1), colText(s, 2) };
+        auto it = names.find(r.recording.isrc);
+        if (it != names.end()) r.artists = it->second;
+        out.push_back(std::move(r));
+    }
+    sqlite3_finalize(s);
+    return out;
+}
+
+std::vector<Database::ReleaseSummary> Database::getReleaseSummaries()
+{
+    return queryReleaseSummaries(m_db, "ORDER BY rel.name COLLATE NOCASE;");
+}
+
+std::vector<Database::ArtistRelationship> Database::getRecordingArtists(const std::string& isrc)
+{
+    return creditsFor(m_db, R"(
+        SELECT a.isni, a.name, ra.is_primary, ra.number
+        FROM recording_artists ra
+        JOIN artists a ON a.isni = ra.artist_id
+        WHERE ra.recording_id = ?
+        ORDER BY ra.number;
+    )", isrc);
+}
+
+std::vector<Database::ArtistRelationship> Database::getReleaseArtists(const std::string& upc)
+{
+    return creditsFor(m_db, R"(
+        SELECT a.isni, a.name, ra.is_primary, ra.number
+        FROM release_artists ra
+        JOIN artists a ON a.isni = ra.artist_id
+        WHERE ra.release_id = ?
+        ORDER BY ra.number;
+    )", upc);
+}
+
+std::vector<Database::TrackRow> Database::getAllTracks()
+{
+    return queryTrackRows(m_db,
+        "ORDER BY rel.name IS NULL, rel.name COLLATE NOCASE,"
+        " CASE WHEN t.number > 0 THEN 0 ELSE 1 END, t.number, t.id;");
+}
+
+std::vector<Database::TrackRow> Database::getTracksForRelease(const std::string& upc)
+{
+    // Numbered tracks in order, unnumbered ones after them in insertion order.
+    return queryTrackRows(m_db,
+        "WHERE t.release_id = ?1"
+        " ORDER BY CASE WHEN t.number > 0 THEN 0 ELSE 1 END, t.number, t.id;", upc);
+}
+
+std::vector<Database::TrackRow> Database::getTracksForArtist(const std::string& isni)
+{
+    return queryTrackRows(m_db,
+        "WHERE rec.isrc IN (SELECT recording_id FROM recording_artists WHERE artist_id = ?1)"
+        " ORDER BY rec.name COLLATE NOCASE, rel.name COLLATE NOCASE, t.id;", isni);
+}
+
+std::vector<Database::TrackRow> Database::getTracksForRecording(const std::string& isrc)
+{
+    return queryTrackRows(m_db,
+        "WHERE rec.isrc = ?1 ORDER BY rel.release_date, rel.name COLLATE NOCASE, t.id;", isrc);
+}
+
+std::vector<Database::ReleaseSummary> Database::getReleasesForArtist(const std::string& isni)
+{
+    return queryReleaseSummaries(m_db,
+        "WHERE rel.upc IN ("
+        "   SELECT release_id FROM release_artists WHERE artist_id = ?1"
+        "   UNION"
+        "   SELECT t.release_id FROM tracks t"
+        "   JOIN recording_artists ra ON ra.recording_id = t.recording_id"
+        "   WHERE ra.artist_id = ?1 AND t.release_id IS NOT NULL)"
+        " ORDER BY rel.release_date, rel.name COLLATE NOCASE;", isni);
+}
+
+void Database::setTrackNumber(int64_t trackId, int number)
+{
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(m_db, "UPDATE tracks SET number = ? WHERE id = ?;",
+                           -1, &s, nullptr) != SQLITE_OK) return;
+    sqlite3_bind_int(s, 1, number);
+    sqlite3_bind_int64(s, 2, trackId);
+    sqlite3_step(s);
+    sqlite3_finalize(s);
+}
+
+void Database::setTrackRelease(int64_t trackId, const std::string& releaseUpc)
+{
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(m_db, "UPDATE tracks SET release_id = ? WHERE id = ?;",
+                           -1, &s, nullptr) != SQLITE_OK) return;
+    bindOptText(s, 1, releaseUpc);
+    sqlite3_bind_int64(s, 2, trackId);
+    sqlite3_step(s);
+    sqlite3_finalize(s);
+}
+
+void Database::deleteArtist(const std::string& isni)
+{
+    execWithText(m_db, "DELETE FROM artists WHERE isni = ?;", isni);
+}
+
+void Database::deleteRecording(const std::string& isrc)
+{
+    execWithText(m_db, "DELETE FROM recordings WHERE isrc = ?;", isrc);
+}
+
+void Database::deleteRelease(const std::string& upc)
+{
+    execWithText(m_db, "DELETE FROM releases WHERE upc = ?;", upc);
+}
+
+void Database::deleteTrack(int64_t trackId)
+{
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(m_db, "DELETE FROM tracks WHERE id = ?;",
+                           -1, &s, nullptr) != SQLITE_OK) return;
+    sqlite3_bind_int64(s, 1, trackId);
+    sqlite3_step(s);
+    sqlite3_finalize(s);
+}
+
+void Database::removeSave(int64_t trackId)
+{
+    sqlite3_stmt* s = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "UPDATE saves SET deleted_at = datetime('now')"
+        " WHERE track_id = ? AND deleted_at IS NULL;",
+        -1, &s, nullptr) != SQLITE_OK) return;
+    sqlite3_bind_int64(s, 1, trackId);
+    sqlite3_step(s);
+    sqlite3_finalize(s);
 }
 
 // ── Custom user-defined table support ─────────────────────────────────────────

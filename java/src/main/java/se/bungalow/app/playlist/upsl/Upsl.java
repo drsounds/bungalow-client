@@ -32,11 +32,10 @@ public final class Upsl {
     private static final String ACCT_PREFIX       = "acct:";
     private static final String MUSIK_ACCT_PREFIX = "musik:acct:";
     private static final String BUNGALOW_ACCT_PREFIX = "bungalow:acct:";
-    private static final String BUNGALOW_ACCT_PREFIX  = "bungalow:acct:";
 
     /** The prefixes that introduce a UPSL, longest-first so the more specific match wins. */
     private static final String[] PREFIXES = {
-        FEDERATED_PREFIX, MUSIK_ACCT_PREFIX, BUNGALOW_ACCT_PREFIX, BUNGALOW_ACCT_PREFIX, ACCT_PREFIX
+        FEDERATED_PREFIX, MUSIK_ACCT_PREFIX, BUNGALOW_ACCT_PREFIX, ACCT_PREFIX
     };
     private static final String PLAYLIST_MARKER = ":playlist:";
     private static final String DESCRIPTION_MARKER = ":description:";

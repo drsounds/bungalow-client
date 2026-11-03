@@ -1,0 +1,28 @@
+{
+  "id": "java-client/plugin-system",
+  "title": "The Plugin System",
+  "description": "A plugin is the unit of distribution. It contributes any mix of Services,",
+  "source": "@site/docs/java-client/plugin-system.md",
+  "sourceDirName": "java-client",
+  "slug": "/java-client/plugin-system",
+  "permalink": "/bungalow-client/java-client/plugin-system",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/java-client/plugin-system.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "title": "The Plugin System",
+    "sidebar_position": 3
+  },
+  "sidebar": "javaClient",
+  "previous": {
+    "title": "Architecture Overview",
+    "permalink": "/bungalow-client/java-client/architecture"
+  },
+  "next": {
+    "title": "Aspects & Services",
+    "permalink": "/bungalow-client/java-client/aspects-and-services"
+  }
+}

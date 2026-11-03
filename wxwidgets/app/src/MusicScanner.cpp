@@ -1,5 +1,7 @@
 #include "MusicScanner.h"
 
+#include "AudioImporter.h"
+
 #include <wx/sizer.h>
 #include <wx/stattext.h>
 #include <wx/button.h>
@@ -11,12 +13,9 @@
 #include <cstdint>
 
 #include <filesystem>
-#include <fstream>
 #include <vector>
 #include <algorithm>
-#include <regex>
 #include <cstdio>
-#include <cstring>
 
 namespace fs = std::filesystem;
 
@@ -34,9 +33,6 @@ wxDEFINE_EVENT(EVT_SCAN_DONE,     wxCommandEvent);
 static const char* kAudioExts[] = {
     ".mp3", ".mp4", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".opus", ".wma", nullptr
 };
-static const char* kTaggableExts[] = { // have ID3v1/v2 tags
-    ".mp3", ".aac", ".wav", nullptr
-};
 
 bool MusicScannerThread::isAudioFile(const std::string& ext) {
     std::string lo = ext;
@@ -44,214 +40,6 @@ bool MusicScannerThread::isAudioFile(const std::string& ext) {
     for (int i = 0; kAudioExts[i]; ++i)
         if (lo == kAudioExts[i]) return true;
     return false;
-}
-
-bool MusicScannerThread::isTaggableAudio(const std::string& ext) {
-    std::string lo = ext;
-    std::transform(lo.begin(), lo.end(), lo.begin(), ::tolower);
-    for (int i = 0; kTaggableExts[i]; ++i)
-        if (lo == kTaggableExts[i]) return true;
-    return false;
-}
-
-// ── ID3v2 binary helpers ──────────────────────────────────────────────────────
-
-static uint32_t readBE32(const uint8_t* p) {
-    return (uint32_t(p[0]) << 24) | (uint32_t(p[1]) << 16)
-         | (uint32_t(p[2]) <<  8) |  uint32_t(p[3]);
-}
-
-static uint32_t readSyncsafe4(const uint8_t* p) {
-    return (uint32_t(p[0] & 0x7F) << 21) | (uint32_t(p[1] & 0x7F) << 14)
-         | (uint32_t(p[2] & 0x7F) <<  7) |  uint32_t(p[3] & 0x7F);
-}
-
-// Decode a text frame (first byte = encoding).
-// Returns a UTF-8 string suitable for SQLite storage.
-static std::string decodeTextFrame(const uint8_t* data, size_t size) {
-    if (size == 0) return {};
-    uint8_t enc = data[0];
-    const uint8_t* text = data + 1;
-    size_t len = size - 1;
-
-    // Latin-1 (0) or UTF-8 (3): treat the bytes as UTF-8 (ASCII subset is compatible)
-    if (enc == 0 || enc == 3) {
-        std::string s(reinterpret_cast<const char*>(text), len);
-        // strip embedded NULs
-        s.erase(std::remove(s.begin(), s.end(), '\0'), s.end());
-        return s;
-    }
-
-    // UTF-16 with BOM (1) or UTF-16BE without BOM (2)
-    if (len < 2) return {};
-    bool bigEndian = (enc == 2);
-    size_t off = 0;
-    if (len >= 2) {
-        if (text[0] == 0xFF && text[1] == 0xFE) { bigEndian = false; off = 2; }
-        else if (text[0] == 0xFE && text[1] == 0xFF) { bigEndian = true;  off = 2; }
-    }
-    std::string result;
-    for (size_t i = off; i + 1 < len; i += 2) {
-        uint16_t ch = bigEndian
-            ? (uint16_t(text[i]) << 8 | text[i + 1])
-            : (uint16_t(text[i + 1]) << 8 | text[i]);
-        if (ch == 0) break;
-        if (ch < 0x80) {
-            result += char(ch);
-        } else if (ch < 0x800) {
-            result += char(0xC0 | (ch >> 6));
-            result += char(0x80 | (ch & 0x3F));
-        } else {
-            result += char(0xE0 | (ch >> 12));
-            result += char(0x80 | ((ch >> 6) & 0x3F));
-            result += char(0x80 | (ch & 0x3F));
-        }
-    }
-    return result;
-}
-
-// ── ID3v2 reader ──────────────────────────────────────────────────────────────
-
-AudioMetadata MusicScannerThread::readID3v2(const std::string& path) {
-    AudioMetadata meta;
-    std::ifstream f(path, std::ios::binary);
-    if (!f) return meta;
-
-    uint8_t hdr[10];
-    if (!f.read(reinterpret_cast<char*>(hdr), 10)) return meta;
-    if (hdr[0] != 'I' || hdr[1] != 'D' || hdr[2] != '3') return meta;
-
-    int ver = hdr[3]; // major version: 2, 3, or 4
-    if (ver < 2 || ver > 4) return meta;
-
-    uint32_t tagBytes = readSyncsafe4(hdr + 6);
-    uint32_t consumed = 0;
-
-    while (consumed + 10 < tagBytes && !TestDestroy()) {
-        uint8_t fh[10];
-        if (!f.read(reinterpret_cast<char*>(fh), 10)) break;
-        if (fh[0] == 0) break; // padding
-
-        std::string fid(reinterpret_cast<char*>(fh), 4);
-        uint32_t fsize = (ver == 4) ? readSyncsafe4(fh + 4) : readBE32(fh + 4);
-        // fh[8,9] are frame flags – ignored
-        consumed += 10 + fsize;
-
-        if (fsize == 0 || fsize > 2 * 1024 * 1024) break;
-
-        std::vector<uint8_t> data(fsize);
-        if (!f.read(reinterpret_cast<char*>(data.data()), fsize)) break;
-
-        if      (fid == "TIT2") meta.title   = decodeTextFrame(data.data(), data.size());
-        else if (fid == "TPE1") meta.artists = decodeTextFrame(data.data(), data.size());
-        else if (fid == "TALB") meta.album   = decodeTextFrame(data.data(), data.size());
-        else if (fid == "TLEN") {
-            std::string s = decodeTextFrame(data.data(), data.size());
-            try { meta.duration = std::stoi(s); } catch (...) {}
-        }
-
-        // Early-exit once we have all fields we care about
-        if (!meta.title.empty() && !meta.artists.empty()
-                && !meta.album.empty() && meta.duration > 0)
-            break;
-    }
-    return meta;
-}
-
-// ── ID3v1 reader ──────────────────────────────────────────────────────────────
-
-AudioMetadata MusicScannerThread::readID3v1(const std::string& path) {
-    AudioMetadata meta;
-    std::ifstream f(path, std::ios::binary | std::ios::ate);
-    if (!f) return meta;
-    std::streampos sz = f.tellg();
-    if (sz < 128) return meta;
-    f.seekg(-128, std::ios::end);
-    uint8_t tag[128];
-    if (!f.read(reinterpret_cast<char*>(tag), 128)) return meta;
-    if (tag[0] != 'T' || tag[1] != 'A' || tag[2] != 'G') return meta;
-
-    auto trimField = [](const char* s, int len) {
-        std::string r(s, strnlen(s, len));
-        while (!r.empty() && (r.back() == ' ' || r.back() == '\0')) r.pop_back();
-        return r;
-    };
-    meta.title   = trimField(reinterpret_cast<const char*>(tag +  3), 30);
-    meta.artists = trimField(reinterpret_cast<const char*>(tag + 33), 30);
-    meta.album   = trimField(reinterpret_cast<const char*>(tag + 63), 30);
-    return meta;
-}
-
-// ── Tag dispatcher ────────────────────────────────────────────────────────────
-
-static void trimString(std::string& s) {
-    s.erase(std::remove(s.begin(), s.end(), '\0'), s.end());
-    size_t b = s.find_first_not_of(" \t\r\n");
-    size_t e = s.find_last_not_of(" \t\r\n");
-    if (b == std::string::npos) s.clear();
-    else s = s.substr(b, e - b + 1);
-}
-
-AudioMetadata MusicScannerThread::readTags(const std::string& path) {
-    std::string ext = fs::path(path).extension().string();
-    AudioMetadata meta;
-
-    if (isTaggableAudio(ext)) {
-        meta = readID3v2(path);
-        if (meta.title.empty())
-            meta = readID3v1(path);
-    }
-    // For MP4/M4A/FLAC/OGG we fall through to filename fallback
-    // (those require separate atom/Vorbis parsers; MusicBrainz will fill gaps)
-
-    // Filename fallback: parse "Artist - Title" from the stem for any fields
-    // still missing from tags (e.g. "Daft Punk - Get Lucky (Radio Edit).mp3")
-    {
-        std::string stem = fs::path(path).stem().string();
-        size_t sep = stem.find(" - ");
-        if (sep != std::string::npos) {
-            if (meta.artists.empty()) {
-                meta.artists = stem.substr(0, sep);
-                trimString(meta.artists);
-            }
-            if (meta.title.empty()) {
-                meta.title = stem.substr(sep + 3);
-                trimString(meta.title);
-            }
-        } else if (meta.title.empty()) {
-            meta.title = stem;
-        }
-    }
-
-    trimString(meta.title);
-    trimString(meta.artists);
-    trimString(meta.album);
-    return meta;
-}
-
-// ── Version extraction ────────────────────────────────────────────────────────
-// Strips a version suffix from the end of a title and returns it.
-// Handles: "Title [Version]", "Title (Version)", "Title - Version"
-
-std::string MusicScannerThread::extractVersion(std::string& title) {
-    // Try bracket forms first (more specific), then dash
-    struct Pattern { std::regex re; int captureGroup; };
-    static const std::vector<Pattern> kPatterns = {
-        { std::regex(R"(\s*\[([^\]]+)\]\s*$)"),               1 },
-        { std::regex(R"(\s*\(([^)]+)\)\s*$)"),                1 },
-        { std::regex(R"(\s*[-\u2013]\s*([^()\[\]]+?)\s*$)"), 1 },
-    };
-    for (auto& p : kPatterns) {
-        std::smatch m;
-        if (std::regex_search(title, m, p.re)) {
-            std::string version = m[p.captureGroup].str();
-            trimString(version);
-            title = title.substr(0, m.position());
-            trimString(title);
-            return version;
-        }
-    }
-    return {};
 }
 
 // ── URL encoding ──────────────────────────────────────────────────────────────
@@ -379,62 +167,45 @@ static void addSave(sqlite3* db, sqlite3_int64 trackId) {
     sqlite3_finalize(st);
 }
 
-// Try to find a matching track in the local DB (by title + optional album) and
-// insert a track_audio_files row for each match.
-bool MusicScannerThread::matchAndLink(sqlite3* db, const AudioMetadata& meta,
-                                       sqlite3_int64 audioFileId,
-                                       sqlite3_int64 playableId) {
-    if (meta.title.empty()) return false;
+// ── MusicBrainz lookup ────────────────────────────────────────────────────────
 
-    // Match by recording name; also constrain on release name when an album tag
-    // is present.  Returns all matching track ids (one recording may appear on
-    // multiple releases so we link to all of them).
+// True if the file at @p path is already linked to a track.
+bool MusicScannerThread::isLinked(sqlite3* db, const std::string& path) {
     sqlite3_stmt* st = nullptr;
-    sqlite3_prepare_v2(db, R"(
-        SELECT DISTINCT t.id
-        FROM tracks t
-        JOIN recordings rec ON rec.isrc = t.recording_id
-        JOIN releases   rel ON rel.upc  = t.release_id
-        WHERE LOWER(rec.name) = LOWER(?)
-          AND (? = '' OR LOWER(rel.name) = LOWER(?))
-        LIMIT 10
-    )", -1, &st, nullptr);
-    sqlite3_bind_text(st, 1, meta.title.c_str(),  -1, SQLITE_STATIC);
-    sqlite3_bind_text(st, 2, meta.album.c_str(),  -1, SQLITE_STATIC);
-    sqlite3_bind_text(st, 3, meta.album.c_str(),  -1, SQLITE_STATIC);
-
-    std::vector<sqlite3_int64> trackIds;
-    while (sqlite3_step(st) == SQLITE_ROW)
-        trackIds.push_back(sqlite3_column_int64(st, 0));
+    if (sqlite3_prepare_v2(db, R"(
+        SELECT 1 FROM files f
+        JOIN audio_files af        ON af.file_id = f.id
+        JOIN track_audio_files taf ON taf.audio_file_id = af.id
+        WHERE f.path = ? LIMIT 1
+    )", -1, &st, nullptr) != SQLITE_OK) return false;
+    sqlite3_bind_text(st, 1, path.c_str(), -1, SQLITE_TRANSIENT);
+    const bool linked = sqlite3_step(st) == SQLITE_ROW;
     sqlite3_finalize(st);
-
-    if (trackIds.empty()) return false;
-
-    for (sqlite3_int64 tid : trackIds) {
-        sqlite3_prepare_v2(db,
-            "INSERT OR IGNORE INTO track_audio_files (track_id, audio_file_id) VALUES (?, ?)",
-            -1, &st, nullptr);
-        sqlite3_bind_int64(st, 1, tid);
-        sqlite3_bind_int64(st, 2, audioFileId);
-        sqlite3_step(st);
-        sqlite3_finalize(st);
-
-        if (playableId >= 0) {
-            sqlite3_prepare_v2(db,
-                "INSERT OR IGNORE INTO playable_tracks (playable_id, track_id) VALUES (?, ?)",
-                -1, &st, nullptr);
-            sqlite3_bind_int64(st, 1, playableId);
-            sqlite3_bind_int64(st, 2, tid);
-            sqlite3_step(st);
-            sqlite3_finalize(st);
-        }
-
-        addSave(db, tid);
-    }
-    return true;
+    return linked;
 }
 
-// ── MusicBrainz lookup ────────────────────────────────────────────────────────
+// Store an untagged file and let MusicBrainz create its recording/release/track
+// rows. Returns false (nothing linked) when the lookup finds nothing.
+bool MusicScannerThread::identifyWithMusicBrainz(sqlite3* db, const std::string& path,
+                                                  const space::AudioFileMetadata& tags) {
+    AudioMetadata meta;
+    meta.title    = tags.title;
+    meta.version  = tags.version;
+    meta.artists  = tags.artists;
+    meta.album    = tags.album;
+    meta.duration = tags.duration;
+
+    sqlite3_int64 fileId = upsertFile(db, path);
+    if (fileId < 0) return false;
+    sqlite3_int64 afId = upsertAudioFile(db, fileId, meta);
+    if (afId < 0) return false;
+    sqlite3_int64 playableId = upsertPlayable(db, path);
+
+    // Throttle to ≤ 1 MusicBrainz request per second (ToS requirement)
+    for (int ms = 0; ms < 1100 && !TestDestroy(); ms += 100)
+        wxThread::Sleep(100);
+    return !TestDestroy() && musicBrainzLookup(db, meta, afId, playableId);
+}
 
 bool MusicScannerThread::musicBrainzLookup(sqlite3* db, const AudioMetadata& meta,
                                              sqlite3_int64 audioFileId,
@@ -760,29 +531,19 @@ wxThread::ExitCode MusicScannerThread::Entry() {
         postProgress(i + 1, total, path, imported);
 
         try {
-            sqlite3_int64 fileId = upsertFile(db, path);
-            if (fileId < 0) continue;
-
-            AudioMetadata meta = readTags(path);
-            meta.version       = extractVersion(meta.title);
-
-            sqlite3_int64 afId = upsertAudioFile(db, fileId, meta);
-            if (afId < 0) continue;
-
-            ++imported; // count every file successfully stored in audio_files
-
-            sqlite3_int64 playableId = upsertPlayable(db, path);
-
-            bool linked = matchAndLink(db, meta, afId, playableId);
-
-            if (!linked && !meta.title.empty() && !TestDestroy()) {
-                // Throttle to ≤ 1 MusicBrainz request per second (ToS requirement)
-                for (int ms = 0; ms < 1100 && !TestDestroy(); ms += 100)
-                    wxThread::Sleep(100);
-
-                if (!TestDestroy())
-                    musicBrainzLookup(db, meta, afId, playableId);
+            // Embedded tags (ID3, Vorbis comments, MP4 atoms) are broken out
+            // into recording, artists, release and track rows by AudioImporter.
+            // A file with no tags at all is first offered to MusicBrainz, which
+            // may identify it from the "Artist - Title" in its filename.
+            const space::AudioFileMetadata tags = space::AudioImporter::readMetadata(path);
+            bool linked = false;
+            if (!tags.hasTags && !tags.title.empty() && !tags.artists.empty()) {
+                linked = isLinked(db, path); // identified on an earlier scan
+                if (!linked)
+                    linked = identifyWithMusicBrainz(db, path, tags);
             }
+            if (linked || space::AudioImporter::importFile(db, path).fileId >= 0)
+                ++imported;
 
         } catch (...) {
             // Per-file errors should not abort the whole scan

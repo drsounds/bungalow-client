@@ -1,0 +1,24 @@
+{
+  "id": "roadmap",
+  "title": "Status and roadmap",
+  "description": "The C++ client is being refactored to follow the Java client's package",
+  "source": "@site/docs/roadmap.md",
+  "sourceDirName": ".",
+  "slug": "/roadmap",
+  "permalink": "/bungalow-client/roadmap",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/roadmap.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 100,
+  "frontMatter": {
+    "title": "Status and roadmap",
+    "sidebar_position": 100
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "RFC-0002: musik: URIs",
+    "permalink": "/bungalow-client/specs/rfc-0002"
+  }
+}

@@ -3,6 +3,7 @@ import se.bungalow.app.music.controls.MusicTable;
 import se.bungalow.app.music.views.AbstractMusicListView;
 
 import se.bungalow.db.DatabaseManager;
+import se.bungalow.db.LibraryRepository;
 import se.bungalow.app.music.model.Artist;
 import se.bungalow.navigation.ViewStack;
 
@@ -10,7 +11,10 @@ import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Library view listing artists (name, ISNI, MBID) with full CRUD. */
+/**
+ * Library view listing artists (name, ISNI, MBID) with full CRUD. Double-click
+ * opens the artist's page ({@code bungalow:library:artist:<id>}).
+ */
 public class ArtistsLibraryView extends AbstractMusicListView {
 
     public ArtistsLibraryView(ViewStack viewStack) {
@@ -87,10 +91,20 @@ public class ArtistsLibraryView extends AbstractMusicListView {
         Artist a = rows.get(row);
         if (!confirmDelete("artist \"" + a.getName() + "\"")) return;
         try {
-            DatabaseManager.getInstance().dao(Artist.class).delete(a);
+            LibraryRepository.deleteArtist(a);
         } catch (Exception e) {
             showError(e);
         }
+    }
+
+    @Override
+    protected void onActivate(int row) {
+        getViewStack().navigate(ArtistDetailView.uriFor(rows.get(row)));
+    }
+
+    @Override
+    protected List<MusicTable.RowAction> rowActionsAt(int row) {
+        return List.of(goTo("Go to Artist", ArtistDetailView.uriFor(rows.get(row))));
     }
 
     private static String blankToNull(String s) {

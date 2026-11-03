@@ -49,9 +49,27 @@ for these tables.
 ## Importing local files
 
 `LocalFilesView` (`bungalow:localfiles`) lists local audio files.
-`AudioImporter` and `MusicScanner` scan folders, read the audio metadata and
-fill `files`, `audio_files` and the content tables, so a local file becomes a
-recording on a release and can be played as `bungalow:track:<id>`.
+
+Every import path (scanning a folder, adding files, completed downloads) goes
+through `AudioImporter`. It reads the embedded tags (ID3v1/v2, FLAC and Ogg
+Vorbis comments, MP4 atoms) and fills `files`, `audio_files` and `playables`.
+Then it breaks the file out into the content tables:
+
+| Tag | Becomes |
+|-----|---------|
+| Title (minus a `(Version)` or `(feat. X)` suffix) and version | a `recordings` row, keyed by the ISRC tag |
+| Artist, split on `;` and feat./ft. | `artists` and `recording_artists` credits, the first one primary |
+| Album, album artist and year | a `releases` row with a `release_artists` credit |
+| Track number | `tracks.number` on the recording's track on that release |
+
+The track is linked to the file (`track_audio_files`, `playable_tracks`) and
+saved to the library, so it can be played as `bungalow:track:<id>`.
+
+Identifiers missing from the tags become `local:` keys built from the names,
+so importing the same file again matches the existing rows instead of
+duplicating them. A file without tags is named from "Artist - Title" in its
+filename. `MusicScanner` first offers such files to MusicBrainz, which can
+identify them online.
 
 ## User tables
 

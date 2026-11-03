@@ -18,7 +18,7 @@
  *  labels          – id (PK autoincrement), name
  *  releases        – upc (PK), name, release_date, label_id → labels, cover_art
  *  tracks          – id (PK autoincrement), recording_id → recordings,
- *                    release_id → releases (nullable)
+ *                    release_id → releases (nullable), number (position)
  *  release_artists – junction: release_id → releases, artist_id → artists,
  *                    number, is_primary
  *  saves           – id (PK autoincrement), track_id → tracks,
@@ -95,6 +95,44 @@ public:
         ReleaseRecord                    release;       // empty upc = no release
         std::vector<ArtistRelationship>  recordingArtists;
         std::vector<ArtistRelationship>  releaseArtists;
+    };
+
+    /** Artist plus how much of the library credits them (for browse lists). */
+    struct ArtistSummary {
+        ArtistRecord artist;
+        int          recordingCount = 0;
+        int          releaseCount   = 0;
+    };
+
+    /** Recording plus its comma-joined artist names (for browse lists). */
+    struct RecordingSummary {
+        RecordingRecord recording;
+        std::string     artists;
+    };
+
+    /** Release plus its comma-joined artist names and track count. */
+    struct ReleaseSummary {
+        ReleaseRecord release;
+        std::string   artists;
+        int           trackCount = 0;
+    };
+
+    /**
+     * One track joined to its recording, release and recording artists —
+     * the display row for every track list (all tracks, a release, an artist).
+     * playUri is the first playable URI for the track, empty when unplayable.
+     */
+    struct TrackRow {
+        int         id     = -1;
+        int         number = 0;
+        std::string isrc;
+        std::string name;
+        std::string version;
+        std::string artists;
+        std::string upc;
+        std::string releaseName;
+        std::string playUri;
+        bool        saved = false;
     };
 
     /**
@@ -180,6 +218,54 @@ public:
 
     /** Load full details for a track (recording, release, artist relationships). */
     TrackDetails getTrackDetails(int trackId);
+
+    // ── Music browsing ────────────────────────────────────────────────────────
+
+    /** A fresh "local:<uuid4>" key for entities created without an ISNI/ISRC/UPC. */
+    static std::string generateLocalId();
+
+    /** Single-row lookups; the key field is empty when no row matches. */
+    ArtistRecord    getArtist(const std::string& isni);
+    RecordingRecord getRecording(const std::string& isrc);
+    ReleaseRecord   getRelease(const std::string& upc);
+
+    /** Browse lists, ordered by name (case-insensitive). */
+    std::vector<ArtistSummary>    getArtistSummaries();
+    std::vector<RecordingSummary> getRecordingSummaries();
+    std::vector<ReleaseSummary>   getReleaseSummaries();
+
+    /** Credited artists, ordered by credit number. */
+    std::vector<ArtistRelationship> getRecordingArtists(const std::string& isrc);
+    std::vector<ArtistRelationship> getReleaseArtists(const std::string& upc);
+
+    /** Every track in the database, ordered by release then position. */
+    std::vector<TrackRow> getAllTracks();
+    /** Tracks on one release, in release order (number, then insertion). */
+    std::vector<TrackRow> getTracksForRelease(const std::string& upc);
+    /** Tracks of every recording the artist is credited on. */
+    std::vector<TrackRow> getTracksForArtist(const std::string& isni);
+    /** Tracks of one recording (one per release it appears on). */
+    std::vector<TrackRow> getTracksForRecording(const std::string& isrc);
+    /** Releases the artist is credited on, or that contain their recordings. */
+    std::vector<ReleaseSummary> getReleasesForArtist(const std::string& isni);
+
+    /** Set a track's position on its release (0 = unnumbered). */
+    void setTrackNumber(int64_t trackId, int number);
+    /** Move a track to another release (empty upc = no release). */
+    void setTrackRelease(int64_t trackId, const std::string& releaseUpc);
+
+    /**
+     * Deletes. Junction rows (credits, saves, playables, audio-file links)
+     * go with them through ON DELETE CASCADE. Deleting a release keeps its
+     * tracks as release-less recordings (tracks.release_id is SET NULL).
+     */
+    void deleteArtist(const std::string& isni);
+    void deleteRecording(const std::string& isrc);
+    void deleteRelease(const std::string& upc);
+    void deleteTrack(int64_t trackId);
+
+    /** Soft-delete the active save for a track (removes it from the library). */
+    void removeSave(int64_t trackId);
 
     // ── Custom user-defined table CRUD ────────────────────────────────────────
 

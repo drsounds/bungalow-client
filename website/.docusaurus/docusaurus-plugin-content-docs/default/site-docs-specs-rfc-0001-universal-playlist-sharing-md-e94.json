@@ -1,0 +1,30 @@
+{
+  "id": "specs/rfc-0001-universal-playlist-sharing",
+  "title": "RFC-0001: Universal Playlist Sharing Link",
+  "description": "| | |",
+  "source": "@site/docs/specs/rfc-0001-universal-playlist-sharing.md",
+  "sourceDirName": "specs",
+  "slug": "/specs/rfc-0001",
+  "permalink": "/bungalow-client/specs/rfc-0001",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/specs/rfc-0001-universal-playlist-sharing.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "title": "RFC-0001: Universal Playlist Sharing Link",
+    "sidebar_label": "RFC-0001: Playlist sharing (UPSL)",
+    "sidebar_position": 2,
+    "slug": "/specs/rfc-0001"
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Overview",
+    "permalink": "/bungalow-client/specs/"
+  },
+  "next": {
+    "title": "RFC-0002: musik: URIs",
+    "permalink": "/bungalow-client/specs/rfc-0002"
+  }
+}

@@ -15,13 +15,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Recursively scans a folder for MP3 files and imports them into the library.
  * For each file it reads ID3 metadata via jaudiotagger and upserts a
  * {@link LocalFile} plus the generic catalogue graph
- * (Artist → Release → Recording → Track), de-duplicating by name/ISRC so
- * re-scanning the same folder does not create duplicates.
+ * (Artist → Release → Recording → Track): every credited artist (split on
+ * ";" and feat./ft., including a "(feat. X)" title suffix), the release with
+ * its album artist and year, the recording with its ISRC and file, and the
+ * track with its number (and disc, for multi-disc albums). Rows are
+ * de-duplicated by name/ISRC so re-scanning the same folder does not create
+ * duplicates.
  */
 public class MusicScanner {
 
@@ -84,55 +90,103 @@ public class MusicScanner {
         return importFile(file, new ScanResult());
     }
 
+    /** The embedded tags of one file, normalised the way the C++ AudioImporter does. */
+    private record FileTags(String title, List<String> artists, String albumArtist, String album,
+                            String releaseDate, String isrc, int trackNumber, String side,
+                            long durationMs) {}
+
     private Imported importFile(File file, ScanResult result) throws Exception {
+        FileTags t = readTags(file);
+        String path = file.getAbsolutePath();
+
+        List<Artist> artists = new ArrayList<>();
+        for (String name : t.artists()) artists.add(getOrCreateArtist(name, result));
+
+        MusicRelease release   = getOrCreateRelease(t.album(), t.albumArtist(), t.releaseDate(), result);
+        Recording    recording = getOrCreateRecording(t.isrc(), t.title(), t.durationMs(), artists, result);
+        addRecordingFile(recording, path);
+        getOrCreateTrack(recording, release, t.trackNumber(), t.side(), t.durationMs(), result);
+
+        String artistNames = String.join(", ", t.artists());
+        getOrCreateLocalFile(t.isrc(), t.title(), artistNames, t.album(), path, result);
+        return new Imported(t.title(), artistNames, t.album());
+    }
+
+    private static FileTags readTags(File file) throws Exception {
         AudioFile audio = AudioFileIO.read(file);
         Tag tag = audio.getTag();
 
-        String fileName    = file.getName();
-        String title       = tagOr(tag, FieldKey.TITLE,        stripExtension(fileName));
-        String artistName  = tagOr(tag, FieldKey.ARTIST,       "Unknown Artist");
-        String albumArtist = tagOr(tag, FieldKey.ALBUM_ARTIST, artistName);
-        String albumTitle  = tagOr(tag, FieldKey.ALBUM,        "Unknown Album");
-        int    trackNumber = parseTrackNumber(tag != null ? tag.getFirst(FieldKey.TRACK) : null);
-        long   durationMs  = audio.getAudioHeader() != null
-                                ? audio.getAudioHeader().getTrackLength() * 1000L : 0L;
+        String title = tagOr(tag, FieldKey.TITLE, null);
+        List<String> artists = new ArrayList<>();
+        if (tag != null)
+            for (String value : tag.getAll(FieldKey.ARTIST)) addArtists(artists, value);
 
-        String rawIsrc = tag != null ? tag.getFirst(FieldKey.ISRC) : null;
-        String isrc = (rawIsrc != null && !rawIsrc.isBlank())
-                        ? rawIsrc.trim()
-                        : "SPLOCAL-" + Math.abs(file.getAbsolutePath().hashCode());
+        // Untagged file: fall back to "Artist - Title" in the filename.
+        String stem = stripExtension(file.getName());
+        int sep = stem.indexOf(" - ");
+        if (artists.isEmpty() && sep > 0) addArtists(artists, stem.substring(0, sep));
+        if (title == null) title = sep > 0 ? stem.substring(sep + 3).trim() : stem;
 
-        Artist    artist    = getOrCreateArtist(artistName, result);
-        MusicRelease   release   = getOrCreateRelease(albumTitle, albumArtist, result);
-        Recording recording = getOrCreateRecording(isrc, title, file.getAbsolutePath(), durationMs, artist, result);
-        getOrCreateTrack(recording, release, trackNumber, durationMs, result);
-        getOrCreateLocalFile(isrc, title, artistName, albumTitle, file.getAbsolutePath(), result);
-        return new Imported(title, artistName, albumTitle);
+        // "Song (feat. X)" credits X and leaves "Song" as the title.
+        Matcher feat = FEATURING_IN_TITLE.matcher(title);
+        if (feat.find()) {
+            addArtists(artists, feat.group(2));
+            title = title.substring(0, feat.start()).trim();
+        }
+        if (artists.isEmpty()) artists.add("Unknown Artist");
+
+        String albumArtist = tagOr(tag, FieldKey.ALBUM_ARTIST, artists.get(0));
+        String album       = tagOr(tag, FieldKey.ALBUM, "Unknown Album");
+        String year        = tagOr(tag, FieldKey.YEAR, null);
+        int    trackNumber = parseNumber(tag != null ? tag.getFirst(FieldKey.TRACK) : null);
+
+        // Only multi-disc albums get a side, so single-disc track order is unchanged.
+        int disc      = parseNumber(tag != null ? tag.getFirst(FieldKey.DISC_NO) : null);
+        int discTotal = parseNumber(tag != null ? tag.getFirst(FieldKey.DISC_TOTAL) : null);
+        String side   = (disc > 1 || discTotal > 1) ? String.valueOf(disc) : null;
+
+        long durationMs = audio.getAudioHeader() != null
+                ? audio.getAudioHeader().getTrackLength() * 1000L : 0L;
+
+        String rawIsrc = tagOr(tag, FieldKey.ISRC, null);
+        String isrc = rawIsrc != null ? rawIsrc : "SPLOCAL-" + Math.abs(file.getAbsolutePath().hashCode());
+
+        return new FileTags(title, artists, albumArtist, album, year, isrc, trackNumber, side, durationMs);
     }
 
     // ── Upsert helpers (count only newly created rows) ─────────────────────────────
 
+    /** Find an artist by name (case-insensitive), creating one if none exists. */
     private Artist getOrCreateArtist(String name, ScanResult result) throws Exception {
-        List<Artist> existing = db().dao(Artist.class).queryForEq("name", name);
-        if (!existing.isEmpty()) return existing.get(0);
+        Dao<Artist, Integer> dao = db().dao(Artist.class);
+        // SQLite LIKE is case-insensitive; '%'/'_' in a name only widen the match,
+        // so confirm each candidate exactly.
+        for (Artist a : dao.queryBuilder().where().like("name", name).query())
+            if (name.equalsIgnoreCase(a.getName())) return a;
         Artist a = new Artist(name);
-        db().dao(Artist.class).create(a);
+        dao.create(a);
         result.artistsAdded++;
         return a;
     }
 
-    private MusicRelease getOrCreateRelease(String title, String albumArtist, ScanResult result) throws Exception {
+    private MusicRelease getOrCreateRelease(String name, String albumArtist, String releaseDate,
+            ScanResult result) throws Exception {
         Dao<MusicRelease, Integer> dao = db().dao(MusicRelease.class);
-        for (MusicRelease r : dao.queryForEq("title", title)) {
-            // Same title AND same album artist counts as the same release, so we
-            // don't merge unrelated albums that happen to share a title.
+        for (MusicRelease r : dao.queryForEq("name", name)) {
+            // Same name AND same album artist counts as the same release, so we
+            // don't merge unrelated albums that happen to share a name.
             if (albumArtist == null || albumArtist.isBlank()
                     || LibraryRepository.artistNamesForRelease(r).equalsIgnoreCase(albumArtist.trim())) {
+                if (r.getReleaseDate() == null && releaseDate != null) {
+                    r.setReleaseDate(releaseDate);
+                    dao.update(r);
+                }
                 return r;
             }
         }
-        MusicRelease r = new MusicRelease(title);
+        MusicRelease r = new MusicRelease(name);
         r.setType(MusicRelease.ReleaseType.ALBUM);
+        r.setReleaseDate(releaseDate);
         dao.create(r);
         result.releasesAdded++;
         if (albumArtist != null && !albumArtist.isBlank()) {
@@ -142,33 +196,55 @@ public class MusicScanner {
         return r;
     }
 
-    private Recording getOrCreateRecording(String isrc, String title, String filePath,
-            long durationMs, Artist artist, ScanResult result) throws Exception {
+    /** A recording by ISRC; a new one credits every artist, the first as primary. */
+    private Recording getOrCreateRecording(String isrc, String name, long durationMs,
+            List<Artist> artists, ScanResult result) throws Exception {
         Dao<Recording, Integer> dao = db().dao(Recording.class);
         List<Recording> existing = dao.queryForEq("isrc", isrc);
         if (!existing.isEmpty()) return existing.get(0);
-        Recording rec = new Recording(title);
+        Recording rec = new Recording(name);
         rec.setIsrc(isrc);
         rec.setDurationMs(durationMs);
         dao.create(rec);
-        if (filePath != null) db().dao(RecordingFile.class).create(new RecordingFile(rec, filePath));
         result.recordingsAdded++;
-        db().dao(RecordingCreatorCredit.class).create(new RecordingCreatorCredit(rec, artist, true, "performer"));
+        Dao<RecordingCreatorCredit, Integer> credits = db().dao(RecordingCreatorCredit.class);
+        for (int i = 0; i < artists.size(); i++)
+            credits.create(new RecordingCreatorCredit(rec, artists.get(i), i == 0, i == 0 ? "performer" : "featured"));
         return rec;
     }
 
+    /** Back the recording with this file, unless it already is (re-scans, other copies). */
+    private void addRecordingFile(Recording recording, String path) throws Exception {
+        Dao<RecordingFile, Integer> dao = db().dao(RecordingFile.class);
+        boolean known = dao.queryBuilder().where()
+            .eq("recording_id", recording.getId())
+            .and().eq("file_path", path)
+            .countOf() > 0;
+        if (!known) dao.create(new RecordingFile(recording, path));
+    }
+
     private void getOrCreateTrack(Recording recording, MusicRelease release, int trackNumber,
-            long durationMs, ScanResult result) throws Exception {
+            String side, long durationMs, ScanResult result) throws Exception {
         Dao<Track, Integer> dao = db().dao(Track.class);
         List<Track> existing = dao.queryBuilder().where()
             .eq("recording_id", recording.getId())
             .and().eq("release_id", release.getId())
             .query();
-        if (!existing.isEmpty()) return;
+        if (!existing.isEmpty()) {
+            // Fill in a position the track was created without.
+            Track t = existing.get(0);
+            if (t.getTrackNumber() == 0 && trackNumber > 0) {
+                t.setTrackNumber(trackNumber);
+                if (t.getSide() == null) t.setSide(side);
+                dao.update(t);
+            }
+            return;
+        }
         Track t = new Track();
         t.setRecording(recording);
         t.setRelease(release);
         t.setTrackNumber(trackNumber);
+        t.setSide(side);
         t.setDurationMs(durationMs);
         dao.create(t);
         result.tracksAdded++;
@@ -189,13 +265,31 @@ public class MusicScanner {
 
     // ── Tag helpers ───────────────────────────────────────────────────────────────
 
+    /** "Song (feat. X)" / "Song [ft. X & Y]" at the end of a title. */
+    private static final Pattern FEATURING_IN_TITLE =
+        Pattern.compile("\\s*[(\\[](feat\\.?|ft\\.?|featuring)\\s+([^)\\]]+)[)\\]]\\s*$", Pattern.CASE_INSENSITIVE);
+
+    /** Separators between credited artists; commas and "&" stay, as they're often part of a name. */
+    private static final Pattern ARTIST_SEPARATOR =
+        Pattern.compile("\\s*;\\s*|\\s+(?:featuring|feat\\.?|ft\\.?)\\s+", Pattern.CASE_INSENSITIVE);
+
+    /** Split an artist tag value and append the names not already in {@code out}. */
+    private static void addArtists(List<String> out, String value) {
+        if (value == null) return;
+        for (String part : ARTIST_SEPARATOR.split(value)) {
+            String name = part.trim();
+            if (!name.isEmpty() && out.stream().noneMatch(name::equalsIgnoreCase)) out.add(name);
+        }
+    }
+
     private static String tagOr(Tag tag, FieldKey key, String fallback) {
         if (tag == null) return fallback;
         String v = tag.getFirst(key);
         return (v == null || v.isBlank()) ? fallback : v.trim();
     }
 
-    private static int parseTrackNumber(String raw) {
+    /** The leading number of "3" or "3/12"; 0 when absent or unparsable. */
+    private static int parseNumber(String raw) {
         if (raw == null || raw.isBlank()) return 0;
         String n = raw.contains("/") ? raw.substring(0, raw.indexOf('/')) : raw;
         try { return Integer.parseInt(n.trim()); } catch (NumberFormatException e) { return 0; }

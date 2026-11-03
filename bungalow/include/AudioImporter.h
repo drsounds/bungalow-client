@@ -20,6 +20,8 @@ struct AudioFileMetadata {
     std::string              releaseDate;  // as written in the tag, e.g. "2013" or "2013-05-17"
     int                      trackNumber = 0;
     int                      duration    = 0; // milliseconds, 0 if unknown
+    bool                     hasTags     = false; // title or artist came from embedded tags,
+                                                  // not the "Artist - Title" filename fallback
 };
 
 /**
@@ -29,7 +31,8 @@ struct AudioFileMetadata {
  * Vorbis comments, MP4/M4A atoms) and imports them into the library database:
  *
  *   files → audio_files (metadata) → playables
- *   recordings / artists / releases / tracks (matched or created)
+ *   recordings / artists / releases / tracks (matched or created; the
+ *   tag's track number becomes tracks.number)
  *   track_audio_files + playable_tracks link the file to its track,
  *   and a save puts the track in the library.
  */

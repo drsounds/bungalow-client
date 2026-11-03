@@ -1,0 +1,28 @@
+{
+  "id": "space/templates",
+  "title": "Templates",
+  "description": "View markup can be a Lua template: XUL with Lua expressions and control",
+  "source": "@site/docs/space/templates.md",
+  "sourceDirName": "space",
+  "slug": "/space/templates",
+  "permalink": "/bungalow-client/space/templates",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/space/templates.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "title": "Templates",
+    "sidebar_position": 3
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Elements and XUL",
+    "permalink": "/bungalow-client/space/elements-and-xul"
+  },
+  "next": {
+    "title": "URI store",
+    "permalink": "/bungalow-client/space/uri-store"
+  }
+}

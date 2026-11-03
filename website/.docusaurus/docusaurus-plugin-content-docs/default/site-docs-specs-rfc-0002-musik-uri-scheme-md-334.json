@@ -1,0 +1,30 @@
+{
+  "id": "specs/rfc-0002-musik-uri-scheme",
+  "title": "RFC-0002: The musik: URI scheme",
+  "description": "| | |",
+  "source": "@site/docs/specs/rfc-0002-musik-uri-scheme.md",
+  "sourceDirName": "specs",
+  "slug": "/specs/rfc-0002",
+  "permalink": "/bungalow-client/specs/rfc-0002",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/specs/rfc-0002-musik-uri-scheme.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "title": "RFC-0002: The musik: URI scheme",
+    "sidebar_label": "RFC-0002: musik: URIs",
+    "sidebar_position": 3,
+    "slug": "/specs/rfc-0002"
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "RFC-0001: Playlist sharing (UPSL)",
+    "permalink": "/bungalow-client/specs/rfc-0001"
+  },
+  "next": {
+    "title": "Status and roadmap",
+    "permalink": "/bungalow-client/roadmap"
+  }
+}

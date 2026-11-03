@@ -47,7 +47,7 @@ string SPTabBarElement::getType() {
      return "tabbar";
 }
 void SPTabBarElement::addTab(const string& id, const string& name, const string& uri) {
-    SPTab *tab = new SPTab(this, id, name, uri);
+    SPTab *tab = new SPTab(this, name, id, uri);
     this->tabs.push_back(tab);
     if (this->tabs.size() == 1) {
         this->activeTab = tab;

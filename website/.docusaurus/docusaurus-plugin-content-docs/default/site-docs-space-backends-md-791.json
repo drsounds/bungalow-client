@@ -1,0 +1,28 @@
+{
+  "id": "space/backends",
+  "title": "UI backends",
+  "description": "Space doesn't draw or receive input itself. A backend supplies a native",
+  "source": "@site/docs/space/backends.md",
+  "sourceDirName": "space",
+  "slug": "/space/backends",
+  "permalink": "/bungalow-client/space/backends",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/space/backends.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "title": "UI backends",
+    "sidebar_position": 6
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Skins",
+    "permalink": "/bungalow-client/space/skins"
+  },
+  "next": {
+    "title": "App bundles",
+    "permalink": "/bungalow-client/apps/bundles"
+  }
+}

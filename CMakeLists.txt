@@ -136,7 +136,7 @@ else()
     endif()
     set(PLATFORM_LIBRARIES winhttp msimg32 comctl32 gdi32 gdiplus user32 ole32 shell32 comdlg32)
     if(BUNGALOW_UI_BACKEND STREQUAL "wtl")
-        list(APPEND PLATFORM_LIBRARIES winmm shell32 ole32 SQLite3::SQLite3)
+        list(APPEND PLATFORM_LIBRARIES winmm mfplay mfplat mf propsys shell32 ole32 SQLite3::SQLite3)
     endif()
 endif()
 

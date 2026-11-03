@@ -1,0 +1,28 @@
+{
+  "id": "background",
+  "title": "Background",
+  "description": "*Why build a desktop music player as a plugin operating system, styled after",
+  "source": "@site/docs/background.md",
+  "sourceDirName": ".",
+  "slug": "/background",
+  "permalink": "/bungalow-client/background",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/background.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "title": "Background",
+    "sidebar_position": 1
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Introduction",
+    "permalink": "/bungalow-client/"
+  },
+  "next": {
+    "title": "Building",
+    "permalink": "/bungalow-client/getting-started/building"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "apps/native-apps",
+  "title": "Native apps",
+  "description": "A native app is an app bundle with \"AppType\": \"Native\". It is a small",
+  "source": "@site/docs/apps/native-apps.md",
+  "sourceDirName": "apps",
+  "slug": "/apps/native-apps",
+  "permalink": "/bungalow-client/apps/native-apps",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/apps/native-apps.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "title": "Native apps",
+    "sidebar_position": 2
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "App bundles",
+    "permalink": "/bungalow-client/apps/bundles"
+  },
+  "next": {
+    "title": "HTML5 apps",
+    "permalink": "/bungalow-client/apps/html5-apps"
+  }
+}

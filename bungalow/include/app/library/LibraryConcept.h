@@ -5,8 +5,9 @@
 namespace space {
 namespace app {
 
-/// The local library: the Tracks and Local Files views with their sidebar
-/// entries, and the library search provider.
+/// The local library: saved Tracks, Local Files, and browse/CRUD views for
+/// artists, releases, recordings and all tracks (plus their detail pages),
+/// with their sidebar entries, and the library search provider.
 class LibraryConcept : public concepts::Concept {
 public:
     std::string getId() const override { return "library"; }

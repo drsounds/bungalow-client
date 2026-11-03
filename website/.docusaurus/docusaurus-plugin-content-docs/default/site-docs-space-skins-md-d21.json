@@ -1,0 +1,28 @@
+{
+  "id": "space/skins",
+  "title": "Skins",
+  "description": "The look of every element comes from the active skin, an SPSkin set on",
+  "source": "@site/docs/space/skins.md",
+  "sourceDirName": "space",
+  "slug": "/space/skins",
+  "permalink": "/bungalow-client/space/skins",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/space/skins.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "title": "Skins",
+    "sidebar_position": 5
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "URI store",
+    "permalink": "/bungalow-client/space/uri-store"
+  },
+  "next": {
+    "title": "UI backends",
+    "permalink": "/bungalow-client/space/backends"
+  }
+}

@@ -8,7 +8,6 @@ import se.bungalow.app.music.model.MusicRelease;
 import se.bungalow.app.music.model.Playable;
 import se.bungalow.app.music.model.PlayableKind;
 import se.bungalow.app.music.model.PlayableRef;
-import se.bungalow.app.music.model.ReleaseCreatorCredit;
 import se.bungalow.app.music.model.Track;
 import se.bungalow.app.music.model.MusicRelease.ReleaseType;
 import se.bungalow.navigation.ViewStack;
@@ -17,7 +16,10 @@ import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Library view listing releases (name, artists, type, date) with full CRUD. */
+/**
+ * Library view listing releases (name, artists, type, date) with full CRUD.
+ * Double-click opens the release's tracklist ({@code bungalow:library:release:<id>}).
+ */
 public class ReleasesLibraryView extends AbstractMusicListView {
 
     public ReleasesLibraryView(ViewStack viewStack) {
@@ -61,7 +63,7 @@ public class ReleasesLibraryView extends AbstractMusicListView {
         JTextField upc     = new JTextField();
         JTextField mbid    = new JTextField();
         if (!FormDialog.show(getComponent(), "New Release",
-                new String[]{"Title", "Artists (comma-separated)", "Type", "Date (YYYY-MM-DD)", "UPC", "MBID"},
+                new String[]{"Name", "Artists (comma-separated)", "Type", "Date (YYYY-MM-DD)", "UPC", "MBID"},
                 new JComponent[]{title, artists, type, date, upc, mbid})) return;
         if (title.getText().isBlank()) return;
         try {
@@ -88,7 +90,7 @@ public class ReleasesLibraryView extends AbstractMusicListView {
         JTextField upc     = new JTextField(r.getUpc());
         JTextField mbid    = new JTextField(r.getMbid());
         if (!FormDialog.show(getComponent(), "Edit Release",
-                new String[]{"Title", "Artists (comma-separated)", "Type", "Date (YYYY-MM-DD)", "UPC", "MBID"},
+                new String[]{"Name", "Artists (comma-separated)", "Type", "Date (YYYY-MM-DD)", "UPC", "MBID"},
                 new JComponent[]{title, artists, type, date, upc, mbid})) return;
         if (title.getText().isBlank()) return;
         try {
@@ -109,9 +111,7 @@ public class ReleasesLibraryView extends AbstractMusicListView {
         MusicRelease r = rows.get(row);
         if (!confirmDelete("release \"" + r.getName() + "\"")) return;
         try {
-            DatabaseManager.getInstance().dao(ReleaseCreatorCredit.class).delete(
-                DatabaseManager.getInstance().dao(ReleaseCreatorCredit.class).queryForEq("release_id", r.getId()));
-            DatabaseManager.getInstance().dao(MusicRelease.class).delete(r);
+            LibraryRepository.deleteRelease(r);
         } catch (Exception e) {
             showError(e);
         }
@@ -135,6 +135,16 @@ public class ReleasesLibraryView extends AbstractMusicListView {
         } catch (Exception ignored) {}
         return new PlayableRef(PlayableKind.RELEASE, "bungalow:release:" + r.getId(),
                 r.getName(), artists, total, tracks);
+    }
+
+    @Override
+    protected void onActivate(int row) {
+        getViewStack().navigate(ReleaseDetailView.uriFor(rows.get(row)));
+    }
+
+    @Override
+    protected List<MusicTable.RowAction> rowActionsAt(int row) {
+        return List.of(goTo("Go to Release", ReleaseDetailView.uriFor(rows.get(row))));
     }
 
     private static String blankToNull(String s) {

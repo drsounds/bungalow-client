@@ -19,7 +19,9 @@ import se.bungalow.app.Application;
 import se.bungalow.app.SidebarHandle;
 import se.bungalow.app.library.views.ArtistDetailView;
 import se.bungalow.app.library.views.ArtistsLibraryView;
+import se.bungalow.app.library.service.LocalLibraryService;
 import se.bungalow.app.library.views.LocalFileLibraryView;
+import se.bungalow.app.library.views.RecordingDetailView;
 import se.bungalow.app.library.views.RecordingsLibraryView;
 import se.bungalow.app.library.views.ReleaseDetailView;
 import se.bungalow.app.library.views.ReleasesLibraryView;
@@ -47,6 +49,7 @@ public class LibraryConcept implements Concept {
         // The search view is owned by the search plugin now; the library only
         // contributes its entries as a search provider.
         ctx.registerSearchProvider(new se.bungalow.app.library.LibrarySearchProvider());
+        ctx.registerService(new LocalLibraryService());
         ctx.registerView(new TracksLibraryView(getViewStack()));
         ctx.registerView(new RecordingsLibraryView(getViewStack()));
         ctx.registerView(new ReleasesLibraryView(getViewStack()));
@@ -54,6 +57,7 @@ public class LibraryConcept implements Concept {
         ctx.registerView(new LocalFileLibraryView(getViewStack()));
         ctx.registerView(new ReleaseDetailView(getViewStack()));
         ctx.registerView(new ArtistDetailView(getViewStack()));
+        ctx.registerView(new RecordingDetailView(getViewStack()));
 
         SidebarNode lib = new SidebarNode("Your Library", "bungalow:library");
         lib.addChild(new SidebarNode("Tracks",      "bungalow:library:tracks"));

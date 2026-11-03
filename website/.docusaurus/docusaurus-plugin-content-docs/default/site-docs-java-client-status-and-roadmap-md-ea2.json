@@ -1,0 +1,24 @@
+{
+  "id": "java-client/status-and-roadmap",
+  "title": "Status & Roadmap",
+  "description": "These docs describe the architecture as designed. The codebase is mid-way",
+  "source": "@site/docs/java-client/status-and-roadmap.md",
+  "sourceDirName": "java-client",
+  "slug": "/java-client/status-and-roadmap",
+  "permalink": "/bungalow-client/java-client/status-and-roadmap",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/java-client/status-and-roadmap.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 10,
+  "frontMatter": {
+    "title": "Status & Roadmap",
+    "sidebar_position": 10
+  },
+  "sidebar": "javaClient",
+  "previous": {
+    "title": "The musik: URI Scheme",
+    "permalink": "/bungalow-client/java-client/musik-uri-scheme"
+  }
+}

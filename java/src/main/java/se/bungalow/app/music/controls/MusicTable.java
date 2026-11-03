@@ -143,9 +143,19 @@ public class MusicTable extends JPanel {
 		 */
 		default void onCellClicked(int row, String columnKey) {}
 
+		/**
+		 * Extra entries for the row's context menu (e.g. "Go to Release"), shown
+		 * below "Play with…". Default none; rows that aren't playable get a menu
+		 * only when they have actions.
+		 */
+		default List<RowAction> rowActions(int row) { return List.of(); }
+
 		/** Grouping options for the grouped presentation; read lazily, may be empty. */
 		default List<Grouping> groupings() { return List.of(); }
 	}
+
+	/** A labelled entry a {@link Source} adds to a row's context menu. */
+	public record RowAction(String label, Runnable action) {}
 
 	/**
 	 * Identity and display text of the group a row belongs to. {@code key} is the
@@ -517,8 +527,8 @@ public class MusicTable extends JPanel {
 	}
 
 	/**
-	 * Pop the row context menu ("Play with…") on a platform popup trigger, when the
-	 * row under the cursor is playable.
+	 * Pop the row context menu on a platform popup trigger: "Play with…" when the
+	 * row under the cursor is playable, then the source's {@link Source#rowActions}.
 	 */
 	private void maybeShowRowMenu(MouseEvent e) {
 		if (!e.isPopupTrigger())
@@ -528,12 +538,22 @@ public class MusicTable extends JPanel {
 			return;
 		jtable.setRowSelectionInterval(row, row);
 		PlayRequest req = source.playRequestAt(row);
-		if (req == null)
+		List<RowAction> actions = source.rowActions(row);
+		if (req == null && actions.isEmpty())
 			return;
 		JPopupMenu menu = new JPopupMenu();
-		JMenuItem playWith = new JMenuItem("Play with…");
-		playWith.addActionListener(a -> PlaybackCoordinator.resolveAndPlay(req, true));
-		menu.add(playWith);
+		if (req != null) {
+			JMenuItem playWith = new JMenuItem("Play with…");
+			playWith.addActionListener(a -> PlaybackCoordinator.resolveAndPlay(req, true));
+			menu.add(playWith);
+			if (!actions.isEmpty())
+				menu.addSeparator();
+		}
+		for (RowAction action : actions) {
+			JMenuItem item = new JMenuItem(action.label());
+			item.addActionListener(a -> action.action().run());
+			menu.add(item);
+		}
 		menu.show(e.getComponent(), e.getX(), e.getY());
 	}
 

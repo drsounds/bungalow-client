@@ -5,6 +5,7 @@ import se.bungalow.app.music.controls.MusicTable.Grouping;
 import se.bungalow.app.music.views.AbstractMusicListView;
 import se.bungalow.db.DatabaseManager;
 import se.bungalow.db.LibraryRepository;
+import se.bungalow.app.music.model.Artist;
 import se.bungalow.app.music.model.Playable;
 import se.bungalow.app.music.model.Recording;
 import se.bungalow.app.music.model.MusicRelease;
@@ -190,7 +191,7 @@ public class TracksLibraryView extends AbstractMusicListView {
         Track t = rows.get(row);
         if (!confirmDelete("track #" + t.getTrackNumber())) return;
         try {
-            DatabaseManager.getInstance().dao(Track.class).delete(t);
+            LibraryRepository.deleteTrack(t);
         } catch (Exception e) {
             showError(e);
         }
@@ -205,6 +206,28 @@ public class TracksLibraryView extends AbstractMusicListView {
         String artist = rec != null ? LibraryRepository.primaryArtistForRecording(rec) : "";
         // Carry the local Track so a remembered "Play with…" pick binds by FK.
         return new PlayRequest(t, isrc, title, artist, t.getPlayUri(), t.getDurationMs());
+    }
+
+    @Override
+    protected List<MusicTable.RowAction> rowActionsAt(int row) {
+        return trackActions(this, rows.get(row), true);
+    }
+
+    /**
+     * "Go to" entries for a track row: its release (when {@code withRelease}),
+     * recording and primary artist.
+     */
+    static List<MusicTable.RowAction> trackActions(AbstractMusicListView view, Track t, boolean withRelease) {
+        List<MusicTable.RowAction> out = new ArrayList<>();
+        if (withRelease && t.getRelease() != null)
+            out.add(view.goTo("Go to Release", ReleaseDetailView.uriFor(t.getRelease())));
+        if (t.getRecording() != null) {
+            out.add(view.goTo("Go to Recording", RecordingDetailView.uriFor(t.getRecording())));
+            Artist artist = LibraryRepository.primaryArtistEntityForRecording(t.getRecording());
+            if (artist != null)
+                out.add(view.goTo("Go to Artist", ArtistDetailView.uriFor(artist)));
+        }
+        return out;
     }
 
     // ── Add to playlist ─────────────────────────────────────────────────────────

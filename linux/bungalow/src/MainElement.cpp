@@ -17,6 +17,8 @@
 #include "../../space/src/SPViewStackElement.h"
 #include "../../space/src/SPWindowElement.h"
 #include "AppView.h"
+#include "ArtistView.h"
+#include "ArtistsView.h"
 #include "ConfigView.h"
 #include "CuratorView.h"
 #include "CustomTableEntryTabBarView.h"
@@ -30,11 +32,16 @@
 #include "LocalFilesView.h"
 #include "PlayQueueView.h"
 #include "PlayerView.h"
+#include "RecordingView.h"
+#include "RecordingsView.h"
+#include "ReleaseView.h"
+#include "ReleasesView.h"
 #include "SiteView.h"
 #include "SpaceView.h"
 #include "BungalowApp.h"
 #include "StartView.h"
 #include "StoreView.h"
+#include "TracksView.h"
 
 #include <wx/app.h>
 #include <wx/menu.h>
@@ -298,6 +305,20 @@ void MainElement::rebuildNavItems() {
 	itemLibrary->addChild(itemTracks);
 	treeView->addItem(itemLibrary);
 
+	// Browse the whole music database, not just saved tracks.
+	const pair<const char *, const char *> kBrowseItems[] = {
+		{"bungalow:library:artists", "Artists"},
+		{"bungalow:library:releases", "Releases"},
+		{"bungalow:library:recordings", "Recordings"},
+		{"bungalow:library:tracks", "All Tracks"},
+	};
+	for (const auto &[uri, title] : kBrowseItems) {
+		auto *item = new SPTreeItem(new SPUri(uri));
+		item->setText(title);
+		item->setIconPath("icons/MusicNote.svg");
+		itemLibrary->addChild(item);
+	}
+
 	auto *itemLocalFiles = new SPTreeItem(new SPUri("bungalow:localfiles"));
 	itemLocalFiles->setText("Local Files");
 	itemLocalFiles->setIconPath("icons/MusicFile.svg");
@@ -452,9 +473,10 @@ void MainElement::layout() {
 	// Add viewstack
 	viewStack = (SPViewStackElement *)this->getElementById("viewstack");
 	viewStack->setFlex(1);
-	sqlite3 *db = nullptr;
+	Database *database = nullptr;
 	if (auto *app = dynamic_cast<BungalowApp *>(wxTheApp))
-		db = app->getDatabase() ? app->getDatabase()->handle() : nullptr;
+		database = app->getDatabase();
+	sqlite3 *db = database ? database->handle() : nullptr;
 
 	DownloadManager *dm = nullptr;
 	if (auto *app = dynamic_cast<BungalowApp *>(wxTheApp))
@@ -475,6 +497,13 @@ void MainElement::layout() {
 	viewStack->appendChild(
 		new views::CustomTableEntryTabBarView(viewStack, db));
 	viewStack->appendChild(new views::CustomTableView(viewStack, db));
+	viewStack->appendChild(new views::ArtistsView(viewStack, database));
+	viewStack->appendChild(new views::RecordingsView(viewStack, database));
+	viewStack->appendChild(new views::ReleasesView(viewStack, database));
+	viewStack->appendChild(new views::TracksView(viewStack, database));
+	viewStack->appendChild(new views::ArtistView(viewStack, database));
+	viewStack->appendChild(new views::RecordingView(viewStack, database));
+	viewStack->appendChild(new views::ReleaseView(viewStack, database));
 
 	body->appendChild(new SPSplitterElement(body));
 	auto *playQueuePanel = new views::PlayQueueView(body);

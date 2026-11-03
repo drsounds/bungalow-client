@@ -8,6 +8,7 @@
 #include <functional>
 #include <regex>
 
+#include "AudioImporter.h"
 #include "BungalowApp.h"
 #include "Database.h"
 
@@ -40,16 +41,6 @@ namespace {
         }
         for (char& c : result) if (c == '\\') c = '/';
         return result;
-    }
-
-    bool runStatement(sqlite3* db, const char* sql, const std::string& a, int64_t* idOut = nullptr) {
-        sqlite3_stmt* stmt = nullptr;
-        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) return false;
-        sqlite3_bind_text(stmt, 1, a.c_str(), -1, SQLITE_TRANSIENT);
-        const int rc = sqlite3_step(stmt);
-        if (idOut && rc == SQLITE_ROW) *idOut = sqlite3_column_int64(stmt, 0);
-        sqlite3_finalize(stmt);
-        return rc == SQLITE_ROW || rc == SQLITE_DONE;
     }
 
     // ── Generic labelled-field form, built as an in-memory dialog template ───
@@ -146,9 +137,11 @@ namespace {
     }
 
     // Shows one labelled edit box per entry in @p labels. @p values supplies the
-    // initial text and receives the result. Returns true if the user pressed OK.
-    bool showFormDialog(const std::string& title, const std::vector<std::string>& labels,
-                        std::vector<std::string>& values, const FormValidator& validate = {}) {
+    // initial text and receives the result; fields flagged in @p readOnly can't
+    // be edited. Returns true if the user pressed OK.
+    bool runFormDialog(const std::string& title, const std::vector<std::string>& labels,
+                       std::vector<std::string>& values, const FormValidator& validate = {},
+                       const std::vector<bool>& readOnly = {}) {
         values.resize(labels.size());
         constexpr short kWidth = 260, kMargin = 7, kRowHeight = 26, kButtonWidth = 50;
         const short buttonsY = static_cast<short>(kMargin + kRowHeight * labels.size() + 4);
@@ -157,8 +150,9 @@ namespace {
         DialogTemplate tpl(widen(title), kWidth, height, static_cast<WORD>(labels.size() * 2 + 2));
         for (size_t i = 0; i < labels.size(); ++i) {
             const short y = static_cast<short>(kMargin + kRowHeight * i);
+            const DWORD editStyle = (i < readOnly.size() && readOnly[i]) ? ES_READONLY : 0;
             tpl.item(0x0082, SS_LEFT, kMargin, y, kWidth - 2 * kMargin, 9, 0xFFFF, widen(labels[i]));
-            tpl.item(0x0081, WS_BORDER | WS_TABSTOP | ES_AUTOHSCROLL, kMargin, y + 10,
+            tpl.item(0x0081, WS_BORDER | WS_TABSTOP | ES_AUTOHSCROLL | editStyle, kMargin, y + 10,
                      kWidth - 2 * kMargin, 12, kFirstFieldId + static_cast<WORD>(i), L"");
         }
         tpl.item(0x0080, BS_DEFPUSHBUTTON | WS_TABSTOP, kWidth - kMargin - 2 * kButtonWidth - 4, buttonsY,
@@ -169,6 +163,46 @@ namespace {
         FormState state{ &values, validate };
         return DialogBoxIndirectParamW(GetModuleHandleW(nullptr), tpl.get(), GetActiveWindow(),
                                        formDialogProc, reinterpret_cast<LPARAM>(&state)) == IDOK;
+    }
+
+    // ── Single-choice list ───────────────────────────────────────────────────
+
+    constexpr WORD kChoiceListId = 1100;
+
+    struct ChoiceState {
+        const std::vector<std::string>* choices;
+        int selection = -1;
+    };
+
+    INT_PTR CALLBACK choiceDialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+        switch (msg) {
+        case WM_INITDIALOG: {
+            auto* state = reinterpret_cast<ChoiceState*>(lParam);
+            SetWindowLongPtrW(hwnd, GWLP_USERDATA, lParam);
+            for (const auto& c : *state->choices)
+                SendDlgItemMessageW(hwnd, kChoiceListId, LB_ADDSTRING, 0,
+                                    reinterpret_cast<LPARAM>(widen(c).c_str()));
+            SendDlgItemMessageW(hwnd, kChoiceListId, LB_SETCURSEL, 0, 0);
+            return TRUE;
+        }
+        case WM_COMMAND: {
+            const bool doubleClicked = LOWORD(wParam) == kChoiceListId && HIWORD(wParam) == LBN_DBLCLK;
+            if (LOWORD(wParam) == IDOK || doubleClicked) {
+                auto* state = reinterpret_cast<ChoiceState*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+                const LRESULT sel = SendDlgItemMessageW(hwnd, kChoiceListId, LB_GETCURSEL, 0, 0);
+                if (sel == LB_ERR) return TRUE;
+                state->selection = static_cast<int>(sel);
+                EndDialog(hwnd, IDOK);
+                return TRUE;
+            }
+            if (LOWORD(wParam) == IDCANCEL) {
+                EndDialog(hwnd, IDCANCEL);
+                return TRUE;
+            }
+            break;
+        }
+        }
+        return FALSE;
     }
 
     bool isIdentifier(const std::string& s) {
@@ -223,8 +257,12 @@ int showPopupMenu(const MenuItems& items) {
 
     HMENU menu = CreatePopupMenu();
     if (!menu) return -1;
-    for (const auto& item : items)
-        AppendMenuW(menu, MF_STRING, static_cast<UINT_PTR>(item.first), widen(item.second).c_str());
+    for (const auto& item : items) {
+        if (item.second.empty())
+            AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        else
+            AppendMenuW(menu, MF_STRING, static_cast<UINT_PTR>(item.first), widen(item.second).c_str());
+    }
 
     POINT pt{};
     GetCursorPos(&pt);
@@ -233,7 +271,54 @@ int showPopupMenu(const MenuItems& items) {
     return cmd ? static_cast<int>(cmd) : -1;
 }
 
-// Imports a single audio file chosen by the user into the library.
+bool showFormDialog(const std::string& title, std::vector<FormField>& fields) {
+    std::vector<std::string> labels, values;
+    std::vector<bool> readOnly;
+    for (const auto& f : fields) {
+        // Edit boxes here have no cue banner, so the hint goes in the label.
+        std::string label = f.label + (f.required ? " *" : "");
+        if (!f.hint.empty()) label += "  (" + f.hint + ")";
+        labels.push_back(label);
+        values.push_back(f.value);
+        readOnly.push_back(f.readOnly);
+    }
+    const bool ok = runFormDialog(title, labels, values, [&fields](const std::vector<std::string>& v) {
+        for (size_t i = 0; i < fields.size(); ++i)
+            if (fields[i].required && trim(v[i]).empty())
+                return fields[i].label + " is required.";
+        return std::string();
+    }, readOnly);
+    if (!ok) return false;
+    for (size_t i = 0; i < fields.size(); ++i)
+        fields[i].value = trim(values[i]);
+    return true;
+}
+
+int showChoiceDialog(const std::string& title, const std::string& message,
+                     const std::vector<std::string>& choices) {
+    if (choices.empty()) return -1;
+    constexpr short kWidth = 260, kMargin = 7, kListHeight = 120, kButtonWidth = 50;
+    const short listY    = kMargin + 12;
+    const short buttonsY = static_cast<short>(listY + kListHeight + 4);
+    const short height   = static_cast<short>(buttonsY + 14 + kMargin);
+
+    DialogTemplate tpl(widen(title), kWidth, height, 4);
+    tpl.item(0x0082, SS_LEFT, kMargin, kMargin, kWidth - 2 * kMargin, 9, 0xFFFF, widen(message));
+    tpl.item(0x0083, WS_BORDER | WS_VSCROLL | WS_TABSTOP | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT,
+             kMargin, listY, kWidth - 2 * kMargin, kListHeight, kChoiceListId, L"");
+    tpl.item(0x0080, BS_DEFPUSHBUTTON | WS_TABSTOP, kWidth - kMargin - 2 * kButtonWidth - 4, buttonsY,
+             kButtonWidth, 14, IDOK, L"OK");
+    tpl.item(0x0080, BS_PUSHBUTTON | WS_TABSTOP, kWidth - kMargin - kButtonWidth, buttonsY,
+             kButtonWidth, 14, IDCANCEL, L"Cancel");
+
+    ChoiceState state{ &choices };
+    if (DialogBoxIndirectParamW(GetModuleHandleW(nullptr), tpl.get(), GetActiveWindow(),
+                                choiceDialogProc, reinterpret_cast<LPARAM>(&state)) != IDOK)
+        return -1;
+    return state.selection;
+}
+
+// Imports a single audio file chosen by the user into the library, metadata included.
 bool showAddTrackDialog(sqlite3* db, int trackId) {
     if (!db) return false;
     HWND owner = GetActiveWindow();
@@ -257,23 +342,10 @@ bool showAddTrackDialog(sqlite3* db, int trackId) {
 
     std::string path = narrow(file);
     for (char& c : path) if (c == '\\') c = '/';
-    const std::string name = std::filesystem::path(file).stem().string();
 
-    int64_t fileId = 0;
-    runStatement(db, "INSERT OR IGNORE INTO files(path) VALUES(?)", path);
-    runStatement(db, "SELECT id FROM files WHERE path=?", path, &fileId);
-    if (fileId == 0) return false;
-
-    sqlite3_stmt* stmt = nullptr;
-    if (sqlite3_prepare_v2(db, "INSERT OR IGNORE INTO audio_files(file_id, name) VALUES(?,?)",
-                           -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int64(stmt, 1, fileId);
-        sqlite3_bind_text(stmt, 2, name.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_step(stmt);
-        sqlite3_finalize(stmt);
-    }
-    runStatement(db, "INSERT OR IGNORE INTO playables(uri) VALUES(?)", "file://" + path);
-    return true;
+    // Reads the embedded tags and breaks the file out into recording, artists,
+    // release and track rows, linked to the file and saved to the library.
+    return AudioImporter::importFile(db, path).fileId >= 0;
 }
 
 bool showCreateTableDialog(sqlite3* db) {
@@ -291,7 +363,7 @@ bool showCreateTableDialog(sqlite3* db) {
     std::vector<std::string> values = { "", "", "", "", "", "name:TEXT" };
     std::vector<std::pair<std::string, std::string>> cols;
 
-    const bool ok = showFormDialog("New Table", labels, values, [&](const std::vector<std::string>& v) {
+    const bool ok = runFormDialog("New Table", labels, values, [&](const std::vector<std::string>& v) {
         if (v[0].empty()) return std::string("Table name cannot be empty.");
         if (!isIdentifier(v[0]))
             return std::string("Table name must start with a letter and contain only\nletters, digits, or underscores.");
@@ -328,7 +400,7 @@ bool showCustomRowDialog(sqlite3* db, const std::string& tableName, const std::s
 
     const std::string title = (rowUuid.empty() ? "Add " : "Edit ")
         + (def.nounSingular.empty() ? std::string("Row") : def.nounSingular);
-    if (!showFormDialog(title, labels, values)) return false;
+    if (!runFormDialog(title, labels, values)) return false;
 
     if (rowUuid.empty())
         return !database->insertCustomRow(tableName, def, values).empty();

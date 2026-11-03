@@ -1,13 +1,22 @@
-// MCI-based implementation of the sp_audio_* bridge used by LocalMediaService.
+// Media Foundation (MFPlay) implementation of the sp_audio_* bridge used by
+// LocalMediaService.
+//
+// This replaces an MCI "mpegvideo" backend: on current Windows the MCI MPEG
+// driver fails to initialise for real-world MP3s ("problem initializing MCI"),
+// so load() silently failed and the player showed a track that never played.
+// Media Foundation plays MP3, AAC/M4A, FLAC, WAV and WMA natively.
+//
+// MFPlay delivers its events on the thread that created the player, through a
+// hidden window, so the thread that calls sp_audio_load() must pump messages
+// (the UI thread does).
 #include <Windows.h>
-#include <mmsystem.h>
+#include <mfapi.h>
+#include <mferror.h>
+#include <mfplay.h>
 
 #include <string>
 
 namespace {
-    const wchar_t* kAlias = L"bungalow_audio";
-    bool g_open = false;
-    bool g_playing = false;
 
     std::wstring widen(const std::string& s) {
         if (s.empty()) return {};
@@ -17,26 +26,72 @@ namespace {
         return w;
     }
 
-    bool mci(const std::wstring& cmd, std::wstring* reply = nullptr) {
-        wchar_t buf[128] = L"";
-        const MCIERROR err = mciSendStringW(cmd.c_str(), buf, 128, nullptr);
-        if (reply) *reply = buf;
-        return err == 0;
+    IMFPMediaPlayer* g_player = nullptr;
+    bool g_started   = false;  // MFStartup succeeded
+    bool g_ready     = false;  // media item set; transport calls are valid
+    bool g_wantPlay  = false;  // play() requested before the item was ready
+
+    // Receives the player's asynchronous events.
+    class Callback : public IMFPMediaPlayerCallback {
+    public:
+        STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override {
+            if (riid == IID_IUnknown || riid == __uuidof(IMFPMediaPlayerCallback)) {
+                *ppv = static_cast<IMFPMediaPlayerCallback*>(this);
+                AddRef();
+                return S_OK;
+            }
+            *ppv = nullptr;
+            return E_NOINTERFACE;
+        }
+        STDMETHODIMP_(ULONG) AddRef() override { return 2; }   // static lifetime
+        STDMETHODIMP_(ULONG) Release() override { return 1; }
+
+        void STDMETHODCALLTYPE OnMediaPlayerEvent(MFP_EVENT_HEADER* header) override {
+            // Ignore events of a player that has since been replaced.
+            if (!header || header->pMediaPlayer != g_player) return;
+            if (FAILED(header->hrEvent)) {
+                g_ready = false;
+                g_wantPlay = false;
+                return;
+            }
+            if (header->eEventType == MFP_EVENT_TYPE_MEDIAITEM_SET) {
+                g_ready = true;
+                if (g_wantPlay) g_player->Play();
+            }
+        }
+    };
+    Callback g_callback;
+
+    void ensureStarted() {
+        if (g_started) return;
+        // The UI thread normally has COM already; a different apartment model is fine.
+        const HRESULT co = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        (void)co;
+        g_started = SUCCEEDED(MFStartup(MF_VERSION));
     }
 
     void closeCurrent() {
-        if (g_open) {
-            mci(std::wstring(L"close ") + kAlias);
-            g_open = false;
+        if (g_player) {
+            g_player->Shutdown();
+            g_player->Release();
+            g_player = nullptr;
         }
-        g_playing = false;
+        g_ready = false;
+        g_wantPlay = false;
     }
 
-    double queryMs(const wchar_t* what) {
-        if (!g_open) return 0.0;
-        std::wstring reply;
-        if (!mci(std::wstring(L"status ") + kAlias + L" " + what, &reply) || reply.empty()) return 0.0;
-        return _wtof(reply.c_str());
+    // Position or duration in seconds; 0 until the item is ready.
+    double seconds(bool duration) {
+        if (!g_player || !g_ready) return 0.0;
+        PROPVARIANT pv;
+        PropVariantInit(&pv);
+        HRESULT hr = duration ? g_player->GetDuration(MFP_POSITIONTYPE_100NS, &pv)
+                              : g_player->GetPosition(MFP_POSITIONTYPE_100NS, &pv);
+        double out = 0.0;
+        if (SUCCEEDED(hr) && (pv.vt == VT_I8 || pv.vt == VT_UI8))   // duration arrives as VT_UI8
+            out = static_cast<double>(pv.hVal.QuadPart) / 1e7;
+        PropVariantClear(&pv);
+        return out;
     }
 }
 
@@ -44,62 +99,59 @@ extern "C" {
 
 bool sp_audio_load(const char* path) {
     closeCurrent();
+    ensureStarted();
+    if (!g_started) return false;
+
     std::string p = path ? path : "";
     // "file:///C:/x" arrives as "/C:/x"
     if (p.size() > 2 && p[0] == '/' && p[2] == ':') p.erase(0, 1);
     for (char& c : p) if (c == '/') c = '\\';
 
-    std::wstring cmd = L"open \"" + widen(p) + L"\" type mpegvideo alias " + kAlias;
-    if (!mci(cmd)) {
-        cmd = L"open \"" + widen(p) + L"\" alias " + kAlias;
-        if (!mci(cmd)) return false;
-    }
-    mci(std::wstring(L"set ") + kAlias + L" time format milliseconds");
-    g_open = true;
-    return true;
+    // Not started: the item loads asynchronously and play() starts it.
+    return SUCCEEDED(MFPCreateMediaPlayer(widen(p).c_str(), FALSE, 0, &g_callback, nullptr, &g_player));
 }
 
 void sp_audio_play() {
-    if (!g_open) return;
-    if (mci(std::wstring(L"play ") + kAlias)) g_playing = true;
+    if (!g_player) return;
+    g_wantPlay = true;
+    if (g_ready) g_player->Play();
 }
 
 void sp_audio_pause() {
-    if (!g_open) return;
-    mci(std::wstring(L"pause ") + kAlias);
-    g_playing = false;
+    if (!g_player) return;
+    g_wantPlay = false;
+    if (g_ready) g_player->Pause();
 }
 
 void sp_audio_stop() {
     closeCurrent();
 }
 
-void sp_audio_seek(double seconds) {
-    if (!g_open) return;
-    const long long ms = static_cast<long long>(seconds * 1000.0);
-    const std::wstring target = std::to_wstring(ms);
-    if (g_playing)
-        mci(std::wstring(L"play ") + kAlias + L" from " + target);
-    else
-        mci(std::wstring(L"seek ") + kAlias + L" to " + target);
+void sp_audio_seek(double secondsPos) {
+    if (!g_player || !g_ready) return;
+    PROPVARIANT pv;
+    PropVariantInit(&pv);
+    pv.vt = VT_I8;
+    pv.hVal.QuadPart = static_cast<LONGLONG>(secondsPos * 1e7);
+    g_player->SetPosition(MFP_POSITIONTYPE_100NS, &pv);
+    PropVariantClear(&pv);
 }
 
 double sp_audio_get_duration() {
-    return queryMs(L"length") / 1000.0;
+    return seconds(true);
 }
 
 double sp_audio_get_position() {
-    return queryMs(L"position") / 1000.0;
+    return seconds(false);
 }
 
 bool sp_audio_is_playing() {
-    if (!g_open) return false;
-    std::wstring reply;
-    if (!mci(std::wstring(L"status ") + kAlias + L" mode", &reply)) return false;
-    return reply == L"playing";
+    if (!g_player || !g_ready) return false;
+    MFP_MEDIAPLAYER_STATE state = MFP_MEDIAPLAYER_STATE_EMPTY;
+    return SUCCEEDED(g_player->GetState(&state)) && state == MFP_MEDIAPLAYER_STATE_PLAYING;
 }
 
-// MCI offers no sample access, so visualizers receive silence.
+// MFPlay offers no sample access, so visualizers receive silence.
 int sp_audio_get_pcm(float*, int) { return 0; }
 int sp_audio_get_fft(float*, int) { return 0; }
 

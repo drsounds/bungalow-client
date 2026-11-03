@@ -1,0 +1,28 @@
+{
+  "id": "reference/uri-schemes",
+  "title": "URI schemes",
+  "description": "Bungalow uses these URI schemes:",
+  "source": "@site/docs/reference/uri-schemes.md",
+  "sourceDirName": "reference",
+  "slug": "/reference/uri-schemes",
+  "permalink": "/bungalow-client/reference/uri-schemes",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/reference/uri-schemes.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "title": "URI schemes",
+    "sidebar_position": 1
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Sites and bookmarks",
+    "permalink": "/bungalow-client/apps/sites-and-bookmarks"
+  },
+  "next": {
+    "title": "Settings and files",
+    "permalink": "/bungalow-client/reference/settings-and-files"
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "/bungalow-client/-98e": {
+    "__comp": "5e95c892",
+    "__context": {
+      "plugin": "aba21aa0"
+    }
+  },
+  "/bungalow-client/-ece": {
+    "__comp": "a7bd4aaa",
+    "__props": "5cfeb253"
+  },
+  "/bungalow-client/-5af": {
+    "__comp": "a94703ab"
+  },
+  "/bungalow-client/apps/bundles-3b3": {
+    "__comp": "17896441",
+    "content": "3ddea609"
+  },
+  "/bungalow-client/apps/html5-apps-ab1": {
+    "__comp": "17896441",
+    "content": "5c7d6fb2"
+  },
+  "/bungalow-client/apps/native-apps-5f9": {
+    "__comp": "17896441",
+    "content": "8720dd73"
+  },
+  "/bungalow-client/apps/sites-and-bookmarks-82b": {
+    "__comp": "17896441",
+    "content": "fab87941"
+  },
+  "/bungalow-client/architecture/aspects-e34": {
+    "__comp": "17896441",
+    "content": "38487792"
+  },
+  "/bungalow-client/architecture/data-16d": {
+    "__comp": "17896441",
+    "content": "6d13fd51"
+  },
+  "/bungalow-client/architecture/features-and-concepts-c24": {
+    "__comp": "17896441",
+    "content": "ecd74d19"
+  },
+  "/bungalow-client/architecture/navigation-f6e": {
+    "__comp": "17896441",
+    "content": "76423801"
+  },
+  "/bungalow-client/architecture/overview-a8e": {
+    "__comp": "17896441",
+    "content": "0b1ac180"
+  },
+  "/bungalow-client/architecture/playback-265": {
+    "__comp": "17896441",
+    "content": "10d99ed9"
+  },
+  "/bungalow-client/architecture/search-9ef": {
+    "__comp": "17896441",
+    "content": "6e583843"
+  },
+  "/bungalow-client/background-7ec": {
+    "__comp": "17896441",
+    "content": "b4d5475e"
+  },
+  "/bungalow-client/getting-started/building-16b": {
+    "__comp": "17896441",
+    "content": "fee3b1a9"
+  },
+  "/bungalow-client/getting-started/project-layout-6ef": {
+    "__comp": "17896441",
+    "content": "50621e13"
+  },
+  "/bungalow-client/java-client/-b9e": {
+    "__comp": "17896441",
+    "content": "fdf30af5"
+  },
+  "/bungalow-client/java-client/architecture-370": {
+    "__comp": "17896441",
+    "content": "044bf93e"
+  },
+  "/bungalow-client/java-client/aspects-and-services-818": {
+    "__comp": "17896441",
+    "content": "e61c1895"
+  },
+  "/bungalow-client/java-client/look-and-feel-63c": {
+    "__comp": "17896441",
+    "content": "e11b2867"
+  },
+  "/bungalow-client/java-client/musik-uri-scheme-037": {
+    "__comp": "17896441",
+    "content": "50de85fa"
+  },
+  "/bungalow-client/java-client/navigation-and-views-a27": {
+    "__comp": "17896441",
+    "content": "300ee9a8"
+  },
+  "/bungalow-client/java-client/playback-and-resolution-440": {
+    "__comp": "17896441",
+    "content": "9f289f3b"
+  },
+  "/bungalow-client/java-client/plugin-system-9c8": {
+    "__comp": "17896441",
+    "content": "dc2aec30"
+  },
+  "/bungalow-client/java-client/spider-templates-4d9": {
+    "__comp": "17896441",
+    "content": "e130fd2d"
+  },
+  "/bungalow-client/java-client/status-and-roadmap-9e3": {
+    "__comp": "17896441",
+    "content": "ea2ae836"
+  },
+  "/bungalow-client/reference/settings-and-files-735": {
+    "__comp": "17896441",
+    "content": "0d1261f9"
+  },
+  "/bungalow-client/reference/uri-schemes-bbd": {
+    "__comp": "17896441",
+    "content": "7f165ad0"
+  },
+  "/bungalow-client/roadmap-2bc": {
+    "__comp": "17896441",
+    "content": "0dffb83e"
+  },
+  "/bungalow-client/space/backends-259": {
+    "__comp": "17896441",
+    "content": "7914a6fd"
+  },
+  "/bungalow-client/space/elements-and-xul-5b6": {
+    "__comp": "17896441",
+    "content": "75cd8f2a"
+  },
+  "/bungalow-client/space/overview-eed": {
+    "__comp": "17896441",
+    "content": "2f28e158"
+  },
+  "/bungalow-client/space/skins-b59": {
+    "__comp": "17896441",
+    "content": "d21b5664"
+  },
+  "/bungalow-client/space/templates-23c": {
+    "__comp": "17896441",
+    "content": "b582ddce"
+  },
+  "/bungalow-client/space/uri-store-9c5": {
+    "__comp": "17896441",
+    "content": "b2409362"
+  },
+  "/bungalow-client/specs/-96c": {
+    "__comp": "17896441",
+    "content": "55d64ccb"
+  },
+  "/bungalow-client/specs/rfc-0001-b2b": {
+    "__comp": "17896441",
+    "content": "e94c1bef"
+  },
+  "/bungalow-client/specs/rfc-0002-38c": {
+    "__comp": "17896441",
+    "content": "3347e73e"
+  },
+  "/bungalow-client/-1ad": {
+    "__comp": "17896441",
+    "content": "0e384e19"
+  }
+}

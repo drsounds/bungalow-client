@@ -1,0 +1,28 @@
+{
+  "id": "apps/bundles",
+  "title": "App bundles",
+  "description": "An app bundle is a folder with a manifest.json. Bundles extend Bungalow",
+  "source": "@site/docs/apps/bundles.md",
+  "sourceDirName": "apps",
+  "slug": "/apps/bundles",
+  "permalink": "/bungalow-client/apps/bundles",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/apps/bundles.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "title": "App bundles",
+    "sidebar_position": 1
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "UI backends",
+    "permalink": "/bungalow-client/space/backends"
+  },
+  "next": {
+    "title": "Native apps",
+    "permalink": "/bungalow-client/apps/native-apps"
+  }
+}

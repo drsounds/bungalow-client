@@ -1,0 +1,28 @@
+{
+  "id": "architecture/aspects",
+  "title": "Aspects",
+  "description": "Everything pluggable in Bungalow, including features, concepts and search",
+  "source": "@site/docs/architecture/aspects.md",
+  "sourceDirName": "architecture",
+  "slug": "/architecture/aspects",
+  "permalink": "/bungalow-client/architecture/aspects",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/architecture/aspects.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "title": "Aspects",
+    "sidebar_position": 2
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Architecture overview",
+    "permalink": "/bungalow-client/architecture/overview"
+  },
+  "next": {
+    "title": "Features and concepts",
+    "permalink": "/bungalow-client/architecture/features-and-concepts"
+  }
+}

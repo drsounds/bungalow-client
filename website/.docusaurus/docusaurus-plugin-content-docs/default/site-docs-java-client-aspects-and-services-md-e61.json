@@ -1,0 +1,28 @@
+{
+  "id": "java-client/aspects-and-services",
+  "title": "Aspects & Services",
+  "description": "This is the layer that replaces the monolith. Instead of one object that \"is",
+  "source": "@site/docs/java-client/aspects-and-services.md",
+  "sourceDirName": "java-client",
+  "slug": "/java-client/aspects-and-services",
+  "permalink": "/bungalow-client/java-client/aspects-and-services",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/java-client/aspects-and-services.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "title": "Aspects & Services",
+    "sidebar_position": 4
+  },
+  "sidebar": "javaClient",
+  "previous": {
+    "title": "The Plugin System",
+    "permalink": "/bungalow-client/java-client/plugin-system"
+  },
+  "next": {
+    "title": "Navigation & Views",
+    "permalink": "/bungalow-client/java-client/navigation-and-views"
+  }
+}

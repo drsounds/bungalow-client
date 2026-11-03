@@ -1,0 +1,28 @@
+{
+  "id": "architecture/search",
+  "title": "Search",
+  "description": "Search is unified: one screen shows results from every registered search",
+  "source": "@site/docs/architecture/search.md",
+  "sourceDirName": "architecture",
+  "slug": "/architecture/search",
+  "permalink": "/bungalow-client/architecture/search",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/architecture/search.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "title": "Search",
+    "sidebar_position": 5
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Navigation and views",
+    "permalink": "/bungalow-client/architecture/navigation"
+  },
+  "next": {
+    "title": "Playback",
+    "permalink": "/bungalow-client/architecture/playback"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "specs/index",
+  "title": "Specifications",
+  "description": "Two RFCs define how Bungalow names music and how it shares playlists",
+  "source": "@site/docs/specs/index.md",
+  "sourceDirName": "specs",
+  "slug": "/specs/",
+  "permalink": "/bungalow-client/specs/",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/specs/index.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "title": "Specifications",
+    "sidebar_label": "Overview",
+    "sidebar_position": 1,
+    "slug": "/specs/"
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Settings and files",
+    "permalink": "/bungalow-client/reference/settings-and-files"
+  },
+  "next": {
+    "title": "RFC-0001: Playlist sharing (UPSL)",
+    "permalink": "/bungalow-client/specs/rfc-0001"
+  }
+}

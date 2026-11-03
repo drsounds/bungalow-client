@@ -1,0 +1,28 @@
+{
+  "id": "architecture/data",
+  "title": "Data and the library",
+  "description": "The library is a local SQLite database owned by the user. Content is",
+  "source": "@site/docs/architecture/data.md",
+  "sourceDirName": "architecture",
+  "slug": "/architecture/data",
+  "permalink": "/bungalow-client/architecture/data",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/architecture/data.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 7,
+  "frontMatter": {
+    "title": "Data and the library",
+    "sidebar_position": 7
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Playback",
+    "permalink": "/bungalow-client/architecture/playback"
+  },
+  "next": {
+    "title": "Space overview",
+    "permalink": "/bungalow-client/space/overview"
+  }
+}

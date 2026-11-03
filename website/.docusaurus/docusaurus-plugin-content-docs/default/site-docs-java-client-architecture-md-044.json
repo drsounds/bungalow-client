@@ -1,0 +1,28 @@
+{
+  "id": "java-client/architecture",
+  "title": "Architecture Overview",
+  "description": "The layers",
+  "source": "@site/docs/java-client/architecture.md",
+  "sourceDirName": "java-client",
+  "slug": "/java-client/architecture",
+  "permalink": "/bungalow-client/java-client/architecture",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/java-client/architecture.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "title": "Architecture Overview",
+    "sidebar_position": 2
+  },
+  "sidebar": "javaClient",
+  "previous": {
+    "title": "Overview",
+    "permalink": "/bungalow-client/java-client/"
+  },
+  "next": {
+    "title": "The Plugin System",
+    "permalink": "/bungalow-client/java-client/plugin-system"
+  }
+}

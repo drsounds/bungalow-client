@@ -1,0 +1,28 @@
+{
+  "id": "java-client/spider-templates",
+  "title": "Spider Templates",
+  "description": "Spider is a server-style template engine for building view content. Instead of",
+  "source": "@site/docs/java-client/spider-templates.md",
+  "sourceDirName": "java-client",
+  "slug": "/java-client/spider-templates",
+  "permalink": "/bungalow-client/java-client/spider-templates",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/java-client/spider-templates.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "title": "Spider Templates",
+    "sidebar_position": 6
+  },
+  "sidebar": "javaClient",
+  "previous": {
+    "title": "Navigation & Views",
+    "permalink": "/bungalow-client/java-client/navigation-and-views"
+  },
+  "next": {
+    "title": "Look & Feel",
+    "permalink": "/bungalow-client/java-client/look-and-feel"
+  }
+}

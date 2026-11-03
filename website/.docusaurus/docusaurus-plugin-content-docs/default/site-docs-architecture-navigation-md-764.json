@@ -1,0 +1,28 @@
+{
+  "id": "architecture/navigation",
+  "title": "Navigation and views",
+  "description": "Every screen is a view bound to a family of bungalow: URIs.",
+  "source": "@site/docs/architecture/navigation.md",
+  "sourceDirName": "architecture",
+  "slug": "/architecture/navigation",
+  "permalink": "/bungalow-client/architecture/navigation",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/architecture/navigation.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "title": "Navigation and views",
+    "sidebar_position": 4
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Features and concepts",
+    "permalink": "/bungalow-client/architecture/features-and-concepts"
+  },
+  "next": {
+    "title": "Search",
+    "permalink": "/bungalow-client/architecture/search"
+  }
+}

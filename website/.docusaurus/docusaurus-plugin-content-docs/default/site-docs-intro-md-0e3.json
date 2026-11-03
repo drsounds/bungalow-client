@@ -1,0 +1,25 @@
+{
+  "id": "intro",
+  "title": "Introduction",
+  "description": "Bungalow is a native C++ music and media manager meant to work as a small",
+  "source": "@site/docs/intro.md",
+  "sourceDirName": ".",
+  "slug": "/",
+  "permalink": "/bungalow-client/",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/intro.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 0,
+  "frontMatter": {
+    "slug": "/",
+    "title": "Introduction",
+    "sidebar_position": 0
+  },
+  "sidebar": "docs",
+  "next": {
+    "title": "Background",
+    "permalink": "/bungalow-client/background"
+  }
+}

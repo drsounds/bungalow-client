@@ -1,0 +1,28 @@
+{
+  "id": "architecture/overview",
+  "title": "Architecture overview",
+  "description": "Bungalow is a thin application shell around registries of pluggable",
+  "source": "@site/docs/architecture/overview.md",
+  "sourceDirName": "architecture",
+  "slug": "/architecture/overview",
+  "permalink": "/bungalow-client/architecture/overview",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/architecture/overview.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "title": "Architecture overview",
+    "sidebar_position": 1
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Project layout",
+    "permalink": "/bungalow-client/getting-started/project-layout"
+  },
+  "next": {
+    "title": "Aspects",
+    "permalink": "/bungalow-client/architecture/aspects"
+  }
+}

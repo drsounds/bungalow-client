@@ -1,0 +1,28 @@
+{
+  "id": "apps/sites-and-bookmarks",
+  "title": "Sites and bookmarks",
+  "description": "Bungalow can show ordinary web sites, store fronts and curator pages inside the",
+  "source": "@site/docs/apps/sites-and-bookmarks.md",
+  "sourceDirName": "apps",
+  "slug": "/apps/sites-and-bookmarks",
+  "permalink": "/bungalow-client/apps/sites-and-bookmarks",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/apps/sites-and-bookmarks.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "title": "Sites and bookmarks",
+    "sidebar_position": 4
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "HTML5 apps",
+    "permalink": "/bungalow-client/apps/html5-apps"
+  },
+  "next": {
+    "title": "URI schemes",
+    "permalink": "/bungalow-client/reference/uri-schemes"
+  }
+}

@@ -111,10 +111,12 @@ int LibraryView::onRowRightClicked(SPObject * /*sender*/, SPEventArgs *args) {
 	if (!win)
 		return 0;
 
-	enum { ID_PLAY = 10100, ID_EDIT };
+	enum { ID_PLAY = 10100, ID_EDIT, ID_REMOVE };
 	wxMenu menu;
 	menu.Append(ID_PLAY, "Play");
 	menu.Append(ID_EDIT, "Edit...");
+	menu.AppendSeparator();
+	menu.Append(ID_REMOVE, "Remove from Library");
 
 	int sel = -1;
 	menu.Bind(wxEVT_MENU, [&sel](wxCommandEvent &ev) { sel = ev.GetId(); });
@@ -125,6 +127,16 @@ int LibraryView::onRowRightClicked(SPObject * /*sender*/, SPEventArgs *args) {
 	} else if (sel == ID_EDIT) {
 		AddTrackDialog dlg(win, m_db, trackId);
 		if (dlg.ShowModal() == wxID_OK) {
+			if (m_dataSource)
+				m_dataSource->reload(m_db);
+			if (m_table)
+				m_table->invalidate();
+		}
+	} else if (sel == ID_REMOVE) {
+		// Soft delete: the track stays in the database (see All Tracks).
+		auto *app = dynamic_cast<BungalowApp *>(wxTheApp);
+		if (app && app->getDatabase()) {
+			app->getDatabase()->removeSave(trackId);
 			if (m_dataSource)
 				m_dataSource->reload(m_db);
 			if (m_table)

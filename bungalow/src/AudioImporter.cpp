@@ -582,6 +582,7 @@ AudioFileMetadata AudioImporter::readMetadata(const std::string& path) {
     trim(m.albumArtist);
     trim(m.isrc);
     trim(m.releaseDate);
+    m.hasTags = !m.title.empty() || !m.artists.empty();
 
     // Filename fallback: "Artist - Title (Version).mp3"
     {
@@ -739,10 +740,17 @@ int64_t createTrack(sqlite3* db, const AudioFileMetadata& m) {
                           .text(1, recordingKey).optText(2, releaseKey).singleId();
     if (trackId >= 0) return trackId;
 
-    if (!Stmt(db, "INSERT INTO tracks (recording_id, release_id) VALUES (?, ?)")
-             .text(1, recordingKey).optText(2, releaseKey).exec())
+    if (!Stmt(db, "INSERT INTO tracks (recording_id, release_id, number) VALUES (?, ?, ?)")
+             .text(1, recordingKey).optText(2, releaseKey).int64(3, m.trackNumber).exec())
         return -1;
     return sqlite3_last_insert_rowid(db);
+}
+
+// Number a matched track from the file's tag when it has no position yet.
+void fillTrackNumber(sqlite3* db, int64_t trackId, const AudioFileMetadata& m) {
+    if (m.trackNumber <= 0) return;
+    Stmt(db, "UPDATE tracks SET number = ? WHERE id = ? AND number = 0 AND release_id IS NOT NULL")
+        .int64(1, m.trackNumber).int64(2, trackId).exec();
 }
 
 } // namespace
@@ -792,6 +800,7 @@ AudioImporter::Result AudioImporter::importFile(sqlite3* db, const std::string& 
     }
 
     for (int64_t trackId : trackIds) {
+        fillTrackNumber(db, trackId, m);
         if (r.audioFileId >= 0)
             Stmt(db, "INSERT OR IGNORE INTO track_audio_files (track_id, audio_file_id) VALUES (?, ?)")
                 .int64(1, trackId).int64(2, r.audioFileId).exec();

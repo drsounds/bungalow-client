@@ -1,0 +1,28 @@
+{
+  "id": "getting-started/building",
+  "title": "Building",
+  "description": "Bungalow is built with CMake (3.16 or later) and gets its dependencies from",
+  "source": "@site/docs/getting-started/building.md",
+  "sourceDirName": "getting-started",
+  "slug": "/getting-started/building",
+  "permalink": "/bungalow-client/getting-started/building",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/getting-started/building.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "title": "Building",
+    "sidebar_position": 1
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Background",
+    "permalink": "/bungalow-client/background"
+  },
+  "next": {
+    "title": "Project layout",
+    "permalink": "/bungalow-client/getting-started/project-layout"
+  }
+}

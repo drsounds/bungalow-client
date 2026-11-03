@@ -1,0 +1,28 @@
+{
+  "id": "space/elements-and-xul",
+  "title": "Elements and XUL",
+  "description": "Space describes UI in XUL-like XML. Tags map to SP*Element classes, and",
+  "source": "@site/docs/space/elements-and-xul.md",
+  "sourceDirName": "space",
+  "slug": "/space/elements-and-xul",
+  "permalink": "/bungalow-client/space/elements-and-xul",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/space/elements-and-xul.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "title": "Elements and XUL",
+    "sidebar_position": 2
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Space overview",
+    "permalink": "/bungalow-client/space/overview"
+  },
+  "next": {
+    "title": "Templates",
+    "permalink": "/bungalow-client/space/templates"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "architecture/playback",
+  "title": "Playback",
+  "description": "Playback is separated from the views that start it. A view builds a list of",
+  "source": "@site/docs/architecture/playback.md",
+  "sourceDirName": "architecture",
+  "slug": "/architecture/playback",
+  "permalink": "/bungalow-client/architecture/playback",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/drsounds/bungalow-client/tree/main/website/docs/architecture/playback.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 6,
+  "frontMatter": {
+    "title": "Playback",
+    "sidebar_position": 6
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Search",
+    "permalink": "/bungalow-client/architecture/search"
+  },
+  "next": {
+    "title": "Data and the library",
+    "permalink": "/bungalow-client/architecture/data"
+  }
+}
