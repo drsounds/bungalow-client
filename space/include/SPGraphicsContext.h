@@ -39,6 +39,10 @@ namespace space {
 				callback(false, {});
 		}
 		virtual void setControlAttribute(SPElement *, const string&, const string&) {}
+		/// Shows or hides the native control of an input element.
+		virtual void setControlVisible(SPElement *, bool) {}
+		/// Gives the native control of an input element keyboard focus and selects its text.
+		virtual void focusControl(SPElement *) {}
 		virtual void drawImagePart(SPImage *image, int x, int y, int width, int height, int x1, int y1, int x2, int y2) {}
 		virtual void drawSkinImage(const string& resourceId, int x, int y, int w, int h) {}
 		virtual void restoreOrigo() {}

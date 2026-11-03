@@ -121,6 +121,28 @@ Selectors match an element's type with an `sp-` prefix (`sp-button`,
 | `padding` | `l,t,r,b` content inset (`getContentBounds`) |
 | `color` | label colour for buttons and check boxes |
 | `radius` | rounds solid backgrounds |
+| `overflow` | on the scrollbar buttons: pixels the button overlaps the track |
+
+### Scrollbars
+
+Elements with `overflow="auto"` (views and the sidebar by default) show a
+vertical scrollbar when their content is taller than they are. It is styled by
+four selectors:
+
+| Selector | Part |
+|----------|------|
+| `sp-scrollbar::vertical::top` | the up button |
+| `sp-scrollbar::vertical::bottom` | the down button |
+| `sp-scrollbar::vertical::space` | the track |
+| `sp-scrollbar::vertical::thumb` | the thumb |
+
+The widest sprite sets the scrollbar's width, the button sprites their height
+and the thumb sprite the thumb's minimum height. `overflow` on the buttons lets
+the bottom of the up button and the top of the down button reach over the
+track, e.g. a concave cap: the track runs underneath, the buttons are drawn on
+top of the thumb, and the thumb travels to the edges of the overflow, so it
+nestles into the caps at either end. Each part can have `state="active"` while
+it is held down. Without these selectors the scrollbar is a thin rounded thumb.
 
 A selector with `mode="dark"` or `mode="light"` takes precedence over one
 without a mode in that colour scheme and is ignored in the other. Sprites and

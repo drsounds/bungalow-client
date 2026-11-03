@@ -2,6 +2,7 @@
 
 #include "SPButtonElement.h"
 
+#include <algorithm>
 #include <iostream>
 #include <cstdio>
 #include <fstream>
@@ -100,6 +101,15 @@ namespace space {
 	) {
 		if (event == "load") {
 			cout << "Load";
+		}
+		if (event == "mousewheel") {
+			auto *wheelArgs = dynamic_cast<SPMouseEventArgs *>(data);
+			return wheelArgs != nullptr && this->mouseWheel(wheelArgs) ? 1 : 0;
+		}
+		if (event == "mousedown" || event == "mousemove" || event == "mouseup") {
+			auto *mouseArgs = dynamic_cast<SPMouseEventArgs *>(data);
+			if (mouseArgs != nullptr && this->handleScrollBarMouse(event, mouseArgs))
+				return 1;
 		}
 		int ret = SPNode::notify(event, sender, data);
 		for (auto *child: this->children) {
@@ -588,6 +598,10 @@ namespace space {
 		if (args->getAttributeName() == "entity") {
 			this->bindEntity(args->getNewValue());
 		}
+		if (args->getAttributeName() == "overflow") {
+			this->setOverflowY(args->getNewValue() == "auto" || args->getNewValue() == "scroll"
+				? SPOverflow::Auto : SPOverflow::Hidden);
+		}
 	}
 
 	// <text entity="bungalow:artist:1" entity-field="name">Fallback</text>
@@ -978,6 +992,8 @@ namespace space {
 		if (this->clipView) {
 	        c->setClip(absoluteBounds);
 		}
+		// The content may have shrunk since the last scroll.
+		this->scrollY = std::clamp(this->scrollY, 0, this->getMaxScrollY());
 		x -= this->scrollX;
 		y -= this->scrollY;
 		this->paint(rect2.x, rect2.y, rect2.width, rect2.height, c);
@@ -988,9 +1004,10 @@ namespace space {
 		for(std::vector<SPNode *>::iterator it = children.begin(); it != children.end(); ++it) {
 			SPElement *elm = static_cast<SPElement *>(*it);
 			if(elm != nullptr) {
-				elm->paint(rect2.x, rect2.y, c);
+				elm->paint(rect2.x - this->scrollX, rect2.y - this->scrollY, c);
 			}
 		}
+		this->paintVerticalScrollBar(c);
 		SPColor bgColor = this->getColorAttribute("bgcolor", SPColor(28, 28, 28, 255));
 		SPColor fgColor = this->getColorAttribute("fgcolor", SPColor(255, 255, 255, 255));
 		int fontSize = this->getIntegerAttribute("size", 11);
@@ -1081,28 +1098,179 @@ namespace space {
 	}
 
 	void SPElement::scroll(int x, int y) {
-	    if (this->clipView) {
-	        this->scrollX += x;
-	        this->scrollY += y;
-	        if (scrollY < 0) {
-	            scrollY = 0;
-	        }
-	        this->invalidate();
-	    }
+	    this->scrollTo(this->scrollX + x, this->scrollY + y);
 	}
 
 	void SPElement::scrollTo(int x, int y) {
 	    if (this->clipView) {
 	        this->scrollX = x;
-	        this->scrollY = y;
-
-	        if (scrollY < 0) {
-	            scrollY = 0;
-	        }
-	        this->invalidate();
-
+	        this->scrollToY(y);
 	    }
+	}
 
+	int SPElement::getContentHeight() {
+		int bottom = 0;
+		for (auto *node : this->children) {
+			auto *child = static_cast<SPElement *>(node);
+			if (!child->isVisible()) continue;
+			bottom = std::max(bottom, child->getY() + child->getHeight() + child->getMargins().bottom);
+		}
+		return bottom + this->getPadding().bottom;
+	}
+
+	int SPElement::getMaxScrollY() {
+		return std::max(0, this->getContentHeight() - this->getHeight());
+	}
+
+	bool SPElement::hasVerticalScrollBar() {
+		return this->m_overflowY == SPOverflow::Auto && this->isVisible() && this->getMaxScrollY() > 0;
+	}
+
+	SPScrollBarMetrics SPElement::getScrollBarMetrics() {
+		SPSkin *skin = this->getSkin();
+		return skin != nullptr ? skin->getScrollBarMetrics(this) : SPScrollBarMetrics();
+	}
+
+	int SPElement::getVerticalScrollBarWidth() {
+		return this->hasVerticalScrollBar() ? this->getScrollBarMetrics().width : 0;
+	}
+
+	void SPElement::scrollToY(int y) {
+		const int clamped = std::clamp(y, 0, this->getMaxScrollY());
+		if (clamped == this->scrollY) return;
+		this->scrollY = clamped;
+		this->onScrolled();
+		this->invalidate();
+	}
+
+	bool SPElement::mouseWheel(SPMouseEventArgs *e) {
+		const int x = e->getX();
+		const int y = e->getY();
+		// Children painted last are on top.
+		for (auto it = this->children.rbegin(); it != this->children.rend(); ++it) {
+			auto *child = static_cast<SPElement *>(*it);
+			if (!child->isVisible()) continue;
+			const sp_rectangle b = child->getAbsoluteBounds();
+			if (x >= b.x && x < b.x + b.width && y >= b.y && y < b.y + b.height) {
+				if (child->mouseWheel(e)) return true;
+				break;
+			}
+		}
+		if (this->m_overflowY != SPOverflow::Auto || e->getWheelDeltaY() == 0) return false;
+		const int before = this->scrollY;
+		this->scrollToY(this->scrollY + e->getWheelDeltaY());
+		return this->scrollY != before;
+	}
+
+	SPScrollBarLayout SPElement::getVerticalScrollBarLayout() {
+		SPScrollBarLayout layout;
+		const SPScrollBarMetrics m = this->getScrollBarMetrics();
+		const sp_rectangle b = this->getAbsoluteBounds();
+		const int x = b.x + b.width - m.width;
+
+		// Squeeze the buttons when the element is shorter than both.
+		int upHeight = m.upHeight;
+		int downHeight = m.downHeight;
+		if (upHeight + downHeight > b.height) {
+			upHeight = b.height * upHeight / std::max(1, upHeight + downHeight);
+			downHeight = b.height - upHeight;
+		}
+		layout.up = { x, b.y, m.width, upHeight, 0 };
+		layout.down = { x, b.y + b.height - downHeight, m.width, downHeight, 0 };
+
+		// The track runs under the buttons' overflow; the thumb stops at its edges.
+		const int trackTop = b.y + upHeight - std::min(m.upOverflow, upHeight);
+		const int trackBottom = b.y + b.height - downHeight + std::min(m.downOverflow, downHeight);
+		layout.track = { x, trackTop, m.width, std::max(0, trackBottom - trackTop), 0 };
+
+		const int contentHeight = this->getContentHeight();
+		const int maxScroll = contentHeight - b.height;
+		if (maxScroll > 0 && layout.track.height >= m.minThumbHeight) {
+			const int thumbHeight = std::clamp(
+				static_cast<int>(static_cast<long long>(layout.track.height) * b.height / contentHeight),
+				m.minThumbHeight, layout.track.height);
+			const int travel = layout.track.height - thumbHeight;
+			const int offset = static_cast<int>(
+				static_cast<long long>(travel) * std::clamp(this->scrollY, 0, maxScroll) / maxScroll);
+			layout.thumb = { x, layout.track.y + offset, m.width, thumbHeight, 0 };
+			layout.hasThumb = true;
+		}
+		return layout;
+	}
+
+	void SPElement::paintVerticalScrollBar(SPGraphicsContext *c) {
+		if (!this->hasVerticalScrollBar()) return;
+		SPSkin *skin = this->getSkin();
+		if (skin == nullptr) return;
+		const SPScrollBarLayout layout = this->getVerticalScrollBarLayout();
+		auto state = [this](SPScrollBarPart part) {
+			return this->m_scrollBarPressed == part ? string("active") : string();
+		};
+		// The buttons go on top, so the thumb shows through their overflow.
+		skin->drawScrollBarPart(c, this, SPScrollBarPart::Track, state(SPScrollBarPart::Track), layout.track);
+		if (layout.hasThumb)
+			skin->drawScrollBarPart(c, this, SPScrollBarPart::Thumb, state(SPScrollBarPart::Thumb), layout.thumb);
+		if (layout.up.height > 0)
+			skin->drawScrollBarPart(c, this, SPScrollBarPart::Up, state(SPScrollBarPart::Up), layout.up);
+		if (layout.down.height > 0)
+			skin->drawScrollBarPart(c, this, SPScrollBarPart::Down, state(SPScrollBarPart::Down), layout.down);
+	}
+
+	bool SPElement::handleScrollBarMouse(const string &event, SPMouseEventArgs *e) {
+		const int x = e->getX();
+		const int y = e->getY();
+
+		// A press keeps the scrollbar's events until the button is released.
+		if (this->m_scrollBarPressed.has_value()) {
+			if (event == "mousemove" && *this->m_scrollBarPressed == SPScrollBarPart::Thumb) {
+				const SPScrollBarLayout layout = this->getVerticalScrollBarLayout();
+				const int travel = layout.track.height - layout.thumb.height;
+				if (layout.hasThumb && travel > 0) {
+					const int offset = std::clamp(y - this->m_scrollThumbGrab - layout.track.y, 0, travel);
+					this->scrollToY(static_cast<int>(
+						static_cast<long long>(offset) * this->getMaxScrollY() / travel));
+				}
+			} else if (event == "mouseup") {
+				this->m_scrollBarPressed.reset();
+				if (s_capturedElement == this)
+					releaseMouseCapture();
+				this->invalidate();
+			}
+			return true;
+		}
+
+		if (!this->hasVerticalScrollBar()) return false;
+		const SPScrollBarLayout layout = this->getVerticalScrollBarLayout();
+		const sp_rectangle b = this->getAbsoluteBounds();
+		if (x < layout.track.x || x >= b.x + b.width || y < b.y || y >= b.y + b.height)
+			return false;
+		if (event != "mousedown" || e->getButton() != 0)
+			return true;
+
+		// The thumb wins over the buttons' overflow it travels into.
+		const int upEdge = layout.up.y + layout.up.height;
+		const int downEdge = layout.down.y;
+		const bool inThumb = layout.hasThumb && y >= layout.thumb.y && y < layout.thumb.y + layout.thumb.height;
+		const int pageStep = std::max(kScrollLineStep, b.height - kScrollLineStep);
+		SPScrollBarPart part;
+		if (y < layout.track.y || (y < upEdge && !inThumb)) {
+			part = SPScrollBarPart::Up;
+			this->scrollToY(this->scrollY - kScrollLineStep);
+		} else if (y >= layout.track.y + layout.track.height || (y >= downEdge && !inThumb)) {
+			part = SPScrollBarPart::Down;
+			this->scrollToY(this->scrollY + kScrollLineStep);
+		} else if (inThumb) {
+			part = SPScrollBarPart::Thumb;
+			this->m_scrollThumbGrab = y - layout.thumb.y;
+		} else {
+			part = SPScrollBarPart::Track;
+			const bool above = !layout.hasThumb || y < layout.thumb.y;
+			this->scrollToY(this->scrollY + (above ? -pageStep : pageStep));
+		}
+		this->m_scrollBarPressed = part;
+		setMouseCapture(this);
+		this->invalidate();
+		return true;
 	}
 
 	SPElement *SPElement::parseElement(const SPXmlNode& xmlNode, SPElement *parent,

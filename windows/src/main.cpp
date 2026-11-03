@@ -61,6 +61,15 @@ namespace
             if (app)
                 app->mouseEvent("mousemove", GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
             return 0;
+        case WM_MOUSEWHEEL:
+            if (app)
+            {
+                // The wheel reports screen coordinates.
+                POINT point{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+                ScreenToClient(window, &point);
+                app->wheelEvent(point.x, point.y, GET_WHEEL_DELTA_WPARAM(wParam));
+            }
+            return 0;
         case WM_KEYDOWN:
             if (app)
                 app->keyEvent(static_cast<int>(wParam), (GetKeyState(VK_CONTROL) & 0x8000) != 0);

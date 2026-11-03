@@ -34,8 +34,11 @@ namespace space {
         int cumulativeFlex = 0;
         int assignedFlexHeight = 0;
         int y = this->getPadding().top;
+        // Content taller than the box makes room for the vertical scrollbar.
+        const bool overflows = this->getOverflowY() == SPOverflow::Auto && fixedHeight > this->getHeight();
+        const int scrollBarWidth = overflows ? this->getScrollBarMetrics().width : 0;
         const int contentWidth = (std::max)(
-            0, this->getWidth() - this->getPadding().left - this->getPadding().right);
+            0, this->getWidth() - this->getPadding().left - this->getPadding().right - scrollBarWidth);
 
         for (size_t i = 0; i < children.size(); ++i) {
             SPElement *child = children[i];

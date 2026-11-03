@@ -31,12 +31,16 @@ namespace space
         wxPoint *origo = new wxPoint(0, 0);
         SpaceWidget *m_widget;
         wxAutoBufferedPaintDC* m_paintDc;
+        // Nested clips, each intersected with the one it is inside of, so
+        // declipRect() restores the enclosing element's clip.
+        std::vector<wxRect> m_clipStack;
       public:
         WxWidgetsGraphicsContext();
         static wxColor toWxColor(SPColor color);
         static SPColor fromWxColor(wxColour color);
         explicit WxWidgetsGraphicsContext(SpaceFrame*);
         void OnTextEnter(wxEvent& evt);
+        void OnTextKeyDown(wxKeyEvent& evt);
         void setFrame(SpaceFrame *frame)
         {
           this->m_frame = frame;
@@ -59,7 +63,8 @@ namespace space
                      const string& data, RequestCallback callback) override;
         SPImage *loadImage(const string& bitmap) override;
         void setControlAttribute(SPElement *, const string&, const string&) override;
-        void setControlVisible(SPElement* elm, bool visible);
+        void setControlVisible(SPElement* elm, bool visible) override;
+        void focusControl(SPElement* elm) override;
         void drawImagePart(SPImage *image, int x, int y, int width, int height, int x1, int y1, int x2, int y2) override;
         virtual void drawSkinImage(string resourceId, int x, int y, int w, int h);
         void setClip(const sp_rectangle& rect) override;
@@ -87,6 +92,7 @@ namespace space
         void thaw() override;
         void setPaintDC(wxAutoBufferedPaintDC* dc) {
             m_paintDc = dc;
+            m_clipStack.clear();
         }
         wxAutoBufferedPaintDC* getPaintDC() const
         {

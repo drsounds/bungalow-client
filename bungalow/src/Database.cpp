@@ -1,5 +1,7 @@
 #include "Database.h"
 
+#include <algorithm>
+#include <initializer_list>
 #include <unordered_map>
 #include <utility>
 #include <random>
@@ -239,6 +241,26 @@ void Database::initialize() {
         );
     )");
 
+    // Playlists — user-created track lists
+    exec(R"(
+        CREATE TABLE IF NOT EXISTS playlists (
+            id         TEXT    PRIMARY KEY,
+            name       TEXT    NOT NULL,
+            created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+        );
+    )");
+
+    // Rootlist — the user's ordered list of playlists (and other URIs) in the sidebar
+    exec(R"(
+        CREATE TABLE IF NOT EXISTS rootlist (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            uri        TEXT    NOT NULL UNIQUE,
+            title      TEXT    NOT NULL,
+            position   INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+        );
+    )");
+
     // Accepted third-party domains — hostnames the user has acknowledged the warning for
     exec(R"(
         CREATE TABLE IF NOT EXISTS accepted_domains (
@@ -380,6 +402,181 @@ std::vector<Database::Bookmark> Database::getChildBookmarks(int parentId)
     }
     sqlite3_finalize(stmt);
     return result;
+}
+
+// ── Rootlist ──────────────────────────────────────────────────────────────────
+
+namespace {
+
+int rootlistCount(sqlite3* db)
+{
+    sqlite3_stmt* stmt = nullptr;
+    int count = 0;
+    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM rootlist;", -1, &stmt, nullptr) != SQLITE_OK) return 0;
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+        count = sqlite3_column_int(stmt, 0);
+    sqlite3_finalize(stmt);
+    return count;
+}
+
+// Position of the node for uri, or -1 if it is not listed.
+int rootlistPosition(sqlite3* db, const std::string& uri)
+{
+    sqlite3_stmt* stmt = nullptr;
+    int position = -1;
+    if (sqlite3_prepare_v2(db, "SELECT position FROM rootlist WHERE uri = ?;", -1, &stmt, nullptr) != SQLITE_OK)
+        return -1;
+    sqlite3_bind_text(stmt, 1, uri.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+        position = sqlite3_column_int(stmt, 0);
+    sqlite3_finalize(stmt);
+    return position;
+}
+
+// Runs sql with up to three integer parameters and a trailing text parameter.
+bool runRootlistUpdate(sqlite3* db, const char* sql, std::initializer_list<int> ints, const std::string* text = nullptr)
+{
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) return false;
+    int index = 1;
+    for (int value : ints)
+        sqlite3_bind_int(stmt, index++, value);
+    if (text)
+        sqlite3_bind_text(stmt, index, text->c_str(), -1, SQLITE_TRANSIENT);
+    const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
+    sqlite3_finalize(stmt);
+    return ok;
+}
+
+} // namespace
+
+std::vector<Database::RootlistNode> Database::getRootlist()
+{
+    std::vector<RootlistNode> result;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT id, uri, title, position FROM rootlist ORDER BY position, id;",
+        -1, &stmt, nullptr) != SQLITE_OK) return result;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        RootlistNode node;
+        node.id       = sqlite3_column_int(stmt, 0);
+        node.uri      = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        node.title    = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+        node.position = sqlite3_column_int(stmt, 3);
+        result.push_back(node);
+    }
+    sqlite3_finalize(stmt);
+    return result;
+}
+
+bool Database::insertRootlistNode(const std::string& uri, const std::string& title, int position)
+{
+    if (rootlistPosition(m_db, uri) >= 0) return false;
+    position = std::clamp(position, 0, rootlistCount(m_db));
+
+    exec("BEGIN;");
+    bool ok = runRootlistUpdate(m_db, "UPDATE rootlist SET position = position + 1 WHERE position >= ?;", {position});
+    sqlite3_stmt* stmt = nullptr;
+    if (ok && sqlite3_prepare_v2(m_db,
+        "INSERT INTO rootlist (uri, title, position) VALUES (?, ?, ?);",
+        -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, uri.c_str(),   -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 2, title.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 3, position);
+        ok = sqlite3_step(stmt) == SQLITE_DONE;
+        sqlite3_finalize(stmt);
+    } else {
+        ok = false;
+    }
+    exec(ok ? "COMMIT;" : "ROLLBACK;");
+    return ok;
+}
+
+void Database::renameRootlistNode(const std::string& uri, const std::string& title)
+{
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, "UPDATE rootlist SET title = ? WHERE uri = ?;", -1, &stmt, nullptr) != SQLITE_OK)
+        return;
+    sqlite3_bind_text(stmt, 1, title.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, uri.c_str(),   -1, SQLITE_TRANSIENT);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+}
+
+void Database::moveRootlistNode(const std::string& uri, int position)
+{
+    const int from = rootlistPosition(m_db, uri);
+    if (from < 0) return;
+    const int to = std::clamp(position, 0, rootlistCount(m_db) - 1);
+    if (to == from) return;
+
+    exec("BEGIN;");
+    // Shift the nodes between the old and the new position towards the gap.
+    bool ok = to > from
+        ? runRootlistUpdate(m_db, "UPDATE rootlist SET position = position - 1 WHERE position > ? AND position <= ?;", {from, to})
+        : runRootlistUpdate(m_db, "UPDATE rootlist SET position = position + 1 WHERE position >= ? AND position < ?;", {to, from});
+    ok = ok && runRootlistUpdate(m_db, "UPDATE rootlist SET position = ? WHERE uri = ?;", {to}, &uri);
+    exec(ok ? "COMMIT;" : "ROLLBACK;");
+}
+
+void Database::removeRootlistNode(const std::string& uri)
+{
+    const int position = rootlistPosition(m_db, uri);
+    if (position < 0) return;
+
+    exec("BEGIN;");
+    bool ok = runRootlistUpdate(m_db, "DELETE FROM rootlist WHERE uri = ?;", {}, &uri);
+    ok = ok && runRootlistUpdate(m_db, "UPDATE rootlist SET position = position - 1 WHERE position > ?;", {position});
+    exec(ok ? "COMMIT;" : "ROLLBACK;");
+}
+
+// ── Playlists ─────────────────────────────────────────────────────────────────
+
+std::string Database::createPlaylist(const std::string& name)
+{
+    const std::string id = generateUUID4();
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, "INSERT INTO playlists (id, name) VALUES (?, ?);", -1, &stmt, nullptr) != SQLITE_OK)
+        return {};
+    sqlite3_bind_text(stmt, 1, id.c_str(),   -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, name.c_str(), -1, SQLITE_TRANSIENT);
+    const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
+    sqlite3_finalize(stmt);
+    return ok ? id : std::string();
+}
+
+void Database::renamePlaylist(const std::string& id, const std::string& name)
+{
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, "UPDATE playlists SET name = ? WHERE id = ?;", -1, &stmt, nullptr) != SQLITE_OK)
+        return;
+    sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, id.c_str(),   -1, SQLITE_TRANSIENT);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+}
+
+void Database::deletePlaylist(const std::string& id)
+{
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, "DELETE FROM playlists WHERE id = ?;", -1, &stmt, nullptr) != SQLITE_OK)
+        return;
+    sqlite3_bind_text(stmt, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+}
+
+std::string Database::getPlaylistName(const std::string& id)
+{
+    sqlite3_stmt* stmt = nullptr;
+    std::string name;
+    if (sqlite3_prepare_v2(m_db, "SELECT name FROM playlists WHERE id = ?;", -1, &stmt, nullptr) != SQLITE_OK)
+        return name;
+    sqlite3_bind_text(stmt, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+        name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+    sqlite3_finalize(stmt);
+    return name;
 }
 
 // ── Accepted third-party domains ──────────────────────────────────────────────

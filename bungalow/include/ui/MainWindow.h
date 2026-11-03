@@ -65,6 +65,8 @@ namespace space {
             void hideMessage();
             int treeview_itemselected(SPObject* sender, SPEventArgs* e);
             int onNavItemContextMenu(SPObject* sender, SPEventArgs* e);
+            int onNavItemRenamed(SPObject* sender, SPEventArgs* e);
+            int onNavItemMoved(SPObject* sender, SPEventArgs* e);
             MainWindow();
             void onLoad(SPNode *sender, SPEventArgs *args);
             virtual SPElement* createElement(const string&, SPElement*) override;

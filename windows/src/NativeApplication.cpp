@@ -112,6 +112,21 @@ namespace space
         }
     }
 
+    void NativeApplication::wheelEvent(int x, int y, int wheelDelta)
+    {
+        if (!space || !windowElement)
+            return;
+        UINT lines = 3;
+        SystemParametersInfoW(SPI_GETWHEELSCROLLLINES, 0, &lines, 0);
+        if (lines == WHEEL_PAGESCROLL)
+            lines = 20;
+        // Precision touchpads send fractions of WHEEL_DELTA, which scroll smoothly.
+        constexpr int lineHeight = 16;
+        auto *args = new SPMouseEventArgs(0, x, y);
+        args->setWheelDeltaY(-wheelDelta * static_cast<int>(lines) * lineHeight / WHEEL_DELTA);
+        space->dispatchEvent("mousewheel", args, windowElement);
+    }
+
     void NativeApplication::keyEvent(int keyCode, bool commandDown)
     {
         if (!space || !windowElement)

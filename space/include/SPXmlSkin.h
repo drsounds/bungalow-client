@@ -31,6 +31,12 @@ namespace space {
     /// A selector with mode="dark"/"light" wins over one without a mode in
     /// that colour scheme and is ignored in the other.
     ///
+    /// Vertical scrollbars are styled by sp-scrollbar::vertical::top, ::bottom,
+    /// ::space (the track) and ::thumb. The sprites set the scrollbar's width,
+    /// the button heights and the thumb's minimum height. On ::top and
+    /// ::bottom, name="overflow" value="4" lets the button overlap the track
+    /// by that many pixels; the thumb travels into the overlap.
+    ///
     /// Sprites and colors are colorized by the skin's hue/saturation/lightness
     /// so the HSL sliders tint the whole skin. Anything the stylesheet does not
     /// style falls back to SPModernSkin's procedural drawing.
@@ -61,6 +67,8 @@ namespace space {
         /// sp-treeitem with state "selected" or "hover".
         void drawTreeItem(SPGraphicsContext* g, SPTreeViewElement* treeView, SPTreeItem* item, int itemHeight, int x, int y, int width, int height) override;
         void drawTabBarTab(SPGraphicsContext* g, SPTabBarElement* tabBar, SPTab* tab, int index, bool active, int x, int y, int width, int height) override;
+        SPScrollBarMetrics getScrollBarMetrics(SPElement* elm) override;
+        void drawScrollBarPart(SPGraphicsContext* g, SPElement* elm, SPScrollBarPart part, const string& state, const sp_rectangle& bounds) override;
 
     private:
         struct ColorState {

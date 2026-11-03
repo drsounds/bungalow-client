@@ -403,10 +403,10 @@ void SPClassicSkin::drawTabBar(
 void SPClassicSkin::drawTreeItem(SPGraphicsContext* g, SPTreeViewElement *treeView, SPTreeItem* item, int itemHeight, int x, int y, int width, int height)
 {
     if (item->isSelected()) {
-        g->fillRectangle(x, y, treeView->getWidth(), itemHeight, SPColor(166, 218, 251, 255));
+        g->fillRectangle(x, y, width, itemHeight, SPColor(166, 218, 251, 255));
     }
     if (item->isHighlighted()) {
-        g->fillRectangle(x, y, treeView->getWidth(), itemHeight, SPColor(166, 218, 251, 128));
+        g->fillRectangle(x, y, width, itemHeight, SPColor(166, 218, 251, 128));
     }
 }
 

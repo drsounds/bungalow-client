@@ -73,9 +73,14 @@ create in code.
 | `entity`, `entity-field` | bind the element's text to a field of a URI entity; see [URI store](./uri-store.md) |
 | `name` | field name for inputs and buttons in postbacks |
 | `onclick` | the action a button posts back |
+| `overflow` | `auto` scrolls content taller than the element, with the mouse wheel and a [skinned scrollbar](./skins.md#scrollbars); `hidden` (the default, except for views and the sidebar) clips it |
 
-Changing `bgcolor`, `fgcolor`, `flex`, `gap`, `width`, `height`, `src` or
-`entity` at run time updates the element (`attributechanged`).
+Changing `bgcolor`, `fgcolor`, `flex`, `gap`, `width`, `height`, `src`,
+`entity` or `overflow` at run time updates the element (`attributechanged`).
+
+The mouse wheel scrolls the innermost `overflow="auto"` element under the
+pointer, and its ancestors once it has reached its end. Only vertical
+scrolling is supported.
 
 ## Example
 

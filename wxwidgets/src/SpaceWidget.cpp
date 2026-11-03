@@ -63,6 +63,7 @@ bool SpaceWidget::Create(wxWindow *parent,
     Bind(wxEVT_RIGHT_DOWN, &SpaceWidget::OnRightDown, this);
     Bind(wxEVT_RIGHT_UP,  &SpaceWidget::OnRightUp,   this);
     Bind(wxEVT_MOTION,    &SpaceWidget::OnMouseMove,  this);
+    Bind(wxEVT_MOUSEWHEEL, &SpaceWidget::OnMouseWheel, this);
     Bind(wxEVT_COMMAND_LEFT_CLICK, &SpaceWidget::OnLeftClick, this);
     Bind(wxEVT_KEY_DOWN, &SpaceWidget::OnKeyDown, this);
     return FALSE;
@@ -175,6 +176,25 @@ void SpaceWidget::OnMouseMove(wxMouseEvent& event)
     space::SPEvent evt("mousemove", args, nullptr);
     this->getSpace()->dispatchEvent(
         "mousemove",
+        args,
+        this->m_frame->getWindowElement()
+    );
+}
+
+void SpaceWidget::OnMouseWheel(wxMouseEvent& event)
+{
+    // Only vertical scrolling is supported so far.
+    if (event.GetWheelAxis() != wxMOUSE_WHEEL_VERTICAL || event.GetWheelDelta() == 0) {
+        event.Skip();
+        return;
+    }
+    // Touchpads send fractions of a wheel notch, which scroll smoothly.
+    constexpr int lineHeight = 16;
+    auto *args = new space::SPMouseEventArgs(0, event.GetX(), event.GetY());
+    args->setWheelDeltaY(-event.GetWheelRotation() * event.GetLinesPerAction() * lineHeight
+                         / event.GetWheelDelta());
+    this->getSpace()->dispatchEvent(
+        "mousewheel",
         args,
         this->m_frame->getWindowElement()
     );

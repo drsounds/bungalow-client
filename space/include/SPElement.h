@@ -17,6 +17,7 @@
 #include <nlohmann/json.hpp>
 #include "SPXmlParser.h"
 #include "SPUriStore.h"
+#include "SPScrollBar.h"
 
 using namespace std;
 
@@ -41,6 +42,14 @@ namespace space {
     class SPWindowElement;
     class SPImage;
     class SPFontStyle;
+    class SPMouseEventArgs;
+
+    /// What an element does with content taller than itself.
+    enum class SPOverflow {
+        Hidden,  ///< clipped (the default)
+        Auto     ///< scrolls with the mouse wheel and a skinned scrollbar
+    };
+
     class SPElement : public SPNode {
     protected:
         SPImage *m_backgroundImage;
@@ -86,7 +95,45 @@ namespace space {
                             const string &action, const nlohmann::json &requestData);
         void bindEntity(const string &uri);
         void applyEntity(const SPUriEntry &entry);
+
+        SPOverflow m_overflowY = SPOverflow::Hidden;
+        /// The scrollbar part held down with the mouse, if any.
+        std::optional<SPScrollBarPart> m_scrollBarPressed;
+        /// Distance from the thumb's top to the pointer while dragging it.
+        int m_scrollThumbGrab = 0;
+        /// Pixels the scrollbar buttons scroll by.
+        static constexpr int kScrollLineStep = 24;
+
+        /// Where the vertical scrollbar's parts go for the current bounds and scroll position.
+        SPScrollBarLayout getVerticalScrollBarLayout();
+        void paintVerticalScrollBar(SPGraphicsContext *c);
+        /// Handles a mouse event on the scrollbar. Returns true if it was
+        /// consumed, so it is neither handled by this element nor its children.
+        bool handleScrollBarMouse(const string &event, SPMouseEventArgs *e);
+        /// Called after the vertical scroll position changed.
+        virtual void onScrolled() {}
     public:
+        /// overflow="auto" | "hidden"; see SPOverflow.
+        SPOverflow getOverflowY() const { return m_overflowY; }
+        void setOverflowY(SPOverflow value) { m_overflowY = value; }
+        /// Height of the content, measured from the element's top. By default
+        /// the bottom of the lowest visible child plus the bottom padding.
+        virtual int getContentHeight();
+        /// How far the content can scroll vertically; 0 when it fits.
+        int getMaxScrollY();
+        /// True when overflow is auto and the content is taller than the element.
+        bool hasVerticalScrollBar();
+        /// The skin's scrollbar size for this element.
+        SPScrollBarMetrics getScrollBarMetrics();
+        /// Width the vertical scrollbar takes up, or 0 if it is not shown.
+        int getVerticalScrollBarWidth();
+        /// Scrolls to y, clamped to the content, and repaints.
+        void scrollToY(int y);
+        /// Scrolls the innermost scrollable element under the pointer; when it
+        /// is already at its end the wheel scrolls its ancestors instead.
+        /// Returns true if anything scrolled.
+        virtual bool mouseWheel(SPMouseEventArgs *e);
+
         /// Set by the application layer to receive XUL load-failure notifications.
         static std::function<void(const std::string&)> s_xulErrorHandler;
 

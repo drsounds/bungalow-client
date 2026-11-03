@@ -12,6 +12,7 @@ SPViewElement::SPViewElement(SPElement *parent)
 {
 	this->setTagName("view");
     this->clipView = true;
+    this->setOverflowY(SPOverflow::Auto);
     //ctor
 }
 void SPViewElement::scroll(int scrollX, int scrollY, int mouseX, int mouseY) {

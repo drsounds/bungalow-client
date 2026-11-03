@@ -26,6 +26,10 @@
  *                    saved_at, deleted_at
  *  bookmarks       – id (PK autoincrement), uri (UNIQUE), title,
  *                    parent_id → bookmarks, created_at
+ *  playlists       – id (UUID4 TEXT PK), name, created_at
+ *  rootlist        – id (PK autoincrement), uri (UNIQUE), title, position
+ *                    (0-based, contiguous) — the user's ordered sidebar list
+ *                    (bungalow:rootlist), e.g. bungalow:playlist:<uuid>
  *  db_tables       – id (PK autoincrement), name (UNIQUE), columns, display_name,
  *                    noun_singular, noun_plural, description
  *  user_<name>     – one per user-defined table, id (UUID4 TEXT PK) + columns
@@ -65,6 +69,14 @@ public:
         std::string uri;
         std::string title;
         int         parentId = -1;  // -1 means top-level
+    };
+
+    /** One entry of the rootlist. */
+    struct RootlistNode {
+        int         id       = -1;
+        std::string uri;
+        std::string title;
+        int         position = 0;
     };
 
     // ── Music metadata records ────────────────────────────────────────────────
@@ -182,6 +194,35 @@ public:
 
     /** All child bookmarks of the given parent, ordered by created_at. */
     std::vector<Bookmark> getChildBookmarks(int parentId);
+
+    // ── Rootlist ──────────────────────────────────────────────────────────────
+
+    /** The rootlist, ordered by position. */
+    std::vector<RootlistNode> getRootlist();
+
+    /**
+     * Insert a node at @p position (clamped to the list), moving the nodes
+     * from there on down by one. Returns false if @p uri is already listed.
+     */
+    bool insertRootlistNode(const std::string& uri, const std::string& title, int position);
+
+    /** Set the title of the node for @p uri. */
+    void renameRootlistNode(const std::string& uri, const std::string& title);
+
+    /** Move the node for @p uri to @p position (clamped), shifting the nodes in between. */
+    void moveRootlistNode(const std::string& uri, int position);
+
+    /** Remove the node for @p uri and close the gap it leaves. */
+    void removeRootlistNode(const std::string& uri);
+
+    // ── Playlists ─────────────────────────────────────────────────────────────
+
+    /** Create a playlist. Returns its UUID4. */
+    std::string createPlaylist(const std::string& name);
+    void renamePlaylist(const std::string& id, const std::string& name);
+    void deletePlaylist(const std::string& id);
+    /** The playlist's name, or "" if there is no playlist with @p id. */
+    std::string getPlaylistName(const std::string& id);
 
     // ── Music metadata CRUD ───────────────────────────────────────────────────
 

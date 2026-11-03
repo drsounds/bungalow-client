@@ -137,6 +137,46 @@
         />
         <property name="color" value="$button" />
     </selector>
+    <!-- Vertical scrollbar, 16px wide. The buttons' sprites set their height;
+         overflow is how far the concave bottom of the top button and top of
+         the bottom button reach over the track. The track runs under them and
+         the round thumb travels into the overflow, nestling in the caps. -->
+    <selector match="sp-scrollbar::vertical::top">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="80,112;96,128"
+            nine-patch="2,2,5,2"
+        />
+        <property name="overflow" value="4" />
+    </selector>
+    <selector match="sp-scrollbar::vertical::bottom">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="80,144;96,160"
+            nine-patch="2,5,2,2"
+        />
+        <property name="overflow" value="4" />
+    </selector>
+    <selector match="sp-scrollbar::vertical::space">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="80,128;96,144"
+            nine-patch="1,0,0,1"
+        />
+    </selector>
+    <!-- The thumb's sprite height is its minimum height; taller thumbs
+         stretch the middle row so both round caps keep their shape. -->
+    <selector match="sp-scrollbar::vertical::thumb">
+        <property
+            name="skin"
+            value="url(#skin)"
+            slice="96,128;111,143"
+            nine-patch="2,7,2,7"
+        />
+    </selector>
     <selector match="sp-button" state="active">
         <property
             name="skin"

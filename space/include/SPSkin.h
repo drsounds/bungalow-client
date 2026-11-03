@@ -5,6 +5,7 @@
 #include <string>
 
 #include "SPColor.h"
+#include "SPScrollBar.h"
 
 #include "SPTabBarElement.h"
 #include "SPTableElement.h"
@@ -109,6 +110,13 @@ class SPSkin
         virtual void drawTabBar(SPGraphicsContext* g, SPTabBarElement* tabBar, int x, int y, int width, int height) {}
         virtual void drawTreeItem(SPGraphicsContext* g, SPTreeViewElement *treeView, SPTreeItem* item, int itemHeight, int x, int y, int width, int height) {}
         virtual void drawSectionHeader(SPGraphicsContext* g, SPTreeViewElement* treeView, const string& title, int x, int y, int width, int height) {}
+
+        /// Size of the vertical scrollbar of an element with overflowing content.
+        virtual SPScrollBarMetrics getScrollBarMetrics(SPElement *) { return {}; }
+        /// Draws one part of a vertical scrollbar. state is "active" while the
+        /// part is pressed or dragged, otherwise "". The default draws a thin
+        /// rounded thumb and nothing else.
+        virtual void drawScrollBarPart(SPGraphicsContext* g, SPElement* elm, SPScrollBarPart part, const string& state, const sp_rectangle& bounds);
 
         virtual void setGlossy(bool value) {}
         virtual bool isGlossy() const { return true; }

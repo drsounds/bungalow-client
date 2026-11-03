@@ -20,6 +20,9 @@ namespace space {
         bool m_isSection = false;
         bool m_collapsed = true;
         bool m_isBookmark = false;
+        bool m_isSpacer = false;
+        bool m_draggable = false;
+        bool m_editOnClick = false;
         vector<SPTreeItem*> m_children;
 	public:
 	    [[nodiscard]] bool isHighlighted() const { return this->highlighted; }
@@ -38,6 +41,18 @@ namespace space {
         // Whether this item was created from a user bookmark (can be removed)
         [[nodiscard]] bool isBookmark() const { return m_isBookmark; }
         void setIsBookmark(bool v) { m_isBookmark = v; }
+
+        // A section that shows a blank gap instead of a header
+        [[nodiscard]] bool isSpacer() const { return m_isSpacer; }
+        void setIsSpacer(bool v) { m_isSpacer = v; }
+
+        // Top-level item that can be dragged among adjacent draggable items
+        [[nodiscard]] bool isDraggable() const { return m_draggable; }
+        void setDraggable(bool v) { m_draggable = v; }
+
+        // Clicking shows an inline input instead of selecting the item
+        [[nodiscard]] bool isEditOnClick() const { return m_editOnClick; }
+        void setEditOnClick(bool v) { m_editOnClick = v; }
 
         // Children (one level deep)
         void addChild(SPTreeItem* child) { m_children.push_back(child); }

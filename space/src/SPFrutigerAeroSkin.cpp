@@ -301,10 +301,10 @@ void SPFrutigerAeroSkin::drawTreeItem(SPGraphicsContext* g, SPTreeViewElement* t
         short alpha = item->isSelected() ? 170 : 75;
         SPColor acc = accent();
         SPColor fill(acc.getR(), acc.getG(), acc.getB(), alpha);
-        g->fillRoundedRectangle(x + 4, y + 2, treeView->getWidth() - 8,
+        g->fillRoundedRectangle(x + 4, y + 2, width - 8,
                                 itemHeight - 4, 6, fill);
         if (m_glossy && item->isSelected())
-            drawAeroSheen(g, x + 4, y + 2, treeView->getWidth() - 8, itemHeight - 4, 6);
+            drawAeroSheen(g, x + 4, y + 2, width - 8, itemHeight - 4, 6);
     }
 }
 

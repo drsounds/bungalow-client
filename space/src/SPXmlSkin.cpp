@@ -91,6 +91,16 @@ namespace space {
         const std::map<std::string, std::string> kTypeAliases = {
             { "treeview", "sp-sidebar" },
         };
+
+        const char* scrollBarSelector(SPScrollBarPart part) {
+            switch (part) {
+            case SPScrollBarPart::Up:    return "sp-scrollbar::vertical::top";
+            case SPScrollBarPart::Down:  return "sp-scrollbar::vertical::bottom";
+            case SPScrollBarPart::Track: return "sp-scrollbar::vertical::space";
+            case SPScrollBarPart::Thumb: return "sp-scrollbar::vertical::thumb";
+            }
+            return "";
+        }
     }
 
     SPXmlSkin::SPXmlSkin() = default;
@@ -491,7 +501,7 @@ namespace space {
         // Same inset pill footprint as the procedural modern skin.
         if (rule)
             drawRule(g, *rule, treeView->getColorScheme(),
-                     { x + 4, y + 2, treeView->getWidth() - 8, itemHeight - 4, 0 });
+                     { x + 4, y + 2, width - 8, itemHeight - 4, 0 });
     }
 
     void SPXmlSkin::drawTabBarTab(SPGraphicsContext* g, SPTabBarElement* tabBar, SPTab* tab, int index, bool active,
@@ -507,5 +517,63 @@ namespace space {
         }
         if (rule)
             drawRule(g, *rule, tabBar->getColorScheme(), { x, y, width, height, 0 });
+    }
+
+    SPScrollBarMetrics SPXmlSkin::getScrollBarMetrics(SPElement* elm) {
+        // Layout can run before the window has a colour scheme, which throws.
+        short scheme = SP_COLOR_SCHEME_LIGHT;
+        try { scheme = elm->getColorScheme(); } catch (...) {}
+        const Property* sprites[4] = {};
+        const Rule* rules[4] = {};
+        bool any = false;
+        for (int i = 0; i < 4; ++i) {
+            bool matched = false;
+            rules[i] = findRule({ scrollBarSelector(static_cast<SPScrollBarPart>(i)) }, { "" }, scheme, matched);
+            if (!rules[i]) continue;
+            for (const auto& prop : rules[i]->properties)
+                if (prop->source && (prop->name == "skin" || prop->name == "background")) sprites[i] = prop.get();
+            any = true;
+        }
+        if (!any) return SPModernSkin::getScrollBarMetrics(elm);
+
+        auto overflow = [](const Rule* rule, int limit) {
+            if (!rule) return 0;
+            for (const auto& prop : rule->properties) {
+                if (prop->name != "overflow") continue;
+                std::vector<int> v = parseInts(prop->value);
+                if (!v.empty()) return std::clamp(v[0], 0, limit);
+            }
+            return 0;
+        };
+
+        const Property* up = sprites[static_cast<int>(SPScrollBarPart::Up)];
+        const Property* down = sprites[static_cast<int>(SPScrollBarPart::Down)];
+        const Property* thumb = sprites[static_cast<int>(SPScrollBarPart::Thumb)];
+        SPScrollBarMetrics m;
+        m.width = 0;
+        for (const Property* sprite : sprites)
+            if (sprite) m.width = std::max(m.width, sprite->sw);
+        if (m.width == 0) m.width = SPScrollBarMetrics().width;
+        m.upHeight = up ? up->sh : 0;
+        m.downHeight = down ? down->sh : 0;
+        m.upOverflow = overflow(rules[static_cast<int>(SPScrollBarPart::Up)], m.upHeight);
+        m.downOverflow = overflow(rules[static_cast<int>(SPScrollBarPart::Down)], m.downHeight);
+        if (thumb) m.minThumbHeight = thumb->sh;
+        return m;
+    }
+
+    void SPXmlSkin::drawScrollBarPart(SPGraphicsContext* g, SPElement* elm, SPScrollBarPart part,
+                                      const string& state, const sp_rectangle& bounds) {
+        bool matched = false;
+        const std::vector<std::string> states = state.empty()
+            ? std::vector<std::string>{ "" }
+            : std::vector<std::string>{ state, "" };
+        const Rule* rule = findRule({ scrollBarSelector(part) }, states, elm->getColorScheme(), matched);
+        if (!matched) {
+            SPModernSkin::drawScrollBarPart(g, elm, part, state, bounds);
+            return;
+        }
+        if (rule)
+            drawRule(g, *rule, elm->getColorScheme(), bounds);
     }
 }

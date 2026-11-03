@@ -87,6 +87,7 @@ in use:
 | `bungalow:app:<id>[:<path>…]` | `AppView` (app bundle) | `WebConcept` |
 | `bungalow:curator:<name>`, `bungalow:store:<name>` | curator and store pages | `WebConcept` |
 | `bungalow:search:<query>`, `bungalow:search?q=<query>` | `SearchView` | `SearchConcept` |
+| `bungalow:playlist:<uuid>` | `PlaylistView` | `PlaylistConcept` |
 | `bungalow:artist:<isni>`, anything else | template from `views/` | `SpaceView` |
 
 The complete list, including entity URIs, is in
@@ -123,8 +124,26 @@ library.addChild(navigation::SidebarNode("Tracks", "bungalow:library"));
   order they were first contributed.
 * `setBookmark(true)` marks nodes created from user bookmarks, so the sidebar
   can offer to remove them.
+* `setSpacer(true)` on a section lists its children after a blank gap instead
+  of under a header.
+* `setOnRename(handler)` lets the node be renamed in place from its context
+  menu; with `setEditOnClick(true)`, clicking the node shows the inline input
+  instead of navigating. `setOnMove(handler)` makes it draggable among the
+  adjacent movable nodes, and the handler gets its new index among them.
+  `setOnRemove(handler)` adds Delete to its context menu.
 
 `ui::LeftLibraryMenu` turns the nodes into items in the `SPTreeViewElement`.
 `MainWindow::rebuildNavItems()` rebuilds the whole tree from
 `FeatureManager::sidebarNodes()`. It runs at startup and whenever a concept
 calls `refreshSidebar()`. Selecting an item navigates to its URI.
+
+### The rootlist
+
+`bungalow:rootlist` is the user's ordered list of playlists, stored in the
+`rootlist` table (`uri`, `title`, `position`) with the playlists themselves in
+`playlists`. `PlaylistConcept` shows it at the end of the sidebar after a gap,
+headed by **New playlist**: clicking it turns its label into an input, and the
+submitted name becomes a new playlist at the top of the list. Playlists can be
+dragged into a new order, and renamed or deleted from their context menu.
+`playlist::RootlistManager` makes the changes and fires `RootlistEvents`, which
+the concept follows to refresh the sidebar.

@@ -69,6 +69,15 @@ namespace space
                 element->notify("enter", element, new SPInputEventArgs(toUtf8(value)));
                 return 0;
             }
+            if (message == WM_KEYDOWN && wParam == VK_ESCAPE)
+            {
+                auto *element = reinterpret_cast<SPInputElement *>(refData);
+                element->notify("escape", element, new SPEventArgs(element));
+                return 0;
+            }
+            // Swallow the characters of handled keys so the edit control does not beep.
+            if (message == WM_CHAR && (wParam == VK_RETURN || wParam == VK_ESCAPE))
+                return 0;
             return DefSubclassProc(edit, message, wParam, lParam);
         }
 
@@ -365,6 +374,35 @@ namespace space
         if (auto *input = dynamic_cast<SPInputElement *>(found->second))
             input->setValue(toUtf8(value));
         return true;
+    }
+
+    HWND Win32GraphicsContext::findInput(SPElement *element) const
+    {
+        for (const auto& entry : inputElements)
+            if (entry.second == element)
+                return entry.first;
+        return nullptr;
+    }
+
+    void Win32GraphicsContext::setControlVisible(SPElement *element, bool visible)
+    {
+        HWND control = findInput(element);
+        if (!control || (IsWindowVisible(control) != FALSE) == visible)
+            return;
+        // Hand focus back to the window rather than losing it with the control.
+        if (!visible && GetFocus() == control && window)
+            SetFocus(window);
+        ShowWindow(control, visible ? SW_SHOWNA : SW_HIDE);
+    }
+
+    void Win32GraphicsContext::focusControl(SPElement *element)
+    {
+        HWND control = findInput(element);
+        if (!control)
+            return;
+        ShowWindow(control, SW_SHOWNA);
+        SetFocus(control);
+        SendMessageW(control, EM_SETSEL, 0, -1);
     }
 
     void Win32GraphicsContext::setControlAttribute(SPElement *element, const string& name, const string& value)

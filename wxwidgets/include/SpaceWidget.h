@@ -43,6 +43,7 @@ public:
     wxDECLARE_DYNAMIC_CLASS(SpaceWidget);
 	wxSize DoGetBestSize() const;
     void OnMouseMove(wxMouseEvent& event);
+    void OnMouseWheel(wxMouseEvent& event);
     void Init();
     SpaceWidget()
     {

@@ -128,12 +128,21 @@ namespace space
 
             void WxWidgetsGraphicsContext::setClip(const sp_rectangle& rect)
             {
-                this->getPaintDC()->SetClippingRegion(rect.x - this->origo->x, rect.y - this->origo->y, rect.width, rect.height);
+                wxRect clip(rect.x - this->origo->x, rect.y - this->origo->y, rect.width, rect.height);
+                if (!m_clipStack.empty())
+                    clip.Intersect(m_clipStack.back());
+                m_clipStack.push_back(clip);
+                this->getPaintDC()->DestroyClippingRegion();
+                this->getPaintDC()->SetClippingRegion(clip);
             }
 
             void WxWidgetsGraphicsContext::declipRect()
             {
+                if (!m_clipStack.empty())
+                    m_clipStack.pop_back();
                 this->getPaintDC()->DestroyClippingRegion();
+                if (!m_clipStack.empty())
+                    this->getPaintDC()->SetClippingRegion(m_clipStack.back());
             }
 
             // --------------------------------------------------------------
@@ -434,7 +443,7 @@ namespace space
                     wxTextCtrl* ctrl = new wxTextCtrl(
                         this->m_window,
                         wxID_ANY,
-                        "",
+                        wxString::FromUTF8(elm->getStringAttribute("value", "").c_str()),
                         wxPoint(x, y),
                         wxSize(width, height),
                         wxTE_PROCESS_ENTER
@@ -448,14 +457,39 @@ namespace space
                         &WxWidgetsGraphicsContext::OnTextEnter,
                         this
                     );
+                    ctrl->Bind(wxEVT_KEY_DOWN, &WxWidgetsGraphicsContext::OnTextKeyDown, this);
                 }
                 else
                 {
                     wxControlBase *control = elements[elm->getId()];
                     if (control != nullptr) {
                         control->SetSize(x - this->origo->x, y - this->origo->y, w, h);
+                        // Painted means visible again after setControlVisible(false).
+                        if (!control->IsShown())
+                            control->Show();
                     }
                 }
+            }
+
+            void WxWidgetsGraphicsContext::OnTextKeyDown(wxKeyEvent& evt)
+            {
+                if (evt.GetKeyCode() != WXK_ESCAPE) {
+                    evt.Skip();
+                    return;
+                }
+                auto *widget = dynamic_cast<wxControlBase *>(evt.GetEventObject());
+                auto found = widgets.find(widget);
+                if (found != widgets.end())
+                    found->second->notify("escape", found->second, new SPEventArgs(found->second));
+            }
+
+            void WxWidgetsGraphicsContext::focusControl(SPElement* elm) {
+                auto found = elements.find(elm->getId());
+                if (found == elements.end()) return;
+                found->second->Show();
+                found->second->SetFocus();
+                if (auto *text = dynamic_cast<wxTextCtrl *>(found->second))
+                    text->SelectAll();
             }
 
             void WxWidgetsGraphicsContext::OnTextEnter(wxEvent& evt)
@@ -469,8 +503,12 @@ namespace space
                 );
             }
             void WxWidgetsGraphicsContext::setControlVisible(SPElement* elm, bool visible) {
-                if (elements.count(elm->getId()) > 0)
-                    elements[elm->getId()]->Show(visible);
+                auto found = elements.find(elm->getId());
+                if (found == elements.end() || found->second->IsShown() == visible) return;
+                // Hand focus back to the space widget rather than losing it with the control.
+                if (!visible && found->second->HasFocus() && m_window)
+                    m_window->SetFocus();
+                found->second->Show(visible);
             }
 
             void WxWidgetsGraphicsContext::setControlAttribute(SPElement *elm, const string& attrName, const string& value) {

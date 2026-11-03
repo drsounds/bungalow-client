@@ -95,6 +95,16 @@ SPImage *SPSkin::getImage(string selector, string def) {
     return this->images[selector];
 }
 
+void SPSkin::drawScrollBarPart(SPGraphicsContext* g, SPElement* elm, SPScrollBarPart part, const string& state, const sp_rectangle& bounds) {
+    if (part != SPScrollBarPart::Thumb) return;
+    const int inset = 2;
+    const int width = bounds.width - inset * 2;
+    if (width <= 0 || bounds.height <= 0) return;
+    const short alpha = state == "active" ? 200 : 130;
+    g->fillRoundedRectangle(bounds.x + inset, bounds.y, width, bounds.height, width / 2,
+                            SPColor(128, 128, 128, alpha));
+}
+
 
 SPSkin::~SPSkin()
 {

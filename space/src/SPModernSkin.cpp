@@ -288,7 +288,7 @@ void SPModernSkin::drawTreeItem(SPGraphicsContext* g, SPTreeViewElement* treeVie
         short alpha = item->isSelected() ? 160 : 70;
         // Pill-shaped selection indicator inset from edges
         SPColor fill(99, 149, 234, alpha);
-        g->fillRoundedRectangle(x + 4, y + 2, treeView->getWidth() - 8, itemHeight - 4, 6, fill);
+        g->fillRoundedRectangle(x + 4, y + 2, width - 8, itemHeight - 4, 6, fill);
     }
 }
 

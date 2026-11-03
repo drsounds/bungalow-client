@@ -6,48 +6,56 @@
 
 namespace space {
 namespace ui {
-namespace {
 
-SPTreeItem* createItem(const navigation::SidebarNode& node) {
+LeftLibraryMenu::LeftLibraryMenu(SPTreeViewElement* tree) : m_tree(tree) {}
+
+SPTreeItem* LeftLibraryMenu::createItem(const navigation::SidebarNode& node) {
     auto* item = new SPTreeItem(new SPUri(node.getUri()));
     item->setText(node.getLabel());
     item->setIconPath(node.getIconPath());
     item->setIsBookmark(node.isBookmark());
     item->setCollapsed(!node.isExpanded());
+    item->setDraggable(static_cast<bool>(node.getOnMove()));
+    item->setEditOnClick(node.isEditOnClick() && node.getOnRename());
+    if (node.getOnRename() || node.getOnMove() || node.getOnRemove())
+        m_handlers[item] = {node.getOnRename(), node.getOnMove(), node.getOnRemove()};
     for (const auto& child : node.getChildren())
         item->addChild(createItem(child));
     return item;
 }
-
-} // namespace
-
-LeftLibraryMenu::LeftLibraryMenu(SPTreeViewElement* tree) : m_tree(tree) {}
 
 void LeftLibraryMenu::setNodes(const std::vector<navigation::SidebarNode>& nodes) {
     if (!m_tree) return;
 
     // Group by section; an empty label collects top-level items that are not
     // in any section.
-    std::vector<std::pair<std::string, std::vector<const navigation::SidebarNode*>>> groups;
-    auto groupFor = [&](const std::string& label) -> std::vector<const navigation::SidebarNode*>& {
+    struct Group {
+        std::string label;
+        bool spacer = false;
+        std::vector<const navigation::SidebarNode*> items;
+    };
+    std::vector<Group> groups;
+    auto groupFor = [&](const std::string& label, bool spacer) -> std::vector<const navigation::SidebarNode*>& {
         for (auto& group : groups)
-            if (group.first == label) return group.second;
-        groups.emplace_back(label, std::vector<const navigation::SidebarNode*>());
-        return groups.back().second;
+            if (group.label == label) return group.items;
+        groups.push_back({label, spacer, {}});
+        return groups.back().items;
     };
     for (const auto& node : nodes) {
         if (node.isSection()) {
-            auto& items = groupFor(node.getLabel());
+            auto& items = groupFor(node.getLabel(), node.isSpacer());
             for (const auto& child : node.getChildren()) items.push_back(&child);
         } else {
-            groupFor({}).push_back(&node);
+            groupFor({}, false).push_back(&node);
         }
     }
 
     m_tree->clearItems();
-    for (const auto& [label, items] : groups) {
-        if (!label.empty()) m_tree->addSection(label);
-        for (const auto* node : items) m_tree->addItem(createItem(*node));
+    m_handlers.clear();
+    for (const auto& group : groups) {
+        if (group.spacer) m_tree->addSpacer();
+        else if (!group.label.empty()) m_tree->addSection(group.label);
+        for (const auto* node : group.items) m_tree->addItem(createItem(*node));
     }
     select(m_selectedUri);
 }
@@ -60,6 +68,49 @@ void LeftLibraryMenu::select(const std::string& uri) {
             item->setSelected(item->getUri()->getUri() == uri);
     });
     m_tree->invalidate();
+}
+
+const LeftLibraryMenu::Handlers* LeftLibraryMenu::handlersFor(SPTreeItem* item) const {
+    auto found = m_handlers.find(item);
+    return found == m_handlers.end() ? nullptr : &found->second;
+}
+
+bool LeftLibraryMenu::canRename(SPTreeItem* item) const {
+    const Handlers* handlers = handlersFor(item);
+    return handlers && handlers->onRename && item && !item->isEditOnClick();
+}
+
+bool LeftLibraryMenu::canRemove(SPTreeItem* item) const {
+    const Handlers* handlers = handlersFor(item);
+    return handlers && handlers->onRemove;
+}
+
+void LeftLibraryMenu::beginRename(SPTreeItem* item) {
+    if (m_tree && canRename(item)) m_tree->beginEdit(item, item->getText());
+}
+
+// The handlers usually change what the sidebar shows, which rebuilds the
+// items and their handlers, so each is copied before it is called.
+
+void LeftLibraryMenu::rename(SPTreeItem* item, const std::string& text) {
+    const Handlers* handlers = handlersFor(item);
+    if (!handlers || !handlers->onRename) return;
+    const auto handler = handlers->onRename;
+    handler(text);
+}
+
+void LeftLibraryMenu::move(SPTreeItem* item, int index) {
+    const Handlers* handlers = handlersFor(item);
+    if (!handlers || !handlers->onMove) return;
+    const auto handler = handlers->onMove;
+    handler(index);
+}
+
+void LeftLibraryMenu::remove(SPTreeItem* item) {
+    const Handlers* handlers = handlersFor(item);
+    if (!handlers || !handlers->onRemove) return;
+    const auto handler = handlers->onRemove;
+    handler();
 }
 
 } // namespace ui

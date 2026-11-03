@@ -24,6 +24,8 @@ namespace space
         bool handleCommand(WPARAM wParam, LPARAM lParam);
 
         void setControlAttribute(SPElement *element, const string& name, const string& value) override;
+        void setControlVisible(SPElement *element, bool visible) override;
+        void focusControl(SPElement *element) override;
         void request(const string& method, const string& url, const string& data, RequestCallback callback) override;
         void drawImagePart(SPImage *image, int x, int y, int width, int height, int x1, int y1, int x2, int y2) override;
         void drawSkinImage(const string& resourceId, int x, int y, int width, int height) override;
@@ -74,6 +76,7 @@ namespace space
         void fillSolid(int x, int y, int width, int height, SPColor color);
         void storeBudget(size_t bytes);
         void clearCache();
+        HWND findInput(SPElement *element) const;
 
         HWND window;
         HDC cacheDc = nullptr;

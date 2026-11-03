@@ -93,19 +93,41 @@ namespace ui {
         auto* args = dynamic_cast<TreeViewEventArgs*>(e);
         if (!args) return 0;
         SPTreeItem* item = args->getItem();
-        if (!item || !item->isBookmark()) return 0;
+        if (!item) return 0;
 
         // Capture URI before menu closes (item pointer may be invalidated after rebuild)
         string uri = item->getUri() ? item->getUri()->getUri() : "";
 
-        enum { ID_REMOVE_BOOKMARK = 10200 };
-        const int sel = platform::showPopupMenu({ { ID_REMOVE_BOOKMARK, "Remove bookmark" } });
+        enum { ID_REMOVE_BOOKMARK = 10200, ID_RENAME, ID_DELETE };
+        platform::MenuItems menu;
+        if (item->isBookmark()) menu.push_back({ ID_REMOVE_BOOKMARK, "Remove bookmark" });
+        if (m_sidebar->canRename(item)) menu.push_back({ ID_RENAME, "Rename" });
+        if (m_sidebar->canRemove(item)) menu.push_back({ ID_DELETE, "Delete" });
+        if (menu.empty()) return 0;
+
+        const int sel = platform::showPopupMenu(menu);
 
         if (sel == ID_REMOVE_BOOKMARK && !uri.empty()) {
             auto* app = BungalowApp::current();
             if (app && app->getDatabase())
                 web::BookmarkManager::remove(*app->getDatabase(), uri);
+        } else if (sel == ID_RENAME) {
+            m_sidebar->beginRename(item);
+        } else if (sel == ID_DELETE) {
+            m_sidebar->remove(item);
         }
+        return 0;
+    }
+
+    int MainWindow::onNavItemRenamed(SPObject* /*sender*/, SPEventArgs* e) {
+        auto* args = dynamic_cast<TreeViewEventArgs*>(e);
+        if (args && args->getItem()) m_sidebar->rename(args->getItem(), args->getText());
+        return 0;
+    }
+
+    int MainWindow::onNavItemMoved(SPObject* /*sender*/, SPEventArgs* e) {
+        auto* args = dynamic_cast<TreeViewEventArgs*>(e);
+        if (args && args->getItem()) m_sidebar->move(args->getItem(), args->getIndex());
         return 0;
     }
 
@@ -227,6 +249,8 @@ namespace ui {
 
         treeView->addEventListener("itemselected",   SPCallback(&MainWindow::treeview_itemselected), this, treeView);
         treeView->addEventListener("itemcontextmenu", SPCallback(&MainWindow::onNavItemContextMenu),  this, treeView);
+        treeView->addEventListener("itemrenamed",     SPCallback(&MainWindow::onNavItemRenamed),      this, treeView);
+        treeView->addEventListener("itemmoved",       SPCallback(&MainWindow::onNavItemMoved),        this, treeView);
         treeView->setFlex(1);
         m_sidebar = std::make_unique<LeftLibraryMenu>(treeView);
 

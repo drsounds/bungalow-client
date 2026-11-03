@@ -147,6 +147,7 @@ public:
 	MSG_WM_RBUTTONDOWN(OnRightButtonDown)
 	MSG_WM_RBUTTONUP(OnRightButtonUp)
 	MSG_WM_MOUSEMOVE(OnMouseMove)
+	MSG_WM_MOUSEWHEEL(OnMouseWheel)
 	MSG_WM_KEYDOWN(OnKeyDown)
 	MSG_WM_TIMER(OnTimer)
 	MSG_WM_DESTROY(OnDestroy)
@@ -326,6 +327,13 @@ public:
 		const bool resizeCursor =
 			space::SPElement::getCursorHint() == space::SPElement::SPCursorHint::ResizeHorizontal;
 		::SetCursor(::LoadCursorW(nullptr, resizeCursor ? MAKEINTRESOURCEW(32644) : MAKEINTRESOURCEW(32512)));
+	}
+
+	BOOL OnMouseWheel(UINT, short delta, CPoint point) {
+		// The wheel reports screen coordinates.
+		ScreenToClient(&point);
+		app.wheelEvent(point.x, point.y, delta);
+		return TRUE;
 	}
 
 	LRESULT OnMouseLeave(UINT, WPARAM, LPARAM, BOOL &) {
