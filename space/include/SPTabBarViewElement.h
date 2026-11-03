@@ -26,6 +26,7 @@ public:
 	virtual ~SPTabBarViewElement();
 	virtual void navigate(const string &uri) override;
 	void mouseDown(SPObject *sender, SPEventArgs *e) override;
+	SPTabBarElement *getTabBarElement() { return tabBar; }
 
 protected:
 	SPTabStackElement *tabStack;

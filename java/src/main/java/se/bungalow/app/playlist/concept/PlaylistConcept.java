@@ -41,6 +41,7 @@ public class PlaylistConcept implements Concept {
         ctx.registerEntity(se.bungalow.app.playlist.model.PlaylistRow.class);
 
         ctx.registerView(new PlaylistView(getViewStack()));
+        ctx.registerView(new se.bungalow.app.playlist.views.FederatedPlaylistView(getViewStack()));
 
         SidebarNode root = new SidebarNode("Playlists", "bungalow:playlists");
         playlists = ctx.addSidebarNode(root);

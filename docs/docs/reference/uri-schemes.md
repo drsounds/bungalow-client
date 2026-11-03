@@ -12,7 +12,7 @@ Bungalow uses these URI schemes:
 | `bungalow:` | views, navigation and library entities | `bungalow:library`, `bungalow:track:42` |
 | `sp://` | files inside an app bundle | `sp://modern/skins/modern/images/skin.png` |
 | `musik:` | portable, service-independent content ([RFC-0002](../specs/rfc-0002-musik-uri-scheme.md)) | `musik:isrc:GBAYE0601498` |
-| `bungalow:federated:` | decentralised, shareable playlists ([RFC-0001](../specs/rfc-0001-universal-playlist-sharing.md)) | `bungalow:federated:user:@me@example.social:playlist:<uuid>` |
+| `musik:federated:` | decentralised, shareable playlists ([RFC-0001](../specs/rfc-0001-universal-playlist-sharing.md)) | `musik:federated:user:@me@example.social:playlist:<uuid>` |
 
 ## Aliases
 
@@ -99,14 +99,14 @@ rewrites the `musik:` prefix to `bungalow:` (see [Aliases](#aliases)). Its
 library already uses the same identifiers (ISRC, UPC, ISNI) as keys. Parsing
 the RFC-0002 forms is on the [roadmap](../roadmap.md).
 
-## `bungalow:federated:`
+## `musik:federated:`
 
 A Universal Playlist Sharing Link ([RFC-0001](../specs/rfc-0001-universal-playlist-sharing.md))
 carries a whole playlist, or a reference to a hosted one, attributed to a
 federated handle:
 
 ```
-bungalow:federated:user:<@user@instance>:playlist:<uuid>[:<body>][:sig:<signature>]
+musik:federated:user:<@user@instance>:playlist:<uuid>[:<body>][:sig:<signature>]
 https://ups.bungalow.net/user/<handle>/playlist/<uuid>[/<body>][?sig=<signature>]
 ```
 

@@ -6,6 +6,8 @@
 #include <regex>
 #include "SPWindowElement.h"
 #include "PlayQueueView.h"
+#include "SPTabBarViewElement.h"
+#include "SPTabBarElement.h"
 #include "SPUri.h"
 
 #include <vector>
@@ -17,12 +19,28 @@ inline bool ends_with(std::string const & value, std::string const & ending)
 namespace space {
     void SPViewStackElement::appendChild(SPNode *child) {
     	SPNode::appendChild(child);
+        // Every tabbed view gets a play-queue toggle at the right end of its
+        // tab bar; clicks are re-published as "togglequeue" on the view stack.
+        if (auto *tabbed = dynamic_cast<SPTabBarViewElement *>(child)) {
+            SPTabBarElement *bar = tabbed->getTabBarElement();
+            bar->addToolButton("togglequeue", "Queue");
+            bar->addEventListener("toolbuttonclicked",
+                SPCallback(&SPViewStackElement::onTabBarToolButton), this, bar);
+        }
         SPViewElement *view = (SPViewElement *)child;
         string type = view->getType();
         // cout << "valid view: " << type << endl;
         ((SPElement *)child)->setVisible(false);
         view->setFlex( 1);
     	this->pack();
+    }
+    int SPViewStackElement::onTabBarToolButton(SPObject *, SPEventArgs *e) {
+        auto *args = dynamic_cast<TabBarToolButtonEventArgs *>(e);
+        if (args && args->buttonId == "togglequeue") {
+            SPEventArgs toggle;
+            this->notify("togglequeue", this, &toggle);
+        }
+        return 0;
     }
     SPViewStackElement::SPViewStackElement() {
     }

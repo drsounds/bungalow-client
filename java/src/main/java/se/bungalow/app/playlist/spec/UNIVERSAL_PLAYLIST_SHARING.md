@@ -3,7 +3,7 @@ Spec for universal playlist sharing link (UPS):
 To create an universal decentralized URI for a playlist:
 
 ````text
-    bungalow:federated:user:<mastodon_user_name eg. @username@domain.com:playlist:<base62 encoded data of (<base62 encoded name>:description:<base62 encoded description>[:image:<base64_image_url>]:uris:[<base 62 encoded uri eg. bungalow:isrc:<isrc>,  bungalow:artist:<artist_name>:release:<release_name>:track:<track_number>:recording:<recording_name>:version:[ <recording_version>],https:* etc.])>
+    musik:federated:user:<mastodon_user_name eg. @username@domain.com:playlist:<base62 encoded data of (<base62 encoded name>:description:<base62 encoded description>[:image:<base64_image_url>]:uris:[<base 62 encoded uri eg. bungalow:isrc:<isrc>,  bungalow:artist:<artist_name>:release:<release_name>:track:<track_number>:recording:<recording_name>:version:[ <recording_version>],https:* etc.])>
 ````
 
 also translable to

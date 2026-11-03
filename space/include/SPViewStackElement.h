@@ -16,6 +16,7 @@ namespace space {
 
         enum class NavigationIntent { Normal, Back, Forward };
         void navigateInternal(const string& uri, NavigationIntent intent = NavigationIntent::Normal);
+        int onTabBarToolButton(SPObject *sender, SPEventArgs *e);
 
     public:
         virtual void pack() override;

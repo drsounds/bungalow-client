@@ -12,6 +12,7 @@ import se.bungalow.service.media.PlayRequest;
 import se.bungalow.service.media.TrackAvailability;
 import se.bungalow.app.music.model.PlayableKind;
 import se.bungalow.app.music.model.PlayableRef;
+import se.bungalow.app.music.net.MusikUri;
 import se.bungalow.ui.theme.ThemeManager;
 import se.bungalow.ui.theme.ThemedTableCellRenderer;
 
@@ -706,7 +707,9 @@ public class MusicTable extends JPanel {
 			if (!support.isDrop()) return false;
 			if (reorderHandler != null && !grouped && support.isDataFlavorSupported(ROW_INDEX_FLAVOR))
 				return true;
-			return addHandler != null && support.isDataFlavorSupported(PLAYABLE_REF_FLAVOR);
+			if (addHandler == null) return false;
+			return support.isDataFlavorSupported(PLAYABLE_REF_FLAVOR)
+				|| support.isDataFlavorSupported(DataFlavor.stringFlavor);
 		}
 
 		@Override public boolean importData(TransferSupport support) {
@@ -730,6 +733,14 @@ public class MusicTable extends JPanel {
 					addHandler.add(drag.ref(), drag.expand(), insert);
 					return true;
 				}
+				// A bare musik: URI dragged in from outside (text, another window, a link).
+				if (addHandler != null && support.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+					String text = (String) support.getTransferable().getTransferData(DataFlavor.stringFlavor);
+					PlayableRef ref = refFromMusikUri(text == null ? null : text.trim());
+					if (ref == null) return false;
+					addHandler.add(ref, false, insert);
+					return true;
+				}
 			} catch (Exception e) {
 				return false;
 			}
@@ -737,21 +748,43 @@ public class MusicTable extends JPanel {
 		}
 	}
 
-	/** Carries the cross-view ref payload and, for within-table reorders, the row index. */
+	/** A track {@link PlayableRef} for a dropped {@code musik:} URI, or {@code null} if it isn't one. */
+	private static PlayableRef refFromMusikUri(String text) {
+		if (text == null || !MusikUri.isContentUri(text)) return null;
+		MusikUri m = MusikUri.parse(text);
+		if (m == null) return null;
+		PlayRequest req = MusikUri.toPlayRequest(text);
+		if (req == null) return null;   // artist/release/facet URIs aren't a single track
+		String title = req.title() != null && !req.title().isBlank() ? req.title() : text;
+		return PlayableRef.track(text, title, req.artist(), 0);
+	}
+
+	/**
+	 * Carries the cross-view ref payload, the {@code musik:} URI of the dragged entry
+	 * as plain text (so it can be dropped on a text field, another window, or any
+	 * app that takes links), and, for within-table reorders, the row index.
+	 */
 	private record MusicTransferable(PlaylistDrag drag, Integer rowIndex) implements Transferable {
+		private String uriText() {
+			String uri = drag != null && drag.ref() != null ? drag.ref().getPlayUri() : null;
+			return MusikUri.isContentUri(uri) ? uri : null;
+		}
 		@Override public DataFlavor[] getTransferDataFlavors() {
-			List<DataFlavor> flavors = new ArrayList<>(2);
+			List<DataFlavor> flavors = new ArrayList<>(3);
 			if (drag != null)     flavors.add(PLAYABLE_REF_FLAVOR);
 			if (rowIndex != null) flavors.add(ROW_INDEX_FLAVOR);
+			if (uriText() != null) flavors.add(DataFlavor.stringFlavor);
 			return flavors.toArray(new DataFlavor[0]);
 		}
 		@Override public boolean isDataFlavorSupported(DataFlavor f) {
 			return (drag != null && PLAYABLE_REF_FLAVOR.equals(f))
-				|| (rowIndex != null && ROW_INDEX_FLAVOR.equals(f));
+				|| (rowIndex != null && ROW_INDEX_FLAVOR.equals(f))
+				|| (uriText() != null && DataFlavor.stringFlavor.equals(f));
 		}
 		@Override public Object getTransferData(DataFlavor f) {
-			if (PLAYABLE_REF_FLAVOR.equals(f)) return drag;
-			if (ROW_INDEX_FLAVOR.equals(f))    return rowIndex;
+			if (PLAYABLE_REF_FLAVOR.equals(f))  return drag;
+			if (ROW_INDEX_FLAVOR.equals(f))     return rowIndex;
+			if (DataFlavor.stringFlavor.equals(f)) return uriText();
 			return null;
 		}
 	}

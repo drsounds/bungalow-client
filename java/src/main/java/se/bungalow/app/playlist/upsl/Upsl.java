@@ -1,5 +1,8 @@
 package se.bungalow.app.playlist.upsl;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Parser for a Universal Playlist Sharing Link (UPSL) (RFC-0001 §5–6).
  * {@link #parse(String)} pulls the structural fields out of the link and
@@ -10,7 +13,7 @@ package se.bungalow.app.playlist.upsl;
  * {@code :playlist:} onward (id, then the optional body):
  *
  * <pre>{@code
- *   bungalow:federated:user:<handle>:playlist:<uuid>:<name>:description:<desc>[:image:<img>]:uris:<refs>[:sig:<sig>]
+ *   musik:federated:user:<handle>:playlist:<uuid>:<name>:description:<desc>[:image:<img>]:uris:<refs>[:sig:<sig>]
  *   acct:<mastodon-user-id>:playlist:<uuid>:<name>:description:<desc>[:image:<img>]:uris:<refs>[:sig:<sig>]
  *   musik:acct:<mastodon-user-id>:playlist:<uuid>:…       (same body)
  *   bungalow:acct:<mastodon-user-id>:playlist:<uuid>:…    (same body)
@@ -28,14 +31,17 @@ package se.bungalow.app.playlist.upsl;
  */
 public final class Upsl {
 
-    private static final String FEDERATED_PREFIX  = "bungalow:federated:user:";
+    private static final String FEDERATED_PREFIX  = "musik:federated:user:";
+    /** Earlier spellings of the federated form, still accepted (RFC-0001 §5). */
+    private static final String LEGACY_FEDERATED_PREFIX  = "bungalow:federated:user:";
+    private static final String SPACIFY_FEDERATED_PREFIX = "spacify:federated:user:";
     private static final String ACCT_PREFIX       = "acct:";
     private static final String MUSIK_ACCT_PREFIX = "musik:acct:";
     private static final String BUNGALOW_ACCT_PREFIX = "bungalow:acct:";
 
     /** The prefixes that introduce a UPSL, longest-first so the more specific match wins. */
     private static final String[] PREFIXES = {
-        FEDERATED_PREFIX, MUSIK_ACCT_PREFIX, BUNGALOW_ACCT_PREFIX, ACCT_PREFIX
+        FEDERATED_PREFIX, LEGACY_FEDERATED_PREFIX, SPACIFY_FEDERATED_PREFIX, MUSIK_ACCT_PREFIX, BUNGALOW_ACCT_PREFIX, ACCT_PREFIX
     };
     private static final String PLAYLIST_MARKER = ":playlist:";
     private static final String DESCRIPTION_MARKER = ":description:";
@@ -47,8 +53,11 @@ public final class Upsl {
     private final String playlistId;
     private final String name;
     private final String description;
+    private final List<String> refs;
 
-    private Upsl(String uri, String handle, String playlistId, String name, String description) {
+    private Upsl(String uri, String handle, String playlistId, String name, String description,
+                 List<String> refs) {
+        this.refs        = refs;
         this.uri         = uri;
         this.handle      = handle;
         this.playlistId  = playlistId;
@@ -66,6 +75,9 @@ public final class Upsl {
     public String name()        { return name; }
     /** The playlist description, Base62-decoded; empty when absent. */
     public String description() { return description; }
+
+    /** The decoded content references (RFC-0001 §7, normally {@code musik:} URIs); empty for a hosted link. */
+    public List<String> refs()  { return refs; }
 
     /** True if {@code uri} starts with one of the accepted UPSL prefixes (see the class javadoc). */
     public static boolean isUpsl(String uri) {
@@ -106,7 +118,27 @@ public final class Upsl {
             String afterDesc = body.substring(descAt + DESCRIPTION_MARKER.length());
             description = Base62.decodeText(afterDesc.substring(0, descriptionEnd(afterDesc)));
         }
-        return new Upsl(uri, handle, playlistId, name, description);
+        return new Upsl(uri, handle, playlistId, name, description, parseRefs(body));
+    }
+
+    /** Decode the comma-separated Base62 content refs after {@code :uris:}, up to any {@code :sig:}. */
+    private static List<String> parseRefs(String body) {
+        int urisAt = body.indexOf(URIS_MARKER);
+        if (urisAt < 0) {
+            return List.of();
+        }
+        String list = body.substring(urisAt + URIS_MARKER.length());
+        int sigAt = list.indexOf(":sig:");
+        if (sigAt >= 0) {
+            list = list.substring(0, sigAt);
+        }
+        List<String> out = new ArrayList<>();
+        for (String leaf : list.split(",")) {
+            if (!leaf.isEmpty()) {
+                out.add(Base62.decodeText(leaf));
+            }
+        }
+        return List.copyOf(out);
     }
 
     /** Strip whichever supported UPSL prefix {@code uri} carries, or {@code null} if it carries neither. */

@@ -12,7 +12,7 @@ slug: /specs/rfc-0001
 | **Status** | **Accepted — v1 frozen** (one external dependency: register the canonical domain, §11.1) |
 | **Created** | 2026-06-30 |
 | **Accepted** | 2026-06-30 |
-| **Revised** | 2026-07-05 — content references adopt the `musik:` scheme ([RFC-0002](./rfc-0002-musik-uri-scheme.md)); legacy `bungalow:` content refs remain accepted (§7). |
+| **Revised** | 2026-11-03 — the federated link scheme moves from `bungalow:federated:` to `musik:federated:` (legacy `bungalow:federated:` and `spacify:federated:` remain accepted by readers). 2026-07-05 — content references adopt the `musik:` scheme ([RFC-0002](./rfc-0002-musik-uri-scheme.md)); legacy `bungalow:` content refs remain accepted (§7). |
 | **Author(s)** | Alexander Forselius (@drsounds) |
 | **Source sketch** | [UNIVERSAL_PLAYLIST_SHARING.md](https://github.com/drsounds/bungalow-client/blob/main/java/src/main/java/se/bungalow/app/playlist/spec/UNIVERSAL_PLAYLIST_SHARING.md) |
 | **Scope** | The **UPSL URI scheme** and its federation guidelines. This is a wire-format spec; it deliberately does **not** prescribe how any particular application resolves, stores, or renders a UPSL. |
@@ -56,7 +56,7 @@ whatever services it has. UPSL makes that portability *shareable* and
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, **MAY** are to
 be interpreted as in RFC 2119.
 
-- **UPSL** — a complete link in the `bungalow:federated:` form (§5) or its `https:`
+- **UPSL** — a complete link in the `musik:federated:` form (§5) or its `https:`
   mirror (§8).
 - **Handle** — a Mastodon `acct` identity, `@localpart@domain` (RFC 7565).
 - **Playlist id** — a random UUIDv4 (RFC 4122) identifying the playlist across
@@ -85,10 +85,10 @@ delimiters `:` and `,`. Any implementation needs a Base62 and a Base64url codec.
 - `B64U(bytes)`: RFC 4648 §5 (URL-/filename-safe alphabet), **without** padding.
   Output is `[0-9A-Za-z_-]`. Used for the cover image (§6) and the signature (§10).
 
-## 5. The `bungalow:federated:` URI
+## 5. The `musik:federated:` URI
 
 ```abnf
-upsl        = "bungalow:federated:user:" handle ":playlist:" playlist-id
+upsl        = "musik:federated:user:" handle ":playlist:" playlist-id
               [ ":" body ] [ ":sig:" signature ]
 handle      = "@" localpart "@" domain           ; Mastodon acct, RFC 7565
 localpart   = 1*( ALPHA / DIGIT / "_" / "." / "-" )
@@ -98,7 +98,7 @@ body        = <§6>                               ; present ⇒ embedded; absent
 signature   = 1*( B64U-CHAR )                    ; <§10>
 ```
 
-**Parsing.** After the fixed `bungalow:federated:user:` prefix, read up to `:playlist:`
+**Parsing.** After the fixed `musik:federated:user:` prefix, read up to `:playlist:`
 as the `handle`, then the next `:`-delimited token (a UUID — no colons) as the
 `playlist-id`. The remainder is interpreted by markers, all unambiguous because
 `body` leaves are Base62 and `signature` is Base64url (neither contains `:`):
@@ -107,7 +107,7 @@ as the `handle`, then the next `:`-delimited token (a UUID — no colons) as the
   `playlist-id` (every body has it, §6);
 - a `signature` is the final `:sig:`-introduced segment, if any.
 
-A bare `bungalow:federated:user:<handle>:playlist:<uuid>` (no body) is a **hosted**
+A bare `musik:federated:user:<handle>:playlist:<uuid>` (no body) is a **hosted**
 reference (§8).
 
 ## 6. Body grammar
@@ -222,7 +222,7 @@ fediverse.
 - **Algorithm:** Ed25519 (RFC 8032). `signature = B64U( Ed25519-Sign(K_priv,
   canonical) )`, where `canonical` is the exact UTF-8 of the link up to **but
   excluding** the `:sig:` segment, i.e.
-  `bungalow:federated:user:<handle>:playlist:<playlist-id>[:<body>]`.
+  `musik:federated:user:<handle>:playlist:<playlist-id>[:<body>]`.
 - **Key discovery:** the verifier resolves the `handle` to its ActivityPub actor
   (WebFinger, RFC 7033, on `domain`) and uses the actor's published signing key.
 - **Provenance, not authorization:** a valid signature proves the link was issued
@@ -239,7 +239,7 @@ inflated by Base62/Base64url expansion (~1.34×), plus the fixed prefix and the
 36-char `playlist-id`:
 
 ```
-len(link) ≈ len("bungalow:federated:user:") + len(handle) + len(":playlist:")
+len(link) ≈ len("musik:federated:user:") + len(handle) + len(":playlist:")
           + 36 (uuid) + Σ( ~1.34 × leaf-bytes ) + structural ":"/"," chars
           [ + len(":sig:") + ~86  if signed ]
 ```
@@ -255,7 +255,7 @@ Rules:
 
 `base-domain = ups.bungalow.net` is **provisional**: the domain must be registered
 and the hosted/mirror endpoint stood up before the `https:` form and hosted
-references go live. In-app `bungalow:federated:` links work without it.
+references go live. In-app `musik:federated:` links work without it.
 
 ## 12. Security & privacy considerations
 
@@ -285,10 +285,10 @@ body (B62/B64U shown symbolically):
     B62("musik:artist:Aphex%20Twin:release:SAW%2085-92:track:1:name:Xtal")
 
 embedded UPSL (signed):
-  bungalow:federated:user:@drsounds@mastodon.social:playlist:8f2b…-uuid:<body>:sig:<B64U(sig)>
+  musik:federated:user:@drsounds@mastodon.social:playlist:8f2b…-uuid:<body>:sig:<B64U(sig)>
 
 hosted UPSL (no body — instance serves it, subscribable):
-  bungalow:federated:user:@drsounds@mastodon.social:playlist:8f2b…-uuid
+  musik:federated:user:@drsounds@mastodon.social:playlist:8f2b…-uuid
 
 HTTPS mirror (embedded):
   https://ups.bungalow.net/user/%40drsounds%40mastodon.social/playlist/8f2b…-uuid/<body>?sig=<B64U(sig)>

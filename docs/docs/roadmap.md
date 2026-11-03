@@ -77,7 +77,7 @@ client, and what comes next.
    parse the identifier, name and query forms instead of only aliasing the
    prefix, and use them in playlists, drag and drop and the queue.
 4. **Decentralised playlists** ([RFC-0001](./specs/rfc-0001-universal-playlist-sharing.md)):
-   create, parse and preview `bungalow:federated:` links, then add hosted
+   create, parse and preview `musik:federated:` links, then add hosted
    links, Ed25519 verification and ActivityPub subscriptions.
 5. **Catalogue and store aspects**, so catalogues and stores can be installed
    side by side and searched together.

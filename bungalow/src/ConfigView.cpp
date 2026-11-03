@@ -451,7 +451,19 @@ void ConfigView::saveSettings() {
 
     SPColor color = m_colorChooser->getSelectedColor();
 
+    // Merge into the existing file so keys owned elsewhere (showPlayQueue) survive.
     nlohmann::json obj = nlohmann::json::object();
+    {
+        std::ifstream in(getSettingsPath());
+        if (in.is_open()) {
+            std::ostringstream ss;
+            ss << in.rdbuf();
+            try {
+                nlohmann::json existing = nlohmann::json::parse(ss.str());
+                if (existing.is_object()) obj = std::move(existing);
+            } catch (...) {}
+        }
+    }
     obj["tintColor"]            = color.toHTMLColor();
     obj["colorScheme"]          = m_pendingScheme;
     obj["glossy"]               = m_pendingGlossy;

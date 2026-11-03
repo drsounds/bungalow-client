@@ -36,7 +36,7 @@ public class UpslTest {
     public void parsesEmbeddedLink() {
         String name = "Roadtrip";
         String description = "Summer bangers";
-        String uri = "bungalow:federated:user:@drsounds@mastodon.social:playlist:8f2bffff-uuid:"
+        String uri = "musik:federated:user:@drsounds@mastodon.social:playlist:8f2bffff-uuid:"
             + Base62.encodeText(name) + ":description:" + Base62.encodeText(description)
             + ":uris:" + Base62.encodeText("musik:isrc:GBAAA0000001");
 
@@ -111,7 +111,7 @@ public class UpslTest {
 
     @Test
     public void descriptionStopsAtImageMarker() {
-        String uri = "bungalow:federated:user:@a@b:playlist:id:"
+        String uri = "musik:federated:user:@a@b:playlist:id:"
             + Base62.encodeText("N") + ":description:" + Base62.encodeText("D")
             + ":image:" + b64u("https://img")
             + ":uris:" + Base62.encodeText("musik:isrc:X");
@@ -124,7 +124,7 @@ public class UpslTest {
 
     @Test
     public void hostedLinkHasNoBody() {
-        Upsl upsl = Upsl.parse("bungalow:federated:user:@a@b:playlist:8f2bffff-uuid");
+        Upsl upsl = Upsl.parse("musik:federated:user:@a@b:playlist:8f2bffff-uuid");
 
         assertEquals("8f2bffff-uuid", upsl.playlistId());
         assertEquals("", upsl.name());

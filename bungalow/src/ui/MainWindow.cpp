@@ -30,6 +30,11 @@
 #include "SPUri.h"
 
 #include "PlatformUi.h"
+#include "ConfigView.h"
+
+#include <fstream>
+#include <sstream>
+#include <nlohmann/json.hpp>
 
 namespace space {
 namespace ui {
@@ -239,10 +244,29 @@ namespace ui {
         app::registerBuiltins(*m_features, *m_concepts);
         rebuildNavItems();
 
-        body->appendChild(new SPSplitterElement(body));
+        auto *queueSplitter = new SPSplitterElement(body);
+        body->appendChild(queueSplitter);
         auto *playQueuePanel = new views::PlayQueueView(body);
         body->appendChild(playQueuePanel);
-        body->pack();
+        m_queueSplitter = queueSplitter;
+        m_queuePanel = playQueuePanel;
+        viewStack->addEventListener("togglequeue", SPCallback(&MainWindow::onToggleQueue), this, viewStack);
+
+        // Hidden unless the user left it open last run.
+        bool showQueue = false;
+        {
+            std::ifstream in(views::ConfigView::getSettingsPath());
+            if (in.is_open()) {
+                std::ostringstream ss;
+                ss << in.rdbuf();
+                try {
+                    auto obj = nlohmann::json::parse(ss.str());
+                    if (obj.contains("showPlayQueue"))
+                        showQueue = obj.at("showPlayQueue").get<bool>();
+                } catch (...) {}
+            }
+        }
+        setPlayQueueVisible(showQueue);
 
         footer = (SPAppFooterElement *)this->getElementById("footer");
         footer->setHeight(32);
@@ -323,6 +347,43 @@ namespace ui {
 
     SPViewStackElement *MainWindow::getViewStack() {
         return this->viewStack;
+    }
+
+    void MainWindow::setPlayQueueVisible(bool visible) {
+        m_queueVisible = visible;
+        if (!m_queuePanel || !m_queueSplitter) return;
+        if (visible) {
+            m_queueSplitter->show();
+            m_queuePanel->show();
+        } else {
+            m_queueSplitter->hide();
+            m_queuePanel->hide();
+        }
+        body->pack();
+        body->invalidate();
+    }
+
+    int MainWindow::onToggleQueue(SPObject* /*sender*/, SPEventArgs* /*args*/) {
+        setPlayQueueVisible(!m_queueVisible);
+
+        // Merge into the settings file so other keys survive.
+        nlohmann::json obj = nlohmann::json::object();
+        {
+            std::ifstream in(views::ConfigView::getSettingsPath());
+            if (in.is_open()) {
+                std::ostringstream ss;
+                ss << in.rdbuf();
+                try {
+                    auto existing = nlohmann::json::parse(ss.str());
+                    if (existing.is_object()) obj = std::move(existing);
+                } catch (...) {}
+            }
+        }
+        obj["showPlayQueue"] = m_queueVisible;
+        std::ofstream file(views::ConfigView::getSettingsPath());
+        if (file.is_open())
+            file << obj.dump();
+        return 0;
     }
 
     void MainWindow::setFullWidthAddressBar(bool fullWidth) {

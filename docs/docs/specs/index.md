@@ -14,7 +14,7 @@ each implementation.
 
 | RFC | Status | Defines |
 |-----|--------|---------|
-| [RFC-0001: Universal Playlist Sharing Link (UPSL)](./rfc-0001-universal-playlist-sharing.md) | Accepted, v1 frozen | `bungalow:federated:` playlist links, federation, signing |
+| [RFC-0001: Universal Playlist Sharing Link (UPSL)](./rfc-0001-universal-playlist-sharing.md) | Accepted, v1 frozen | `musik:federated:` playlist links, federation, signing |
 | [RFC-0002: The `musik:` URI scheme](./rfc-0002-musik-uri-scheme.md) | Provisional | service-independent names for recordings, works, releases, artists, genres and moods |
 
 RFC-0002 is the building block: a UPSL playlist is an ordered list of `musik:`
@@ -44,7 +44,7 @@ the name form with as many coordinates as they know.
 A **Universal Playlist Sharing Link** puts a whole playlist into one URI:
 
 ```
-bungalow:federated:user:@drsounds@mastodon.social:playlist:<uuid>
+musik:federated:user:@drsounds@mastodon.social:playlist:<uuid>
     :<name>:description:<description>[:image:<cover>]:uris:<ref>,<ref>,…[:sig:<signature>]
 ```
 

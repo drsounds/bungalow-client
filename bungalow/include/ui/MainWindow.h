@@ -50,6 +50,9 @@ namespace space {
             SPButtonElement *forwardButton;
             SPButtonElement *accountButton;
             SPNowPlayingBarElement* m_nowPlayingBar = nullptr;
+            SPElement* m_queueSplitter = nullptr;
+            SPElement* m_queuePanel = nullptr;
+            bool m_queueVisible = false;
 
             // Declaration order matters: concepts are deactivated first.
             std::unique_ptr<LeftLibraryMenu> m_sidebar;
@@ -87,6 +90,9 @@ namespace space {
 
             void showMessage(SPMessageType msgType, string msg);
             void setFullWidthAddressBar(bool fullWidth);
+            // Shows or hides the play queue panel (and its splitter).
+            void setPlayQueueVisible(bool visible);
+            int onToggleQueue(SPObject* sender, SPEventArgs* args);
             // Rebuilds the sidebar from the registered features' current nodes.
             void rebuildNavItems();
 
