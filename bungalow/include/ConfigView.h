@@ -32,6 +32,9 @@ public:
     void setVisible(bool value) override;
 
     static string getSettingsPath();
+    /// The user's @user@instance handle that new playlists are federated
+    /// under (RFC-0001): the "federatedHandle" setting, or a local default.
+    static string getFederatedHandle();
     void loadSettings();
     void saveSettings();
 
@@ -59,6 +62,7 @@ private:
     SPButtonElement* m_glossyButton           = nullptr;
     SPInputElement*  m_downloadsFolderInput   = nullptr;
     SPInputElement*  m_musicFolderInput       = nullptr;
+    SPInputElement*  m_federatedHandleInput   = nullptr;
     SPButtonElement* m_browseDownloadsBtn     = nullptr;
     SPButtonElement* m_browseMusicBtn         = nullptr;
     SPButtonElement* m_developerModeButton    = nullptr;

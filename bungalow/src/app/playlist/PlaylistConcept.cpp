@@ -7,6 +7,7 @@
 #include "playlist/RootlistEvents.h"
 #include "playlist/RootlistManager.h"
 
+#include "ConfigView.h"
 #include "Database.h"
 #include "PlatformUi.h"
 
@@ -31,7 +32,8 @@ public:
         newPlaylist.setIconPath("icons/Document.svg")
             .setEditOnClick(true)
             .setOnRename([](const std::string& name) {
-                if (Database* db = database()) RootlistManager::createPlaylist(*db, name);
+                if (Database* db = database())
+                    RootlistManager::createPlaylist(*db, name, views::ConfigView::getFederatedHandle());
             });
         section.addChild(std::move(newPlaylist));
 
@@ -63,7 +65,11 @@ public:
 
 void PlaylistConcept::onActivate(concepts::ConceptContext& ctx) {
     m_ctx = &ctx;
-    m_view = new PlaylistView(ctx.viewStack());
+    // Playlists made before they were federated become the user's.
+    if (Database* db = database())
+        playlist::RootlistManager::migrateLegacyUris(*db, views::ConfigView::getFederatedHandle());
+
+    m_view = new PlaylistView(ctx.viewStack(), database());
     ctx.registerView(m_view);
     ctx.registerFeature(std::make_unique<RootlistFeature>());
 

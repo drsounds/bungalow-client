@@ -1,26 +1,35 @@
 #pragma once
 
-#include "SPViewElement.h"
+#include "app/library/MusicBrowseView.h"
 
 #include <string>
 
-namespace space {
-class SPHeaderElement;
+class Database;
 
+namespace space {
 namespace app {
 
-/// bungalow:playlist:<id> — the playlist's name.
-class PlaylistView : public SPViewElement {
+/// A federated playlist, musik:federated:user:<handle>:playlist:<uuid>[:<body>]
+/// (RFC-0001). A link with an embedded body shows the playlist it carries;
+/// a hosted link shows the user's own playlist with that id from the
+/// database. Content refs are listed as tracks, playable when an ISRC is in
+/// the library.
+class PlaylistView : public views::MusicBrowseView {
 public:
-    explicit PlaylistView(SPElement* parent);
+    PlaylistView(SPElement* parent, Database* db);
 
     bool acceptsUri(const std::string& uri) override;
     void navigate(const std::string& uri) override;
-    /// Shows the current playlist's name again, e.g. after a rename.
-    void refresh();
+    /// Shows the current playlist again, e.g. after a rename.
+    using MusicBrowseView::refresh;
+
+protected:
+    void reload() override;
+    void onActivate(Page& page, int row) override;
 
 private:
-    SPHeaderElement* m_header = nullptr;
+    MusicEntityRow rowFor(int index, const std::string& ref) const;
+
     std::string m_uri;
 };
 

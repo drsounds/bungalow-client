@@ -16,6 +16,7 @@
 #include "SPGraphicsContext.h"
 #include "PlatformUi.h"
 #include "DownloadManager.h"
+#include "playlist/Upsl.h"
 
 #include <nlohmann/json.hpp>
 #include <cstdint>
@@ -297,6 +298,15 @@ ConfigView::ConfigView(SPElement *parent) : SPViewElement(parent) {
         this, m_browseMusicBtn
     );
 
+    // ── Federated Handle section ───────────────────────────────────────────
+    // New playlists are shared as musik:federated:user:<handle>:playlist:<id>.
+    makeLabel(this, "Federated Handle (@user@instance)", 20);
+
+    m_federatedHandleInput = new SPInputElement(this);
+    m_federatedHandleInput->setId("federatedHandleInput");
+    m_federatedHandleInput->setHeight(28);
+    this->appendChild(m_federatedHandleInput);
+
     loadSettings();
 }
 
@@ -324,6 +334,22 @@ void ConfigView::setVisible(bool value) {
 
 string ConfigView::getSettingsPath() {
     return platform::userDataDir() + "/settings.json";
+}
+
+string ConfigView::getFederatedHandle() {
+    std::ifstream file(getSettingsPath());
+    if (file.is_open()) {
+        std::ostringstream ss;
+        ss << file.rdbuf();
+        try {
+            nlohmann::json obj = nlohmann::json::parse(ss.str());
+            if (obj.contains("federatedHandle") && obj.at("federatedHandle").is_string()) {
+                const string handle = obj.at("federatedHandle").get<string>();
+                if (playlist::Upsl::isValidHandle(handle)) return handle;
+            }
+        } catch (...) {}
+    }
+    return playlist::Upsl::defaultHandle();
 }
 
 // ── Button state helpers ──────────────────────────────────────────────────────
@@ -444,6 +470,8 @@ void ConfigView::loadSettings() {
         m_downloadsFolderInput->setValue(DownloadManager::getDownloadsFolder());
     if (m_musicFolderInput && m_musicFolderInput->getValue().empty())
         m_musicFolderInput->setValue(DownloadManager::getMusicFolder());
+    if (m_federatedHandleInput)
+        m_federatedHandleInput->setValue(getFederatedHandle());
 }
 
 void ConfigView::saveSettings() {
@@ -479,6 +507,9 @@ void ConfigView::saveSettings() {
         obj["downloadsFolder"] = m_downloadsFolderInput->getValue();
     if (m_musicFolderInput && !m_musicFolderInput->getValue().empty())
         obj["musicFolder"] = m_musicFolderInput->getValue();
+    // An invalid handle is not saved; the field shows the current one again on load.
+    if (m_federatedHandleInput && playlist::Upsl::isValidHandle(m_federatedHandleInput->getValue()))
+        obj["federatedHandle"] = m_federatedHandleInput->getValue();
 
     std::ofstream file(getSettingsPath());
     if (file.is_open()) {

@@ -47,7 +47,7 @@ view that accepts the URI. See [Navigation](../architecture/navigation.md).
 | `bungalow:table:<name>` | A user table | `DatabaseFeature` |
 | `bungalow:table:<name>:<id>` | One row of a user table | `DatabaseFeature` |
 | `bungalow:search`, `bungalow:search:<query>`, `bungalow:search?q=<query>` | Unified search | `SearchConcept` |
-| `bungalow:playlist:<uuid>` | A playlist | `PlaylistConcept` |
+| `musik:federated:user:<handle>:playlist:<uuid>[:<body>]` | A federated playlist ([RFC-0001](../specs/rfc-0001-universal-playlist-sharing.md)); kept as `musik:` when navigating, and the legacy `bungalow:federated:`/`spacify:federated:` spellings are rewritten to it | `PlaylistConcept` |
 | `bungalow:rootlist` | The user's ordered playlists, shown at the end of the sidebar (not a view) | `PlaylistConcept` |
 | `bungalow:site:<host>[:<path>…][?query][#fragment]` | A web site | `WebConcept` |
 | `bungalow:app:<id>[:<segment>…]` | An app bundle, or `https://<id>.apps.bungalow.se` | `WebConcept` |

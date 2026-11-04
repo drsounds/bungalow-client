@@ -250,6 +250,9 @@ void Database::initialize() {
         );
     )");
 
+    // Migration: the federated handle a playlist belongs to (ignored if it exists)
+    sqlite3_exec(m_db, "ALTER TABLE playlists ADD COLUMN handle TEXT", nullptr, nullptr, nullptr);
+
     // Rootlist — the user's ordered list of playlists (and other URIs) in the sidebar
     exec(R"(
         CREATE TABLE IF NOT EXISTS rootlist (
@@ -532,17 +535,40 @@ void Database::removeRootlistNode(const std::string& uri)
 
 // ── Playlists ─────────────────────────────────────────────────────────────────
 
-std::string Database::createPlaylist(const std::string& name)
+std::string Database::createPlaylist(const std::string& name, const std::string& handle)
 {
     const std::string id = generateUUID4();
     sqlite3_stmt* stmt = nullptr;
-    if (sqlite3_prepare_v2(m_db, "INSERT INTO playlists (id, name) VALUES (?, ?);", -1, &stmt, nullptr) != SQLITE_OK)
+    if (sqlite3_prepare_v2(m_db, "INSERT INTO playlists (id, name, handle) VALUES (?, ?, ?);", -1, &stmt, nullptr) != SQLITE_OK)
         return {};
-    sqlite3_bind_text(stmt, 1, id.c_str(),   -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, name.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, id.c_str(),     -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, name.c_str(),   -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, handle.c_str(), -1, SQLITE_TRANSIENT);
     const bool ok = sqlite3_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
     return ok ? id : std::string();
+}
+
+void Database::setPlaylistHandle(const std::string& id, const std::string& handle)
+{
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, "UPDATE playlists SET handle = ? WHERE id = ?;", -1, &stmt, nullptr) != SQLITE_OK)
+        return;
+    sqlite3_bind_text(stmt, 1, handle.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, id.c_str(),     -1, SQLITE_TRANSIENT);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+}
+
+void Database::setRootlistNodeUri(const std::string& uri, const std::string& newUri)
+{
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, "UPDATE rootlist SET uri = ? WHERE uri = ?;", -1, &stmt, nullptr) != SQLITE_OK)
+        return;
+    sqlite3_bind_text(stmt, 1, newUri.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, uri.c_str(),    -1, SQLITE_TRANSIENT);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
 }
 
 void Database::renamePlaylist(const std::string& id, const std::string& name)

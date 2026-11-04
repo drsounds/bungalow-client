@@ -1,6 +1,7 @@
 #include "playlist/RootlistManager.h"
 
 #include "playlist/RootlistEvents.h"
+#include "playlist/Upsl.h"
 
 namespace space {
 namespace playlist {
@@ -9,10 +10,10 @@ std::vector<Database::RootlistNode> RootlistManager::nodes(Database& db) {
     return db.getRootlist();
 }
 
-std::string RootlistManager::createPlaylist(Database& db, const std::string& name) {
-    const std::string id = db.createPlaylist(name);
+std::string RootlistManager::createPlaylist(Database& db, const std::string& name, const std::string& handle) {
+    const std::string id = db.createPlaylist(name, handle);
     if (id.empty()) return {};
-    const std::string uri = kPlaylistPrefix + id;
+    const std::string uri = Upsl::hostedUri(handle, id);
     if (!db.insertRootlistNode(uri, name, 0)) {
         db.deletePlaylist(id);
         return {};
@@ -40,11 +41,23 @@ void RootlistManager::remove(Database& db, const std::string& uri) {
     RootlistEvents::fireChanged();
 }
 
+void RootlistManager::migrateLegacyUris(Database& db, const std::string& handle) {
+    const std::string legacyPrefix = "bungalow:playlist:";
+    bool changed = false;
+    for (const auto& node : db.getRootlist()) {
+        if (node.uri.rfind(legacyPrefix, 0) != 0) continue;
+        const std::string id = node.uri.substr(legacyPrefix.size());
+        if (id.empty() || id.find(':') != std::string::npos) continue;
+        db.setRootlistNodeUri(node.uri, Upsl::hostedUri(handle, id));
+        db.setPlaylistHandle(id, handle);
+        changed = true;
+    }
+    if (changed) RootlistEvents::fireChanged();
+}
+
 std::string RootlistManager::playlistId(const std::string& uri) {
-    const std::string prefix = kPlaylistPrefix;
-    if (uri.rfind(prefix, 0) != 0) return {};
-    const std::string id = uri.substr(prefix.size());
-    return id.find(':') == std::string::npos ? id : std::string();
+    const auto upsl = Upsl::parse(uri);
+    return upsl ? upsl->playlistId : std::string();
 }
 
 } // namespace playlist

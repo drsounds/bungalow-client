@@ -320,7 +320,8 @@ if(BUILD_TESTING)
             bungalow/tests/RootlistTest.cpp
             bungalow/src/Database.cpp
             bungalow/src/playlist/RootlistEvents.cpp
-            bungalow/src/playlist/RootlistManager.cpp)
+            bungalow/src/playlist/RootlistManager.cpp
+            bungalow/src/playlist/Upsl.cpp)
         target_include_directories(bungalow-rootlist-test PRIVATE bungalow/include)
         target_link_libraries(bungalow-rootlist-test PRIVATE SQLite3::SQLite3)
         add_test(NAME bungalow-rootlist-test COMMAND bungalow-rootlist-test)

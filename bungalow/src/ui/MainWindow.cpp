@@ -6,6 +6,7 @@
 #include "feature/FeatureManager.h"
 #include "search/SearchManager.h"
 #include "web/BookmarkManager.h"
+#include "playlist/Upsl.h"
 
 #include "BungalowApp.h"
 #include "SPInputElement.h"
@@ -53,8 +54,12 @@ namespace ui {
     }
 
     // ── Helper: normalize alternative URI scheme prefixes ────────────────────
-    // space:, bungalow:, and musik: are all aliases for the bungalow: scheme.
+    // space:, bungalow:, and musik: are all aliases for the bungalow: scheme,
+    // except federated playlist links, which are canonically musik:federated:
+    // (RFC-0001) whichever spelling they came in.
     static string normalizeScheme(const string& uri) {
+        if (playlist::Upsl::isUpsl(uri))
+            return playlist::Upsl::canonicalUri(uri);
         static const pair<const char*, const char*> kAliases[] = {
             { "space:",    "bungalow:" },
             { "bungalow:", "bungalow:" },

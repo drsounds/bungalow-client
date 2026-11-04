@@ -87,7 +87,7 @@ in use:
 | `bungalow:app:<id>[:<path>…]` | `AppView` (app bundle) | `WebConcept` |
 | `bungalow:curator:<name>`, `bungalow:store:<name>` | curator and store pages | `WebConcept` |
 | `bungalow:search:<query>`, `bungalow:search?q=<query>` | `SearchView` | `SearchConcept` |
-| `bungalow:playlist:<uuid>` | `PlaylistView` | `PlaylistConcept` |
+| `musik:federated:user:<handle>:playlist:<uuid>[:<body>]` | `PlaylistView` (federated playlist, RFC-0001) | `PlaylistConcept` |
 | `bungalow:artist:<isni>`, anything else | template from `views/` | `SpaceView` |
 
 The complete list, including entity URIs, is in

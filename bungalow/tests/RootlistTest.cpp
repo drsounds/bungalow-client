@@ -1,6 +1,7 @@
 #include "Database.h"
 #include "playlist/RootlistEvents.h"
 #include "playlist/RootlistManager.h"
+#include "playlist/Upsl.h"
 
 #include <cstdio>
 #include <filesystem>
@@ -10,6 +11,8 @@
 
 using space::playlist::RootlistEvents;
 using space::playlist::RootlistManager;
+using space::playlist::Upsl;
+namespace base62 = space::playlist::base62;
 
 namespace {
 
@@ -37,22 +40,72 @@ std::string order(Database& db) {
     return result;
 }
 
+void testUpsl() {
+    expect(base62::encode("Hello"), "5TP3P3v", "base62 encode");
+    expect(base62::decode("5TP3P3v").value_or("?"), "Hello", "base62 decode");
+    const std::string zeros("\0\0ab", 4);
+    expect(base62::decode(base62::encode(zeros)).value_or("?") == zeros ? 1 : 0, 1, "base62 keeps leading zeros");
+    expect(base62::decode("abc-").has_value() ? 1 : 0, 0, "base62 rejects other characters");
+
+    const std::string handle = "@drsounds@mastodon.social";
+    const std::string id = "8f2b1c3d-0000-4000-8000-000000000001";
+    const auto hosted = Upsl::parse(Upsl::hostedUri(handle, id));
+    expect(hosted ? 1 : 0, 1, "parse hosted");
+    if (hosted) {
+        expect(hosted->handle, handle, "hosted handle");
+        expect(hosted->playlistId, id, "hosted id");
+        expect(hosted->embedded ? 1 : 0, 0, "hosted has no body");
+    }
+
+    Upsl shared;
+    shared.handle = handle;
+    shared.playlistId = id;
+    shared.name = "Sommar: 2026, mix";
+    shared.description = "";
+    shared.refs = {"musik:isrc:GBAYE0601498", "musik:artist:The%20Band:release:R:name:Song", "https://example.com/v"};
+    const auto embedded = Upsl::parse(shared.embeddedUri() + ":sig:abc_-");
+    expect(embedded ? 1 : 0, 1, "parse embedded");
+    if (embedded) {
+        expect(embedded->embedded ? 1 : 0, 1, "embedded has a body");
+        expect(embedded->name, shared.name, "embedded name");
+        expect(embedded->description, "", "embedded empty description");
+        expect(static_cast<int>(embedded->refs.size()), 3, "embedded refs");
+        if (embedded->refs.size() == 3) expect(embedded->refs[1], shared.refs[1], "embedded ref");
+    }
+
+    const std::string legacy = "bungalow:federated:user:" + handle + ":playlist:" + id;
+    expect(Upsl::isUpsl(legacy) ? 1 : 0, 1, "legacy prefix accepted");
+    expect(Upsl::canonicalUri(legacy), Upsl::hostedUri(handle, id), "legacy prefix canonicalised");
+    expect(Upsl::isUpsl("musik:isrc:X") ? 1 : 0, 0, "content ref is not a UPSL");
+    expect(Upsl::parse("musik:federated:user:@a@b:nope").has_value() ? 1 : 0, 0, "missing :playlist: rejected");
+
+    expect(Upsl::isValidHandle(handle) ? 1 : 0, 1, "valid handle");
+    expect(Upsl::isValidHandle("drsounds@mastodon.social") ? 1 : 0, 0, "handle needs leading @");
+    expect(Upsl::isValidHandle("@drsounds") ? 1 : 0, 0, "handle needs a domain");
+    expect(Upsl::isValidHandle("@a:b@c") ? 1 : 0, 0, "handle rejects ':'");
+    expect(Upsl::isValidHandle(Upsl::defaultHandle()) ? 1 : 0, 1, "default handle is valid");
+    expect(space::playlist::percentDecode("The%20Band%3A"), "The Band:", "percentDecode");
+}
+
 } // namespace
 
 int main() {
+    testUpsl();
+
     const auto path = std::filesystem::temp_directory_path() / "bungalow-rootlist-test.db";
     std::filesystem::remove(path);
     {
         Database db(path.string());
         int changes = 0;
         const int listener = RootlistEvents::addListener([&changes] { ++changes; });
+        const std::string me = "@me@example.social";
 
-        const std::string a = RootlistManager::createPlaylist(db, "A");
-        const std::string b = RootlistManager::createPlaylist(db, "B");
-        const std::string c = RootlistManager::createPlaylist(db, "C");
+        const std::string a = RootlistManager::createPlaylist(db, "A", me);
+        const std::string b = RootlistManager::createPlaylist(db, "B", me);
+        const std::string c = RootlistManager::createPlaylist(db, "C", me);
         expect(order(db), "C,B,A", "new playlists go on top");
         expect(changes, 3, "create fires changes");
-        expect(a.rfind(RootlistManager::kPlaylistPrefix, 0) == 0 ? 1 : 0, 1, "playlist URI prefix");
+        expect(a.rfind("musik:federated:user:" + me + ":playlist:", 0) == 0 ? 1 : 0, 1, "federated playlist URI");
         expect(db.getPlaylistName(RootlistManager::playlistId(b)), "B", "playlist row created");
 
         RootlistManager::move(db, c, 2);
@@ -73,8 +126,15 @@ int main() {
         expect(db.getPlaylistName(RootlistManager::playlistId(c)), "", "remove deletes playlist");
 
         expect(db.insertRootlistNode(b, "Duplicate", 0) ? 1 : 0, 0, "a URI is listed once");
-        expect(RootlistManager::playlistId("bungalow:playlist:x:y"), "", "playlistId rejects sub-URIs");
         expect(RootlistManager::playlistId("bungalow:site:x"), "", "playlistId rejects other URIs");
+
+        // Playlists from before federation keep their place under a federated link.
+        const std::string oldId = db.createPlaylist("Old", "");
+        db.insertRootlistNode("bungalow:playlist:" + oldId, "Old", 1);
+        RootlistManager::migrateLegacyUris(db, me);
+        const auto nodes = RootlistManager::nodes(db);
+        expect(nodes.size() == 3 ? nodes[1].uri : std::string(), Upsl::hostedUri(me, oldId), "legacy URI migrated");
+        expect(order(db), "Renamed,Old,B", "migration keeps the order");
 
         RootlistEvents::removeListener(listener);
     }

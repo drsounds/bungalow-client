@@ -7,10 +7,12 @@ namespace app {
 
 class PlaylistView;
 
-/// Playlists: the rootlist at the end of the sidebar, after a gap, headed by
-/// a "New playlist" entry that turns into an input for the new playlist's
-/// name. Its playlists can be dragged into a new order, renamed and deleted.
-/// Follows RootlistEvents to keep the sidebar current.
+/// Federated playlists (RFC-0001): the rootlist at the end of the sidebar,
+/// after a gap, headed by a "New playlist" entry that turns into an input for
+/// the new playlist's name. New playlists belong to the user's federated
+/// handle (Settings) and are listed by their musik:federated: link. They can
+/// be dragged into a new order, renamed and deleted. PlaylistView opens any
+/// federated link. Follows RootlistEvents to keep the sidebar current.
 class PlaylistConcept : public concepts::Concept {
 public:
     std::string getId() const override { return "playlist"; }

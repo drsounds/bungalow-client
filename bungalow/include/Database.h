@@ -26,10 +26,12 @@
  *                    saved_at, deleted_at
  *  bookmarks       – id (PK autoincrement), uri (UNIQUE), title,
  *                    parent_id → bookmarks, created_at
- *  playlists       – id (UUID4 TEXT PK), name, created_at
+ *  playlists       – id (UUID4 TEXT PK), name, handle (federated owner,
+ *                    @user@instance), created_at
  *  rootlist        – id (PK autoincrement), uri (UNIQUE), title, position
  *                    (0-based, contiguous) — the user's ordered sidebar list
- *                    (bungalow:rootlist), e.g. bungalow:playlist:<uuid>
+ *                    (bungalow:rootlist), e.g.
+ *                    musik:federated:user:<handle>:playlist:<uuid>
  *  db_tables       – id (PK autoincrement), name (UNIQUE), columns, display_name,
  *                    noun_singular, noun_plural, description
  *  user_<name>     – one per user-defined table, id (UUID4 TEXT PK) + columns
@@ -215,10 +217,14 @@ public:
     /** Remove the node for @p uri and close the gap it leaves. */
     void removeRootlistNode(const std::string& uri);
 
+    /** Change the URI of the node for @p uri, keeping its place. */
+    void setRootlistNodeUri(const std::string& uri, const std::string& newUri);
+
     // ── Playlists ─────────────────────────────────────────────────────────────
 
-    /** Create a playlist. Returns its UUID4. */
-    std::string createPlaylist(const std::string& name);
+    /** Create a playlist owned by the federated @p handle. Returns its UUID4. */
+    std::string createPlaylist(const std::string& name, const std::string& handle);
+    void setPlaylistHandle(const std::string& id, const std::string& handle);
     void renamePlaylist(const std::string& id, const std::string& name);
     void deletePlaylist(const std::string& id);
     /** The playlist's name, or "" if there is no playlist with @p id. */
