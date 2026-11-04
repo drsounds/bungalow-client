@@ -179,6 +179,19 @@ void SPTreeViewElement::treeview_mouseup(SPObject *sender, SPEventArgs *e) {
     // Clear all highlights
     treeView->forEachItem([](SPTreeItem* item) { item->setHighlighted(false); });
 
+    bool captureInsideTree = false;
+    for (SPElement* captured = SPElement::s_capturedElement; captured != nullptr;
+         captured = captured->getParentElement()) {
+        if (captured == treeView) {
+            captureInsideTree = true;
+            break;
+        }
+    }
+    if (SPElement::s_capturedElement != nullptr && !captureInsideTree) {
+        treeView->invalidate();
+        return;
+    }
+
     if (m_dragging) {
         SPTreeItem *dragged = m_pressedItem;
         const vector<SPTreeItem*> run = draggableRun(dragged);
@@ -391,6 +404,8 @@ void SPTreeViewElement::paint(int x, int y, int width, int height, SPGraphicsCon
         } else {
             // Selection / highlight background
             this->getSkin()->drawTreeItem(g, this, item, rowH, x, rowY, itemWidth, rowH);
+            if (item->isDropTarget())
+                g->fillRectangle(x, rowY, itemWidth, rowH, SPColor(255, 255, 255, 255));
 
             // Disclosure arrow for expandable items
             if (item->hasChildren()) {
@@ -418,7 +433,9 @@ void SPTreeViewElement::paint(int x, int y, int width, int height, SPGraphicsCon
                 int textX = iconX + kIconSlot;
                 sp_rectangle strB = g->measureString(item->getText(), fs);
                 int ttop = rowY + (rowH / 2) - (strB.height / 2);
-                SPColor itemColor = item->isSelected() ? SPColor(95, 132, 180, 255) : color;
+                SPColor itemColor = item->isDropTarget()
+                    ? SPColor(0, 0, 0, 255)
+                    : item->isSelected() ? SPColor(95, 132, 180, 255) : color;
                 g->drawString(item->getText(), fs, itemColor, textX, ttop, itemWidth, rowH);
             }
         }

@@ -13,6 +13,7 @@ namespace space {
 struct MusicEntityRow {
     std::vector<std::string> cells;   // parallel to the data source's columns
     std::string              key;     // ISNI / ISRC / UPC of the row's entity
+    std::string              contentRef; // Portable URI to store in a playlist
     std::string              title;   // display title for the play queue
     int                      trackId = 0;
     std::string              playUri; // empty when the row has nothing to play
@@ -50,6 +51,7 @@ public:
             MusicEntityRow r;
             r.cells    = cells(t);
             r.key      = t.isrc;
+            r.contentRef = "musik:isrc:" + t.isrc;
             r.title    = t.name;
             r.trackId  = t.id;
             r.playUri  = t.playUri;

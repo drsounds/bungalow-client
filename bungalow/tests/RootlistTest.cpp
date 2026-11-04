@@ -107,6 +107,30 @@ int main() {
         expect(changes, 3, "create fires changes");
         expect(a.rfind("musik:federated:user:" + me + ":playlist:", 0) == 0 ? 1 : 0, 1, "federated playlist URI");
         expect(db.getPlaylistName(RootlistManager::playlistId(b)), "B", "playlist row created");
+        expect(RootlistManager::isLocalPlaylist(db, b) ? 1 : 0, 1, "listed playlist is local");
+        expect(RootlistManager::isLocalPlaylist(
+                   db, Upsl::hostedUri("@other@example.social", RootlistManager::playlistId(b))) ? 1 : 0,
+               0, "another hosted link is not local");
+        expect(db.insertPlaylistRefs(RootlistManager::playlistId(b),
+                                     {"musik:isrc:ONE", "musik:upc:TWO"}, 0) ? 1 : 0,
+               1, "insert playlist content");
+        std::vector<std::string> refs;
+        expect(db.getPlaylistRefs(RootlistManager::playlistId(b), refs) ? 1 : 0,
+               1, "read playlist content successfully");
+        expect(static_cast<int>(refs.size()), 2, "read playlist content");
+        if (refs.size() == 2) {
+            expect(refs[0], "musik:isrc:ONE", "playlist content first");
+            expect(refs[1], "musik:upc:TWO", "playlist content second");
+        }
+        expect(db.insertPlaylistRefs(RootlistManager::playlistId(b),
+                                     {"musik:isni:THREE"}, 1) ? 1 : 0,
+               1, "insert playlist content at position");
+        expect(db.getPlaylistRefs(RootlistManager::playlistId(b), refs) ? 1 : 0,
+               1, "read inserted playlist content successfully");
+        if (refs.size() == 3)
+            expect(refs[1], "musik:isni:THREE", "playlist content insertion position");
+        expect(RootlistManager::insertContentRefs(db, b, {"musik:isrc:FOUR"}, 3) ? 1 : 0,
+               1, "insert content through playlist manager");
 
         RootlistManager::move(db, c, 2);
         expect(order(db), "B,A,C", "move down");

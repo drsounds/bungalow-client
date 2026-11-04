@@ -32,6 +32,7 @@ void RecordingsLibraryView::reload() {
 	for (const auto &rec : m_db->getRecordingSummaries()) {
 		MusicEntityRow r;
 		r.key = rec.recording.isrc;
+		r.contentRef = "musik:isrc:" + rec.recording.isrc;
 		r.title = rec.recording.name;
 		r.artist = rec.artists;
 		r.cells = {rec.recording.name, rec.recording.version, rec.artists,

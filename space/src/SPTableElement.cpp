@@ -151,6 +151,26 @@ namespace space {
             }
             rowY += rowH;
         }
+
+        if (m_dropIndex >= 0) {
+            const int lineY = m_firstRowY + m_dropIndex * rowH;
+            g->fillRectangle(x, lineY - 1, width, 2, SPColor(99, 149, 234, 255));
+        }
+    }
+
+    int SPTableElement::rowAtY(int absoluteY) const {
+        const int row = (absoluteY - m_firstRowY) / kRowH;
+        return row >= 0 && dataSource && row < dataSource->getRowCount() ? row : -1;
+    }
+
+    int SPTableElement::dropIndexAtY(int absoluteY) const {
+        if (!dataSource) return 0;
+        const int rowCount = dataSource->getRowCount();
+        const int offset = absoluteY - m_firstRowY;
+        if (offset <= 0) return 0;
+        const int row = offset / kRowH;
+        if (row >= rowCount) return rowCount;
+        return row + ((offset % kRowH) >= kRowH / 2 ? 1 : 0);
     }
 
     // ── Mouse click → row selection + double-click / right-click detection ──────
@@ -199,7 +219,7 @@ namespace space {
                 m_selectedRows.erase(rowIdx);
             else
                 m_selectedRows.insert(rowIdx);
-        } else {
+        } else if (!m_selectedRows.count(rowIdx)) {
             m_selectedRows.clear();
             m_selectedRows.insert(rowIdx);
         }

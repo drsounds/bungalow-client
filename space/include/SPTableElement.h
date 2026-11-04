@@ -22,6 +22,12 @@ class SPTableElement : public SPElement
         bool gradientView = false;
 
         bool isRowSelected(int row) const { return m_selectedRows.count(row) > 0; }
+        vector<int> getSelectedRows() const {
+            return vector<int>(m_selectedRows.begin(), m_selectedRows.end());
+        }
+        int rowAtY(int absoluteY) const;
+        int dropIndexAtY(int absoluteY) const;
+        void setDropIndex(int index) { m_dropIndex = index; invalidate(); }
 
         SPTableElement();
         SPTableElement(SPElement *parent, SPTableDataSource *dataSource);
@@ -38,6 +44,7 @@ class SPTableElement : public SPElement
         std::set<int> m_selectedRows;
         int m_anchorRow  = -1; // last directly-clicked or arrow-moved row
         int m_firstRowY  = 0;  // screen y of first data row (set during paint)
+        int m_dropIndex = -1;
         static const int kRowH = 18;
 
         // Double-click detection

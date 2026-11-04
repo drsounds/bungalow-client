@@ -22,6 +22,7 @@ namespace space {
         bool m_isBookmark = false;
         bool m_isSpacer = false;
         bool m_draggable = false;
+        bool m_dropTarget = false;
         bool m_editOnClick = false;
         vector<SPTreeItem*> m_children;
 	public:
@@ -49,6 +50,8 @@ namespace space {
         // Top-level item that can be dragged among adjacent draggable items
         [[nodiscard]] bool isDraggable() const { return m_draggable; }
         void setDraggable(bool v) { m_draggable = v; }
+        [[nodiscard]] bool isDropTarget() const { return m_dropTarget; }
+        void setDropTarget(bool value) { m_dropTarget = value; }
 
         // Clicking shows an inline input instead of selecting the item
         [[nodiscard]] bool isEditOnClick() const { return m_editOnClick; }

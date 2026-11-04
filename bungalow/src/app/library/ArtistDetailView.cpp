@@ -41,6 +41,7 @@ void ArtistDetailView::reload() {
 	for (const auto &rel : m_db->getReleasesForArtist(m_isni)) {
 		MusicEntityRow r;
 		r.key = rel.release.upc;
+		r.contentRef = "musik:upc:" + rel.release.upc;
 		r.title = rel.release.name;
 		r.cells = {rel.release.name, rel.release.releaseDate, rel.artists,
 				   std::to_string(rel.trackCount)};

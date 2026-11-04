@@ -24,6 +24,7 @@ void ReleasesLibraryView::reload() {
 	for (const auto &rel : m_db->getReleaseSummaries()) {
 		MusicEntityRow r;
 		r.key = rel.release.upc;
+		r.contentRef = "musik:upc:" + rel.release.upc;
 		r.title = rel.release.name;
 		r.artist = rel.artists;
 		r.cells = {rel.release.name, rel.artists, rel.release.releaseDate,

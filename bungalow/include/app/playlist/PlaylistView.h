@@ -26,6 +26,8 @@ public:
 protected:
     void reload() override;
     void onActivate(Page& page, int row) override;
+    bool acceptsDrop() const override;
+    bool onDropRefs(const std::vector<std::string>& refs, int position) override;
 
 private:
     MusicEntityRow rowFor(int index, const std::string& ref) const;

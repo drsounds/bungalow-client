@@ -253,6 +253,16 @@ void Database::initialize() {
     // Migration: the federated handle a playlist belongs to (ignored if it exists)
     sqlite3_exec(m_db, "ALTER TABLE playlists ADD COLUMN handle TEXT", nullptr, nullptr, nullptr);
 
+    exec(R"(
+        CREATE TABLE IF NOT EXISTS playlist_items (
+            playlist_id TEXT    NOT NULL,
+            position    INTEGER NOT NULL,
+            ref         TEXT    NOT NULL,
+            PRIMARY KEY (playlist_id, position),
+            FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
+        );
+    )");
+
     // Rootlist — the user's ordered list of playlists (and other URIs) in the sidebar
     exec(R"(
         CREATE TABLE IF NOT EXISTS rootlist (
@@ -584,6 +594,12 @@ void Database::renamePlaylist(const std::string& id, const std::string& name)
 
 void Database::deletePlaylist(const std::string& id)
 {
+    sqlite3_stmt* items = nullptr;
+    if (sqlite3_prepare_v2(m_db, "DELETE FROM playlist_items WHERE playlist_id = ?;", -1, &items, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(items, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_step(items);
+    }
+    sqlite3_finalize(items);
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(m_db, "DELETE FROM playlists WHERE id = ?;", -1, &stmt, nullptr) != SQLITE_OK)
         return;
@@ -603,6 +619,69 @@ std::string Database::getPlaylistName(const std::string& id)
         name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
     sqlite3_finalize(stmt);
     return name;
+}
+
+bool Database::getPlaylistRefs(const std::string& id, std::vector<std::string>& refs)
+{
+    refs.clear();
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db,
+        "SELECT ref FROM playlist_items WHERE playlist_id = ? ORDER BY position;",
+        -1, &stmt, nullptr) != SQLITE_OK)
+        return false;
+    sqlite3_bind_text(stmt, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+    int step = SQLITE_OK;
+    while ((step = sqlite3_step(stmt)) == SQLITE_ROW) {
+        const auto* value = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+        refs.emplace_back(value ? value : "");
+    }
+    sqlite3_finalize(stmt);
+    return step == SQLITE_DONE;
+}
+
+bool Database::insertPlaylistRefs(const std::string& id, const std::vector<std::string>& refs, int position)
+{
+    if (refs.empty() || getPlaylistName(id).empty())
+        return false;
+
+    std::vector<std::string> ordered;
+    if (!getPlaylistRefs(id, ordered))
+        return false;
+    const size_t index = static_cast<size_t>(std::clamp(position, 0, static_cast<int>(ordered.size())));
+    ordered.insert(ordered.begin() + index, refs.begin(), refs.end());
+
+    if (sqlite3_exec(m_db, "BEGIN IMMEDIATE;", nullptr, nullptr, nullptr) != SQLITE_OK)
+        return false;
+
+    bool ok = false;
+    sqlite3_stmt* remove = nullptr;
+    sqlite3_stmt* insert = nullptr;
+    if (sqlite3_prepare_v2(m_db, "DELETE FROM playlist_items WHERE playlist_id = ?;", -1, &remove, nullptr) == SQLITE_OK &&
+        sqlite3_prepare_v2(m_db,
+            "INSERT INTO playlist_items (playlist_id, position, ref) VALUES (?, ?, ?);",
+            -1, &insert, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(remove, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+        ok = sqlite3_step(remove) == SQLITE_DONE;
+        for (size_t i = 0; ok && i < ordered.size(); ++i) {
+            sqlite3_reset(insert);
+            sqlite3_clear_bindings(insert);
+            sqlite3_bind_text(insert, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int(insert, 2, static_cast<int>(i));
+            sqlite3_bind_text(insert, 3, ordered[i].c_str(), -1, SQLITE_TRANSIENT);
+            ok = sqlite3_step(insert) == SQLITE_DONE;
+        }
+    }
+    sqlite3_finalize(remove);
+    sqlite3_finalize(insert);
+    if (!ok) {
+        sqlite3_exec(m_db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        return false;
+    }
+    if (sqlite3_exec(m_db, "COMMIT;", nullptr, nullptr, nullptr) != SQLITE_OK) {
+        sqlite3_exec(m_db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        return false;
+    }
+    return true;
 }
 
 // ── Accepted third-party domains ──────────────────────────────────────────────

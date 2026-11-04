@@ -28,6 +28,7 @@
  *                    parent_id → bookmarks, created_at
  *  playlists       – id (UUID4 TEXT PK), name, handle (federated owner,
  *                    @user@instance), created_at
+ *  playlist_items  – ordered content refs for each local playlist
  *  rootlist        – id (PK autoincrement), uri (UNIQUE), title, position
  *                    (0-based, contiguous) — the user's ordered sidebar list
  *                    (bungalow:rootlist), e.g.
@@ -229,6 +230,10 @@ public:
     void deletePlaylist(const std::string& id);
     /** The playlist's name, or "" if there is no playlist with @p id. */
     std::string getPlaylistName(const std::string& id);
+    /** Content references in playlist order; false indicates a database error. */
+    bool getPlaylistRefs(const std::string& id, std::vector<std::string>& refs);
+    /** Insert @p refs at @p position (clamped to the playlist). */
+    bool insertPlaylistRefs(const std::string& id, const std::vector<std::string>& refs, int position);
 
     // ── Music metadata CRUD ───────────────────────────────────────────────────
 

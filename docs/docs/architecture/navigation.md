@@ -147,3 +147,13 @@ submitted name becomes a new playlist at the top of the list. Playlists can be
 dragged into a new order, and renamed or deleted from their context menu.
 `playlist::RootlistManager` makes the changes and fires `RootlistEvents`, which
 the concept follows to refresh the sidebar.
+
+Playlists are federated ([RFC-0001](../specs/rfc-0001-universal-playlist-sharing.md)):
+each is listed by its hosted link,
+`musik:federated:user:<handle>:playlist:<uuid>`. New playlists belong to the
+**Federated Handle** set in Settings (`federatedHandle` in `settings.json`,
+`@<user name>@localhost` until set); a playlist keeps the handle it was created
+with, since the handle and id are its identity. `PlaylistView` opens any
+federated link: a hosted link shows the user's own playlist from the database,
+and a link with an embedded body shows the playlist it carries, marked
+"shared by" its handle. `playlist::Upsl` parses and builds the links.

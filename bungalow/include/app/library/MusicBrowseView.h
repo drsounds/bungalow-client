@@ -56,6 +56,12 @@ namespace space {
             virtual void onActivate(Page& page, int row) {}
             virtual void onContextMenu(Page& page, int row) {}
             virtual void onToolButton(const std::string& id) {}
+            virtual bool acceptsDrop() const { return false; }
+            virtual bool onDropRefs(const std::vector<std::string>& refs, int position) {
+                (void)refs;
+                (void)position;
+                return false;
+            }
 
             /** reload() then repaint every table. */
             void refresh();
@@ -86,9 +92,15 @@ namespace space {
 
         private:
             Page* pageFor(SPObject* sender);
+            int onTableMouseDown(SPObject* sender, SPEventArgs* args);
+            int onTableMouseMove(SPObject* sender, SPEventArgs* args);
+            int onTableMouseUp(SPObject* sender, SPEventArgs* args);
             int onRowDblClicked(SPObject* sender, SPEventArgs* args);
             int onRowRightClicked(SPObject* sender, SPEventArgs* args);
             int onToolButtonClicked(SPObject* sender, SPEventArgs* args);
+            Page* m_dragPage = nullptr;
+            int m_dragStartX = 0;
+            int m_dragStartY = 0;
         };
 
         /**

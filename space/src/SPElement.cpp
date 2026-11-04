@@ -120,13 +120,13 @@ namespace space {
 				auto *mouseEventArgs = dynamic_cast<SPMouseEventArgs *>(data);
 				auto element = dynamic_cast<SPElement *>(child);
 				if (child != nullptr) {
-					if (!element->isVisible()) continue;
 					// Route to the captured element even when the pointer has left
 					// its bounds (or its ancestors'), so drags end on release.
 					bool captured = false;
 					for (SPElement* e = s_capturedElement; e != nullptr; e = e->getParentElement()) {
 						if (e == element) { captured = true; break; }
 					}
+					if (!element->isVisible() && !captured) continue;
 					bool inBounds =
 						mouseEventArgs->getX() > element->getAbsoluteBounds().x &&
 						mouseEventArgs->getX() < element->getAbsoluteBounds().x + element->getAbsoluteBounds().width &&

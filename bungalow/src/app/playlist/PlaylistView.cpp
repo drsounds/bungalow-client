@@ -1,8 +1,10 @@
 #include "app/playlist/PlaylistView.h"
 
 #include "playlist/Upsl.h"
+#include "playlist/RootlistManager.h"
 
 #include "Database.h"
+#include "BungalowApp.h"
 #include "SPTabBarElement.h"
 
 #include <algorithm>
@@ -68,8 +70,13 @@ void PlaylistView::reload() {
             heading = name;
             if (localName.empty()) heading += " \xe2\x80\x94 shared by " + upsl->handle;  // —
         }
-        for (size_t i = 0; i < upsl->refs.size(); ++i)
-            rows.push_back(rowFor(static_cast<int>(i), upsl->refs[i]));
+        std::vector<std::string> refs = upsl->refs;
+        if (!upsl->embedded && m_db && !m_db->getPlaylistRefs(upsl->playlistId, refs)) {
+            if (auto* app = BungalowApp::current())
+                app->showError("Could not load this playlist.");
+        }
+        for (size_t i = 0; i < refs.size(); ++i)
+            rows.push_back(rowFor(static_cast<int>(i), refs[i]));
     }
     this->tabBar->getTabs().front()->name = heading;
     m_pages.front()->source->setRows(std::move(rows));
@@ -80,6 +87,7 @@ MusicEntityRow PlaylistView::rowFor(int index, const std::string& ref) const {
     MusicEntityRow row;
     row.key = ref;
     row.title = ref;
+    row.contentRef = ref;
     row.playable = false;
     const std::string number = std::to_string(index + 1);
 
@@ -96,6 +104,12 @@ MusicEntityRow PlaylistView::rowFor(int index, const std::string& ref) const {
         } else {
             row.title = isrc;
         }
+    } else if (ref.rfind("musik:upc:", 0) == 0) {
+        const auto release = m_db->getRelease(ref.substr(std::string("musik:upc:").size()));
+        if (!release.upc.empty()) row.title = release.name;
+    } else if (ref.rfind("musik:isni:", 0) == 0) {
+        const auto artist = m_db->getArtist(ref.substr(std::string("musik:isni:").size()));
+        if (!artist.isni.empty()) row.title = artist.name;
     } else if (const auto fields = nameRefFields(ref); !fields.empty()) {
         const auto field = [&fields](const char* key) {
             const auto found = fields.find(key);
@@ -111,6 +125,20 @@ MusicEntityRow PlaylistView::rowFor(int index, const std::string& ref) const {
 
 void PlaylistView::onActivate(Page& page, int row) {
     playFrom(page, row);
+}
+
+bool PlaylistView::acceptsDrop() const {
+    const auto upsl = playlist::Upsl::parse(m_uri);
+    return m_db && upsl && playlist::RootlistManager::isLocalPlaylist(*m_db, m_uri);
+}
+
+bool PlaylistView::onDropRefs(const std::vector<std::string>& refs, int position) {
+    if (!m_db || !playlist::RootlistManager::insertContentRefs(*m_db, m_uri, refs, position)) {
+        if (auto* app = BungalowApp::current())
+            app->showError("Could not add items to this playlist.");
+        return false;
+    }
+    return true;
 }
 
 } // namespace app

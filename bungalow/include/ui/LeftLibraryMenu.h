@@ -7,6 +7,8 @@
 #include <vector>
 
 namespace space {
+class SPObject;
+class SPEventArgs;
 class SPTreeItem;
 class SPTreeViewElement;
 
@@ -17,6 +19,7 @@ namespace ui {
 class LeftLibraryMenu {
 public:
     explicit LeftLibraryMenu(SPTreeViewElement* tree);
+    ~LeftLibraryMenu();
 
     /// Replaces the tree's items. Top-level nodes without a URI become section
     /// headers (or a blank gap, for spacer sections) followed by their
@@ -39,6 +42,9 @@ public:
     void rename(SPTreeItem* item, const std::string& text);
     void move(SPTreeItem* item, int index);
     void remove(SPTreeItem* item);
+    int onDragMove(SPObject* sender, SPEventArgs* args);
+    int onDragEnd(SPObject* sender, SPEventArgs* args);
+    void onDragHoverDwell();
 
     SPTreeViewElement* getTreeView() const { return m_tree; }
 
@@ -49,6 +55,7 @@ private:
         navigation::SidebarNode::RemoveHandler onRemove;
     };
 
+    void clearDropTarget();
     SPTreeItem* createItem(const navigation::SidebarNode& node);
     const Handlers* handlersFor(SPTreeItem* item) const;
 
@@ -56,6 +63,7 @@ private:
     std::string m_selectedUri;
     // Handlers of the nodes shown by the current items.
     std::map<SPTreeItem*, Handlers> m_handlers;
+    SPTreeItem* m_dropTarget = nullptr;
 };
 
 } // namespace ui

@@ -112,6 +112,10 @@ namespace space {
         void clearItems();
         // Traverse all items recursively (for selection sync)
         void forEachItem(const function<void(SPTreeItem*)>& fn) const;
+        /// Visible item at an absolute screen y coordinate.
+        SPTreeItem* itemAtAbsoluteY(int y) const {
+            return itemAt(y - getAbsoluteBounds().y + getScrollY());
+        }
 	};
 }
 #endif // TREEVIEWELEMENT_H

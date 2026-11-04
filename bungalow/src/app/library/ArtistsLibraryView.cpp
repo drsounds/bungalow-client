@@ -24,6 +24,7 @@ void ArtistsLibraryView::reload() {
 	for (const auto &a : m_db->getArtistSummaries()) {
 		MusicEntityRow r;
 		r.key = a.artist.isni;
+		r.contentRef = "musik:isni:" + a.artist.isni;
 		r.title = a.artist.name;
 		r.playable = true; // not greyed out: rows open the artist page
 		r.cells = {a.artist.name, displayId(a.artist.isni),

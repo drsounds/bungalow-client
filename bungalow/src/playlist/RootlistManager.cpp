@@ -3,6 +3,8 @@
 #include "playlist/RootlistEvents.h"
 #include "playlist/Upsl.h"
 
+#include <algorithm>
+
 namespace space {
 namespace playlist {
 
@@ -39,6 +41,28 @@ void RootlistManager::remove(Database& db, const std::string& uri) {
     const std::string id = playlistId(uri);
     if (!id.empty()) db.deletePlaylist(id);
     RootlistEvents::fireChanged();
+}
+
+bool RootlistManager::insertContentRefs(Database& db, const std::string& uri,
+                                        const std::vector<std::string>& refs, int position) {
+    if (!isLocalPlaylist(db, uri))
+        return false;
+    const auto upsl = Upsl::parse(uri);
+    if (!upsl) return false;
+    if (!db.insertPlaylistRefs(upsl->playlistId, refs, position))
+        return false;
+    RootlistEvents::fireChanged();
+    return true;
+}
+
+bool RootlistManager::isLocalPlaylist(Database& db, const std::string& uri) {
+    const auto upsl = Upsl::parse(uri);
+    if (!upsl || upsl->embedded || db.getPlaylistName(upsl->playlistId).empty())
+        return false;
+    const auto rootlist = db.getRootlist();
+    return std::any_of(rootlist.begin(), rootlist.end(), [&uri](const Database::RootlistNode& node) {
+        return node.uri == uri;
+    });
 }
 
 void RootlistManager::migrateLegacyUris(Database& db, const std::string& handle) {

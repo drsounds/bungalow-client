@@ -30,6 +30,12 @@ public:
     static void move(Database& db, const std::string& uri, int position);
     /// Removes a node; a playlist is deleted with it.
     static void remove(Database& db, const std::string& uri);
+    /// Inserts content references into a locally hosted playlist. Returns false
+    /// for embedded/shared playlists or when the database write fails.
+    static bool insertContentRefs(Database& db, const std::string& uri,
+                                  const std::vector<std::string>& refs, int position);
+    /// True only when @p uri names one of the user's listed, local playlists.
+    static bool isLocalPlaylist(Database& db, const std::string& uri);
 
     /// Relists playlists created before they were federated
     /// (bungalow:playlist:<uuid>) under their federated link, owned by handle.
