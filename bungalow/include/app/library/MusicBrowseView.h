@@ -92,6 +92,7 @@ namespace space {
 
         private:
             Page* pageFor(SPObject* sender);
+            Page* pageAt(int x, int y);
             int onTableMouseDown(SPObject* sender, SPEventArgs* args);
             int onTableMouseMove(SPObject* sender, SPEventArgs* args);
             int onTableMouseUp(SPObject* sender, SPEventArgs* args);

@@ -138,9 +138,27 @@ MusicBrowseView::Page* MusicBrowseView::pageFor(SPObject* sender) {
 	return nullptr;
 }
 
-int MusicBrowseView::onTableMouseDown(SPObject* sender, SPEventArgs* eventArgs) {
+MusicBrowseView::Page* MusicBrowseView::pageAt(int x, int y) {
+	for (auto& page : m_pages) {
+		bool visible = true;
+		for (SPElement* element = page->table; element; element = element->getParentElement()) {
+			if (!element->isVisible()) {
+				visible = false;
+				break;
+			}
+		}
+		if (!visible) continue;
+		const auto bounds = page->table->getAbsoluteBounds();
+		if (x >= bounds.x && x < bounds.x + bounds.width &&
+			y >= bounds.y && y < bounds.y + bounds.height)
+			return page.get();
+	}
+	return nullptr;
+}
+
+int MusicBrowseView::onTableMouseDown(SPObject* /*sender*/, SPEventArgs* eventArgs) {
 	auto* args = dynamic_cast<SPMouseEventArgs*>(eventArgs);
-	Page* page = pageFor(sender);
+	Page* page = args ? pageAt(args->getX(), args->getY()) : nullptr;
 	if (!args || !page || args->getButton() != 0) return 0;
 	MusicDragDrop::clear();
 	const int row = page->table->rowAtY(args->getY());
@@ -154,7 +172,7 @@ int MusicBrowseView::onTableMouseDown(SPObject* sender, SPEventArgs* eventArgs) 
 
 int MusicBrowseView::onTableMouseMove(SPObject* sender, SPEventArgs* eventArgs) {
 	auto* args = dynamic_cast<SPMouseEventArgs*>(eventArgs);
-	Page* page = pageFor(sender);
+	Page* page = args ? (m_dragPage ? m_dragPage : pageAt(args->getX(), args->getY())) : nullptr;
 	if (!args || !page) return 0;
 	MusicDragDrop::checkHoverDwell();
 
@@ -187,7 +205,7 @@ int MusicBrowseView::onTableMouseMove(SPObject* sender, SPEventArgs* eventArgs) 
 
 int MusicBrowseView::onTableMouseUp(SPObject* sender, SPEventArgs* eventArgs) {
 	auto* args = dynamic_cast<SPMouseEventArgs*>(eventArgs);
-	Page* page = pageFor(sender);
+	Page* page = args ? (m_dragPage ? m_dragPage : pageAt(args->getX(), args->getY())) : nullptr;
 	if (!args || !page) return 0;
 
 	page->table->setDropIndex(-1);
