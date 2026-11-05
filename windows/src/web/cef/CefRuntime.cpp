@@ -65,7 +65,14 @@ public:
     }
 
     // ── Renderer process ──────────────────────────────────────────────────
-
+    void BungalowCefApp::OnBeforeCommandLineProcessing(
+        const CefString& process_type,
+        CefRefPtr<CefCommandLine> command_line) {
+        
+        // Inaktiverar DirectWrite
+        command_line->AppendSwitch("disable-direct-write");
+        command_line->AppendSwitch("off-screen-rendering-enabled");
+    }
     void OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extraInfo) override {
         if (extraInfo && extraInfo->HasKey(kStartupScriptKey))
             m_startupScripts[browser->GetIdentifier()] = {

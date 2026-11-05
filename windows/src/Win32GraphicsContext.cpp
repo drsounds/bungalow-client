@@ -371,7 +371,7 @@ namespace space
         if (length > 0)
             GetWindowTextW(control, value.data(), length + 1);
         value.resize(length);
-        if (auto *input = dynamic_cast<SPInputElement *>(found->second))
+        if (auto *input = static_cast<SPInputElement *>(found->second))
             input->setValue(toUtf8(value));
         return true;
     }

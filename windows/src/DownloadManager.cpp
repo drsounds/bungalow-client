@@ -1,3 +1,11 @@
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#define _HAS_STD_BYTE 0 // Förhindrar att std::byte krockar i vissa MSVC-miljöer
+
+#include <windows.h>
+#include <shlwapi.h>
+#include <urlmon.h>
+
 #include "DownloadManager.h"
 #include "AudioImporter.h"
 #include "ConfigView.h"
@@ -13,7 +21,74 @@
 #include <sstream>
 #include <thread>
 
+#pragma comment(lib, "shlwapi.lib")
+#pragma comment(lib, "urlmon.lib") // Länkar urlmon.lib i MSVC
+
 namespace fs = std::filesystem;
+
+std::string getMimeTypeFromWin32(const std::string& filePath) {
+    fs::path path(filePath);
+    std::wstring ext = path.extension().wstring();
+    std::wstring wPath = path.wstring();
+
+    wchar_t mimeBuffer[128] = {0};
+    DWORD bufferSize = ARRAYSIZE(mimeBuffer);
+
+    // 1. Försök först via Windows Registry baserat på filändelse (.mp3)
+    if (!ext.empty()) {
+        HRESULT hr = AssocQueryStringW(
+            ASSOCF_INIT_DEFAULTTOSTAR,
+            ASSOCSTR_CONTENTTYPE,
+            ext.c_str(),
+            NULL,
+            mimeBuffer,
+            &bufferSize
+        );
+
+        if (SUCCEEDED(hr) && bufferSize > 0) {
+            int len = WideCharToMultiByte(CP_UTF8, 0, mimeBuffer, -1, nullptr, 0, nullptr, nullptr);
+            if (len > 0) {
+                std::string result(len - 1, '\0');
+                WideCharToMultiByte(CP_UTF8, 0, mimeBuffer, -1, &result[0], len, nullptr, nullptr);
+                return result;
+            }
+        }
+    }
+
+    // 2. Om registret misslyckas, kör FindMimeFromData med ökad buffert (4096 bytes)
+    char buffer[4096] = {0};
+    DWORD bytesRead = 0;
+    HANDLE hFile = CreateFileW(wPath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    
+    if (hFile != INVALID_HANDLE_VALUE) {
+        ReadFile(hFile, buffer, sizeof(buffer), &bytesRead, NULL);
+        CloseHandle(hFile);
+    }
+
+    PWSTR pwstrMime = nullptr;
+    HRESULT hr = FindMimeFromData(
+        NULL,
+        wPath.c_str(),
+        buffer,
+        bytesRead,
+        NULL,
+        FMFD_DEFAULT,
+        &pwstrMime,
+        0
+    );
+
+    std::string mimeType = "application/octet-stream";
+    if (SUCCEEDED(hr) && pwstrMime != nullptr) {
+        int len = WideCharToMultiByte(CP_UTF8, 0, pwstrMime, -1, nullptr, 0, nullptr, nullptr);
+        if (len > 0) {
+            mimeType.resize(len - 1);
+            WideCharToMultiByte(CP_UTF8, 0, pwstrMime, -1, &mimeType[0], len, nullptr, nullptr);
+        }
+        CoTaskMemFree(pwstrMime);
+    }
+
+    return mimeType;
+}
 
 static const char* kAudioExts[] = {
     ".mp3", ".mp4", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".opus", ".wma", nullptr
@@ -210,6 +285,7 @@ void DownloadManager::onDownloadComplete(DownloadItem& item, const std::string& 
     std::string destPath = uniqueFilePath(destDir, item.filename);
 
     fs::rename(tmpPath, destPath, ec);
+    
     if (ec) {
         ec.clear();
         fs::copy_file(tmpPath, destPath, fs::copy_options::overwrite_existing, ec);
@@ -227,6 +303,11 @@ void DownloadManager::onDownloadComplete(DownloadItem& item, const std::string& 
     item.filePath  = destPath;
     item.status    = DLStatus::Completed;
     item.doneBytes = item.totalBytes > 0 ? item.totalBytes : item.doneBytes;
+
+    // --- NYTT: Läs av MIME-typ via Win32 API om den saknas eller behöver uppdateras ---
+    if (item.contentType.empty()) {
+        item.contentType = getMimeTypeFromWin32(destPath);
+    }
 
     if (m_db) {
         sqlite3_stmt* stmt = nullptr;
@@ -350,12 +431,17 @@ bool DownloadManager::isAudioContentType(const std::string& ct) {
 }
 
 bool DownloadManager::isAudioFilename(const std::string& filename) {
+    size_t t = filename.find_first_of("mp3");
+    if (t != std::string::npos) return true;
+
     auto dot = filename.rfind('.');
     if (dot == std::string::npos) return false;
     std::string ext = filename.substr(dot);
+
     std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
     for (int i = 0; kAudioExts[i]; ++i)
         if (ext == kAudioExts[i]) return true;
+    
     return false;
 }
 

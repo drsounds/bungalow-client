@@ -1,0 +1,17 @@
+body {
+        font-size: 11px;
+        font-family: Tahoma;
+        color: #555;
+        color-scheme: light dark;
+}
+
+:root {
+    --retro-link-text: CanvasText;
+    --retro-radius: 0;
+}
+button {
+    font-size: 11px;
+    font-family: Tahoma;
+    color: alpha(from currentColor / 80%);
+    color-scheme: light dark;
+}

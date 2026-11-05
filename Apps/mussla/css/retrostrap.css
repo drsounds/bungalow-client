@@ -1,0 +1,2097 @@
+/*!
+ * Retrostrap v1.1.1
+ * A modern, raw-CSS port of Twitter Bootstrap 1.1.1 (LESS).
+ *
+ * Original Bootstrap: Copyright 2011 Twitter, Inc. Licensed under the Apache License v2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * No preprocessor, no build step. Requires a 2024+ evergreen browser:
+ *   - CSS custom properties, native nesting, :is()/:where()
+ *   - color-mix() and relative color syntax (hsl(from ...))
+ *
+ * Theming: every colour, font and metric lives on :root as --retro-* custom
+ * properties. Derived tokens (hover colours, tints, error shades, ...) are
+ * computed from the base tokens, so editing e.g. --retro-primary or
+ * --retro-link on :root at runtime re-themes the whole framework live.
+ *
+ * LESS -> CSS equivalents used throughout:
+ *   lighten(c, n%)   hsl(from c h s calc(l + n))
+ *   darken(c, n%)    hsl(from c h s calc(l - n))
+ *   desaturate(c, n) hsl(from c h calc(s - n) l)
+ *   spin(c, deg)     hsl(from c calc(h + deg) s l)
+ *   fade(c, a)       color-mix(in srgb, c a%, transparent)
+ *
+ * Single-file bundle of the modules in css/ (reset, preboot, scaffolding,
+ * type, forms, tables, patterns, responsive). Edit css/ and regenerate.
+ * ------------------------------------------------------------------------- */
+
+
+/* ==========================================================================
+   RESET: Eric Meyer reset + selected normalize.css rules (lib/reset.less)
+   ========================================================================== */
+
+html, body { margin: 0; padding: 0; }
+
+h1, h2, h3, h4, h5, h6, p, blockquote, pre, a, abbr, acronym, address, cite, code,
+del, dfn, em, img, q, s, samp, small, strike, strong, sub, sup, tt, var, dd, dl, dt,
+li, ol, ul, fieldset, form, label, legend, button, table, caption, tbody, tfoot,
+thead, tr, th, td {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 100%;
+  line-height: 1;
+  font-family: inherit;
+}
+
+table { border-collapse: collapse; border-spacing: 0; }
+ol, ul { list-style: none; }
+q::before, q::after, blockquote::before, blockquote::after { content: ""; }
+
+html {
+  overflow-y: scroll;
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+audio:not([controls]) { display: none; }
+
+sub, sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+sup { top: -0.5em; }
+sub { bottom: -0.25em; }
+
+img { border: 0; }
+
+button, input, select, textarea {
+  font-size: 100%;
+  margin: 0;
+  vertical-align: baseline;
+}
+button, input { line-height: normal; }
+button,
+input[type="button"],
+input[type="reset"],
+input[type="submit"] {
+  cursor: pointer;
+  -webkit-appearance: button;
+  appearance: button;
+}
+input[type="search"] {
+  -webkit-appearance: textfield;
+  appearance: textfield;
+  box-sizing: content-box;
+}
+input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; }
+textarea { overflow: auto; vertical-align: top; }
+
+
+/* ==========================================================================
+   PREBOOT: design tokens (the LESS variables from lib/preboot.less)
+   Every colour, font and metric is a --retro-* custom property on :root.
+   Derived values use relative color syntax and color-mix(), so changing a
+   base token at runtime re-themes everything.
+
+   LIGHT / DARK
+   Surfaces, text, lines and shadows are defined with light-dark(), so the
+   same tokens resolve differently per colour scheme:
+     - default:                 follows the OS (prefers-color-scheme)
+     - data-theme="light"       forces light (on <html> or any container)
+     - data-theme="dark"        forces dark  (on <html> or any container)
+   Setting a token inline on :root (e.g. --retro-primary) applies to both modes.
+   ========================================================================== */
+
+:root {
+  color-scheme: light dark;
+}
+[data-theme="light"] { color-scheme: light; }
+[data-theme="dark"] { color-scheme: dark; }
+
+/* A scoped theme (e.g. a dark panel on a light page) needs its own paint */
+[data-theme]:not(:root) {
+  background-color: var(--retro-bg);
+  color: var(--retro-gray);
+}
+
+:root {
+  /* Ink: fixed colours for text on coloured fills and for glyphs */
+  --retro-black: #000;
+  --retro-white: #fff;
+  /* Ink that flips with the scheme (close buttons, sort arrows) */
+  --retro-ink: light-dark(#000, #fff);
+
+  /* Neutrals. Light: lighten(#000, 25/50/75/90%) */
+  --retro-gray-dark: light-dark(color-mix(in srgb, var(--retro-black) 75%, var(--retro-white)), #eceef1);
+  --retro-gray: light-dark(color-mix(in srgb, var(--retro-black) 50%, var(--retro-white)), #b4b9c0);
+  --retro-gray-light: light-dark(color-mix(in srgb, var(--retro-black) 25%, var(--retro-white)), #7c828a);
+  --retro-gray-lighter: light-dark(color-mix(in srgb, var(--retro-black) 10%, var(--retro-white)), #3a3e44);
+
+  /* Surfaces */
+  --retro-bg: light-dark(#fff, #1a1c1f);
+  --retro-field-bg: light-dark(#fff, #23262a);
+  --retro-surface: light-dark(#f5f5f5, #2a2d32);
+  --retro-stripe: light-dark(#f9f9f9, #212428);
+
+  /* Hard-coded greys from the original source, named */
+  --retro-border: light-dark(#ccc, #4a4f57);
+  --retro-border-dark: light-dark(#bbb, #5a606a);
+  --retro-rule: light-dark(#ddd, #3a3e44);
+  --retro-rule-light: light-dark(#eee, #30343a);
+  --retro-text-btn: light-dark(#333, #e8eaed);
+
+  /* Translucent lines and bevels */
+  --retro-line: light-dark(rgb(0 0 0 / 0.15), rgb(255 255 255 / 0.14));
+  --retro-line-strong: light-dark(rgb(0 0 0 / 0.3), rgb(255 255 255 / 0.22));
+  --retro-line-faint: light-dark(rgb(0 0 0 / 0.05), rgb(255 255 255 / 0.07));
+  --retro-bevel: light-dark(rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.06));
+  --retro-bevel-solid: light-dark(#fff, rgb(255 255 255 / 0.07));
+
+  /* Text "engraving": a white glow on light, a dark drop on dark */
+  --retro-glow: light-dark(rgb(255 255 255 / 0.75), rgb(0 0 0 / 0.6));
+  --retro-glow-solid: light-dark(#fff, rgb(0 0 0 / 0.6));
+  --retro-glow-soft: light-dark(rgb(255 255 255 / 0.5), rgb(0 0 0 / 0.5));
+
+  /* Links. --retro-link is the base; text and hover colours adapt to the scheme */
+  --retro-link: #0069d6;
+  --retro-link-dark: hsl(from var(--retro-link) h s calc(l - 10));
+  --retro-link-text: light-dark(var(--retro-link), hsl(from var(--retro-link) h s max(calc(l + 22), 62)));
+  --retro-link-hover: light-dark(
+    hsl(from var(--retro-link) h s calc(l - 10)),
+    hsl(from var(--retro-link) h s max(calc(l + 32), 74))
+  );
+
+  /* Accent palette */
+  --retro-blue: #049cdb;
+  --retro-blue-dark: #0064cd;
+  --retro-green: #46a546;
+  --retro-red: #9d261d;
+  --retro-yellow: #ffc40d;
+  --retro-orange: #f89406;
+  --retro-pink: #c3325f;
+  --retro-purple: #7a43b6;
+
+  /* Semantic colours: the two stops of the 2011 gradient bar */
+  --retro-primary: var(--retro-blue);
+  --retro-primary-dark: var(--retro-blue-dark);
+  --retro-success: #62c462;
+  --retro-success-dark: #57a957;
+  --retro-danger: #ee5f5b;
+  --retro-danger-dark: #c43c35;
+  --retro-info: #5bc0de;
+  --retro-info-dark: #339bb9;
+  --retro-warning: light-dark(#fceec1, #6e5a1d);
+  --retro-warning-dark: light-dark(#eedc94, #574716);
+
+  /* Base tints used by block messages (the original used slightly different seeds) */
+  --retro-danger-soft: #f56a66;
+  --retro-info-soft: #6bd0ee;
+
+  /* Block messages: pale tints on light, deep tints on dark */
+  --retro-block-warning-bg: light-dark(hsl(from var(--retro-warning) h s calc(l + 5)), hsl(from var(--retro-warning) h s calc(l - 6)));
+  --retro-block-danger-bg: light-dark(hsl(from var(--retro-danger-soft) h s calc(l + 25)), hsl(from var(--retro-danger-soft) h calc(s - 35) calc(l - 40)));
+  --retro-block-danger-border: light-dark(hsl(from var(--retro-danger-soft) h s calc(l + 20)), hsl(from var(--retro-danger-soft) h calc(s - 30) calc(l - 30)));
+  --retro-block-success-bg: light-dark(hsl(from var(--retro-success) h s calc(l + 30)), hsl(from var(--retro-success) h calc(s - 25) calc(l - 35)));
+  --retro-block-success-border: light-dark(hsl(from var(--retro-success) h s calc(l + 25)), hsl(from var(--retro-success) h calc(s - 20) calc(l - 28)));
+  --retro-block-info-bg: light-dark(hsl(from var(--retro-info-soft) h s calc(l + 25)), hsl(from var(--retro-info-soft) h calc(s - 35) calc(l - 40)));
+  --retro-block-info-border: light-dark(hsl(from var(--retro-info-soft) h s calc(l + 20)), hsl(from var(--retro-info-soft) h calc(s - 30) calc(l - 30)));
+
+  /* Default ("secondary") button: white-to-grey bevel on light, slate on dark */
+  --retro-btn-top: light-dark(var(--retro-white), #4b4f56);
+  --retro-btn-bottom: hsl(from var(--retro-btn-top) h s calc(l - 10));
+  --retro-btn-border: light-dark(#ccc, #101214);
+  --retro-btn-border-bottom: light-dark(#bbb, #08090a);
+  --retro-secondary: var(--retro-btn-top);
+  --retro-secondary-dark: hsl(from var(--retro-secondary) h s calc(l - 10));
+
+  /* Focus */
+  --retro-focus: #52a8ec;
+  --retro-focus-ring: light-dark(var(--retro-primary-dark), var(--retro-primary));
+
+  /* Form error shades */
+  --retro-error-fg: light-dark(var(--retro-red), hsl(from var(--retro-red) h s calc(l + 30)));
+  --retro-error-bg: light-dark(hsl(from var(--retro-red) h s calc(l + 57)), hsl(from var(--retro-red) h s calc(l - 22)));
+  --retro-error-bg-addon: light-dark(hsl(from var(--retro-red) h s calc(l + 50)), hsl(from var(--retro-red) h s calc(l - 14)));
+  --retro-error-text: hsl(from var(--retro-red) h calc(s - 25) calc(l + 25));
+  --retro-error-text-dark: light-dark(
+    hsl(from var(--retro-red) h calc(s - 25) calc(l + 15)),
+    hsl(from var(--retro-red) h calc(s - 25) calc(l + 30))
+  );
+
+  /* Code */
+  --retro-code-bg: light-dark(hsl(from var(--retro-orange) h s calc(l + 40)), hsl(from var(--retro-orange) h s calc(l - 30)));
+  --retro-code-fg: light-dark(rgb(0 0 0 / 0.75), rgb(255 255 255 / 0.85));
+
+  /* Pagination hover/active segment */
+  --retro-pager-bg: light-dark(hsl(from var(--retro-blue) h s calc(l + 45)), hsl(from var(--retro-blue) h s calc(l - 22)));
+
+  /* Colour scheme helpers (spin()) for theme authors */
+  --retro-base-color: var(--retro-blue);
+  --retro-complement: hsl(from var(--retro-base-color) calc(h + 180) s l);
+  --retro-split1: hsl(from var(--retro-base-color) calc(h + 158) s l);
+  --retro-split2: hsl(from var(--retro-base-color) calc(h - 158) s l);
+  --retro-triad1: hsl(from var(--retro-base-color) calc(h + 135) s l);
+  --retro-triad2: hsl(from var(--retro-base-color) calc(h - 135) s l);
+  --retro-tetra1: hsl(from var(--retro-base-color) calc(h + 90) s l);
+  --retro-tetra2: hsl(from var(--retro-base-color) calc(h - 90) s l);
+  --retro-analog1: hsl(from var(--retro-base-color) calc(h + 22) s l);
+  --retro-analog2: hsl(from var(--retro-base-color) calc(h - 22) s l);
+
+  /* Topbar: stays a dark bar in both schemes, a touch deeper in dark mode */
+  --retro-topbar-top: light-dark(#333, #2b2e32);
+  --retro-topbar-bottom: light-dark(#222, #18191c);
+  --retro-topbar-text: #bfbfbf;
+  --retro-topbar-placeholder: #e6e6e6;
+  --retro-topbar-menu-text: #bbb;
+  --retro-topbar-section: #808080;
+  --retro-topbar-focus-bg: #fff;
+  --retro-topbar-focus-text: #404040;
+  --retro-topbar-height: 40px;
+
+  /* Tooltips invert against the page: black on light, pale on dark */
+  --retro-tip-bg: light-dark(#000, #e8eaed);
+  --retro-tip-text: light-dark(#fff, #14161a);
+
+  /* Typography */
+  --retro-font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --retro-font-serif: Georgia, "Times New Roman", Times, serif;
+  --retro-font-mono: Monaco, "Andale Mono", "Courier New", monospace;
+  --retro-font-base: 13px;
+  --retro-baseline: 18px;
+
+  /* Radii */
+  --retro-radius: 4px;
+  --retro-radius-sm: 3px;
+  --retro-radius-lg: 6px;
+
+  /* Shadows */
+  --retro-inset: light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.45));
+  --retro-inset-soft: light-dark(rgb(0 0 0 / 0.075), rgb(0 0 0 / 0.4));
+  --retro-inset-faint: light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.3));
+  --retro-shadow-color: light-dark(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.6));
+  --retro-shadow-input: inset 0 1px 3px var(--retro-inset);
+  --retro-shadow-uneditable: inset 0 1px 2px var(--retro-inset-soft);
+  --retro-shadow-pop: 0 3px 7px var(--retro-shadow-color);
+  --retro-backdrop: light-dark(rgb(0 0 0 / 0.5), rgb(0 0 0 / 0.7));
+
+  /* Grid: 16 columns x 40px + 15 gutters x 20px = 940px */
+  --retro-grid-columns: 16;
+  --retro-grid-column: 40px;
+  --retro-grid-gutter: 20px;
+  --retro-extra-space: 40px;
+  --retro-site-width: calc(
+    var(--retro-grid-columns) * var(--retro-grid-column) +
+    (var(--retro-grid-columns) - 1) * var(--retro-grid-gutter)
+  );
+  --retro-sidebar-width: 220px;
+
+  /* Stacking */
+  --retro-z-backdrop: 1000;
+  --retro-z-modal: 2000;
+  --retro-z-topbar: 10000;
+}
+
+/* BRAND: opt-in, derive the whole blue family from --retro-primary alone.
+   Add data-retro-brand="derived" to <html>, then set --retro-primary to any
+   colour. The hue/saturation/lightness offsets are the ones that map the
+   original #049cdb to #0064cd (dark stop) and #52a8ec (focus glow). */
+[data-retro-brand="derived"] {
+  --retro-primary-dark: hsl(from var(--retro-primary) calc(h + 13) calc(s + 4) calc(l - 4));
+  --retro-focus: hsl(from var(--retro-primary) calc(h + 10) calc(s - 14) calc(l + 18));
+  --retro-link: var(--retro-primary-dark);
+  --retro-pager-bg: light-dark(
+    hsl(from var(--retro-primary) h s calc(l + 45)),
+    hsl(from var(--retro-primary) h s calc(l - 22))
+  );
+}
+
+
+/* ==========================================================================
+   SCAFFOLDING: grid, containers, structural layout, links, focus
+   (lib/scaffolding.less; the button base lives in patterns.css)
+   ========================================================================== */
+
+/* Grid: CSS-flexbox rows driven by --retro-grid-* tokens. The original
+   .row / .spanN / .offsetN class interface is unchanged. Columns are sized
+   from percentages so the grid stays fluid when the container shrinks. */
+
+.row {
+  --_cols: var(--retro-grid-columns);
+  --_col: calc(
+    (100% - var(--_cols) * var(--retro-grid-gutter)) / var(--_cols)
+  );
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  margin-left: calc(var(--retro-grid-gutter) * -1);
+
+  & :is(.span1, .span2, .span3, .span4, .span5, .span6, .span7, .span8,
+        .span9, .span10, .span11, .span12, .span13, .span14, .span15, .span16) {
+    flex: 0 0 auto;
+    box-sizing: content-box;
+    width: calc(
+      var(--_col) * var(--_span, 1) + var(--retro-grid-gutter) * (var(--_span, 1) - 1)
+    );
+    max-width: calc(100% - var(--retro-grid-gutter));
+    margin-left: var(--retro-grid-gutter);
+  }
+
+  & .span1  { --_span: 1; }
+  & .span2  { --_span: 2; }
+  & .span3  { --_span: 3; }
+  & .span4  { --_span: 4; }
+  & .span5  { --_span: 5; }
+  & .span6  { --_span: 6; }
+  & .span7  { --_span: 7; }
+  & .span8  { --_span: 8; }
+  & .span9  { --_span: 9; }
+  & .span10 { --_span: 10; }
+  & .span11 { --_span: 11; }
+  & .span12 { --_span: 12; }
+  & .span13 { --_span: 13; }
+  & .span14 { --_span: 14; }
+  & .span15 { --_span: 15; }
+  & .span16 { --_span: 16; }
+
+  /* Offsets skip N columns (N column widths + N gutters) and replace the
+     span's own leading gutter, exactly like the LESS .offset() mixin.
+     min() clamps the offset when the grid collapses to one column. */
+  & :is(.offset1, .offset2, .offset3, .offset4, .offset5, .offset6, .offset7,
+        .offset8, .offset9, .offset10, .offset11, .offset12, .offset13,
+        .offset14, .offset15) {
+    margin-left: calc(
+      (var(--_col) + var(--retro-grid-gutter)) *
+        min(var(--_offset, 0), var(--_cols) - 1) +
+      var(--retro-grid-gutter)
+    );
+  }
+
+  & .offset1  { --_offset: 1; }
+  & .offset2  { --_offset: 2; }
+  & .offset3  { --_offset: 3; }
+  & .offset4  { --_offset: 4; }
+  & .offset5  { --_offset: 5; }
+  & .offset6  { --_offset: 6; }
+  & .offset7  { --_offset: 7; }
+  & .offset8  { --_offset: 8; }
+  & .offset9  { --_offset: 9; }
+  & .offset10 { --_offset: 10; }
+  & .offset11 { --_offset: 11; }
+  & .offset12 { --_offset: 12; }
+  & .offset13 { --_offset: 13; }
+  & .offset14 { --_offset: 14; }
+  & .offset15 { --_offset: 15; }
+}
+
+/* Structural layout */
+html, body { background-color: var(--retro-bg); }
+
+body {
+  margin: 0;
+  font-family: var(--retro-font-sans);
+  font-size: var(--retro-font-base);
+  font-weight: normal;
+  line-height: var(--retro-baseline);
+  color: var(--retro-gray);
+  text-rendering: optimizeLegibility;
+}
+
+/* Centered, fixed-width layout that gives way to the viewport */
+.container {
+  display: flow-root;
+  width: var(--retro-site-width);
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* Fluid layout: sidebar + min/max-width content */
+.container-fluid {
+  display: grid;
+  grid-template-columns: var(--retro-sidebar-width) minmax(min(700px, 100%), 1180px);
+  column-gap: calc(var(--retro-grid-gutter));
+  justify-content: start;
+  align-items: start;
+  padding: 0 20px;
+  margin-bottom: var(--retro-baseline);
+
+  & .sidebar {
+    grid-column: 1;
+    width: var(--retro-sidebar-width);
+  }
+  & .content {
+    grid-column: 2;
+    min-width: 0;
+  }
+}
+
+.center-block { display: block; margin: 0 auto; }
+
+/* Links */
+a {
+  color: var(--retro-link-text);
+  text-decoration: none;
+  line-height: inherit;
+  font-weight: inherit;
+
+  &:hover {
+    color: var(--retro-link-hover);
+    text-decoration: underline;
+  }
+}
+
+/* WCAG 2.2 focus indicator: visible for keyboard users, hidden for pointer.
+   :where() keeps specificity at zero so component rules can refine it. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--retro-focus-ring);
+  outline-offset: 2px;
+}
+
+
+/* ==========================================================================
+   TYPOGRAPHY: headings, body text, lists, code (lib/type.less)
+   ========================================================================== */
+
+p {
+  font-size: var(--retro-font-base);
+  font-weight: normal;
+  line-height: var(--retro-baseline);
+  margin-bottom: calc(var(--retro-baseline) / 2);
+
+  & small {
+    font-size: calc(var(--retro-font-base) - 2px);
+    color: var(--retro-gray-light);
+  }
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: bold;
+  color: var(--retro-gray-dark);
+
+  & small { color: var(--retro-gray-light); }
+}
+h1 {
+  margin-bottom: var(--retro-baseline);
+  font-size: 30px;
+  line-height: calc(var(--retro-baseline) * 2);
+
+  & small { font-size: 18px; }
+}
+h2 {
+  font-size: 24px;
+  line-height: calc(var(--retro-baseline) * 2);
+
+  & small { font-size: 14px; }
+}
+h3, h4, h5, h6 { line-height: calc(var(--retro-baseline) * 2); }
+h3 {
+  font-size: 18px;
+
+  & small { font-size: 14px; }
+}
+h4 {
+  font-size: 16px;
+
+  & small { font-size: 12px; }
+}
+h5 { font-size: 14px; }
+h6 {
+  font-size: 13px;
+  color: var(--retro-gray-light);
+  text-transform: uppercase;
+}
+
+/* Lists */
+ul, ol { margin: 0 0 var(--retro-baseline) 25px; }
+ul ul, ul ol, ol ol, ol ul { margin-bottom: 0; }
+ul { list-style: disc; }
+ol { list-style: decimal; }
+li {
+  line-height: var(--retro-baseline);
+  color: var(--retro-gray);
+}
+ul.unstyled { list-style: none; margin-left: 0; }
+
+dl {
+  margin-bottom: var(--retro-baseline);
+
+  & dt, & dd { line-height: var(--retro-baseline); }
+  & dt { font-weight: bold; }
+  & dd { margin-left: calc(var(--retro-baseline) / 2); }
+}
+
+hr {
+  margin: 0 0 19px;
+  border: 0;
+  border-bottom: 1px solid var(--retro-rule-light);
+}
+
+strong {
+  font-style: inherit;
+  font-weight: bold;
+  line-height: inherit;
+}
+em {
+  font-style: italic;
+  font-weight: inherit;
+  line-height: inherit;
+}
+.muted { color: var(--retro-gray-light); }
+
+blockquote {
+  margin-bottom: var(--retro-baseline);
+  border-left: 5px solid var(--retro-rule-light);
+  padding-left: 15px;
+
+  & p {
+    font-size: 14px;
+    font-weight: 300;
+    line-height: var(--retro-baseline);
+    margin-bottom: 0;
+  }
+  & small {
+    display: block;
+    font-size: 12px;
+    font-weight: 300;
+    line-height: var(--retro-baseline);
+    color: var(--retro-gray-light);
+
+    &::before { content: "\2014 \00A0"; }
+  }
+}
+
+address {
+  display: block;
+  line-height: var(--retro-baseline);
+  margin-bottom: var(--retro-baseline);
+}
+
+/* Inline and block code */
+code, pre {
+  padding: 0 3px 2px;
+  font-family: var(--retro-font-mono);
+  font-size: 12px;
+  border-radius: var(--retro-radius-sm);
+}
+code {
+  background-color: var(--retro-code-bg);
+  color: var(--retro-code-fg);
+  padding: 1px 3px;
+}
+pre {
+  display: block;
+  padding: calc(var(--retro-baseline) - 1px);
+  margin: 0 0 var(--retro-baseline);
+  background-color: var(--retro-surface);
+  line-height: var(--retro-baseline);
+  font-size: 12px;
+  border: 1px solid var(--retro-line);
+  border-radius: var(--retro-radius-sm);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+
+/* ==========================================================================
+   FORMS: inputs, selects, textareas, add-ons, states (lib/forms.less)
+   ========================================================================== */
+
+form { margin-bottom: var(--retro-baseline); }
+
+fieldset {
+  margin-bottom: var(--retro-baseline);
+  padding-top: var(--retro-baseline);
+
+  & legend {
+    display: block;
+    margin-left: 150px;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--retro-gray-dark);
+  }
+}
+
+/* Row wrapper that contains the floated label */
+.clearfix {
+  display: flow-root;
+  margin-bottom: var(--retro-baseline);
+}
+
+label, input, select, textarea {
+  font-family: var(--retro-font-sans);
+  font-size: var(--retro-font-base);
+  font-weight: normal;
+  line-height: normal;
+}
+
+label {
+  padding-top: 6px;
+  font-size: var(--retro-font-base);
+  line-height: 18px;
+  float: left;
+  width: 130px;
+  text-align: right;
+  color: var(--retro-gray-dark);
+}
+
+div.input { margin-left: 150px; }
+
+input[type="checkbox"],
+input[type="radio"] {
+  cursor: pointer;
+  accent-color: var(--retro-primary);
+}
+
+/* Text-like controls (the original text/password plus modern HTML5 types).
+   :where() keeps these base rules at zero specificity, so the later
+   select/textarea/size/state rules override them as intended. */
+:where(input:not([type]), input[type="text"], input[type="password"], input[type="email"],
+    input[type="url"], input[type="search"], input[type="tel"], input[type="number"],
+    input[type="date"], input[type="datetime-local"], input[type="month"],
+    input[type="time"], input[type="week"], textarea, select, .uneditable-input) {
+  display: inline-block;
+  width: 210px;
+  padding: 4px;
+  font-size: var(--retro-font-base);
+  line-height: var(--retro-baseline);
+  height: var(--retro-baseline);
+  color: var(--retro-gray);
+  background-color: var(--retro-field-bg);
+  border: 1px solid var(--retro-border);
+  border-radius: var(--retro-radius-sm);
+}
+select, input[type="file"] {
+  height: calc(var(--retro-baseline) * 1.5);
+  line-height: calc(var(--retro-baseline) * 1.5);
+}
+textarea { height: auto; }
+
+.uneditable-input {
+  background-color: var(--retro-rule-light);
+  display: block;
+  border-color: var(--retro-border);
+  box-shadow: var(--retro-shadow-uneditable);
+}
+
+::placeholder {
+  color: var(--retro-gray-light);
+  opacity: 1;
+}
+
+/* Inset field + animated focus glow */
+:where(input:not([type]), input[type="text"], input[type="password"], input[type="email"],
+    input[type="url"], input[type="search"], input[type="tel"], input[type="number"],
+    input[type="date"], input[type="datetime-local"], input[type="month"],
+    input[type="time"], input[type="week"], select, textarea) {
+  transition: border linear 0.2s, box-shadow linear 0.2s;
+  box-shadow: var(--retro-shadow-input);
+}
+:where(input:not([type]), input[type="text"], input[type="password"], input[type="email"],
+    input[type="url"], input[type="search"], input[type="tel"], input[type="number"],
+    input[type="date"], input[type="datetime-local"], input[type="month"],
+    input[type="time"], input[type="week"], textarea):focus {
+  /* The glow replaces the outline; a transparent outline keeps a visible
+     indicator in forced-colors / Windows High Contrast mode. */
+  outline: 2px solid transparent;
+  border-color: color-mix(in srgb, var(--retro-focus) 80%, transparent);
+  box-shadow: var(--retro-shadow-input),
+              0 0 8px color-mix(in srgb, var(--retro-focus) 60%, transparent);
+}
+select:focus-visible {
+  outline: 2px solid var(--retro-focus-ring);
+  outline-offset: 1px;
+}
+
+/* Error state */
+form div.error {
+  background: var(--retro-error-bg);
+  padding: 10px 0;
+  margin: -10px 0 10px;
+  border-radius: var(--retro-radius);
+
+  & > label,
+  & span.help-inline,
+  & span.help-block {
+    color: var(--retro-error-fg);
+  }
+
+  & :is(input:not([type]), input[type="text"], input[type="password"], input[type="email"],
+        input[type="url"], input[type="search"], input[type="tel"], input[type="number"],
+        textarea) {
+    border-color: var(--retro-error-text);
+    box-shadow: 0 0 3px hsl(from var(--retro-red) h s calc(l + 4) / 0.25);
+
+    &:focus {
+      border-color: var(--retro-error-text-dark);
+      box-shadow: 0 0 6px hsl(from var(--retro-red) h s calc(l + 4) / 0.5);
+    }
+  }
+
+  & :is(.input-prepend, .input-append) span.add-on {
+    background: var(--retro-error-bg-addon);
+    border-color: var(--retro-error-text);
+    color: var(--retro-error-text-dark);
+  }
+}
+
+/* Sizes */
+.input-mini, input.mini, textarea.mini, select.mini { width: 60px; }
+.input-small, input.small, textarea.small, select.small { width: 90px; }
+.input-medium, input.medium, textarea.medium, select.medium { width: 150px; }
+.input-large, input.large, textarea.large, select.large { width: 210px; }
+.input-xlarge, input.xlarge, textarea.xlarge, select.xlarge { width: 270px; }
+.input-xxlarge, input.xxlarge, textarea.xxlarge, select.xxlarge { width: 530px; }
+textarea.xxlarge { overflow-y: scroll; }
+
+/* Read-only and disabled controls: flat, no inset, no glow */
+input[readonly]:focus,
+textarea[readonly]:focus,
+input.disabled,
+:is(input, textarea, select):disabled {
+  background: var(--retro-surface);
+  border-color: var(--retro-rule);
+  box-shadow: none;
+}
+:is(input, textarea, select):disabled {
+  cursor: not-allowed;
+  color: var(--retro-gray-light);
+}
+:is(input[type="checkbox"], input[type="radio"]):disabled { cursor: not-allowed; }
+
+/* Actions bar (the buttons) */
+.actions {
+  background: var(--retro-surface);
+  margin-top: var(--retro-baseline);
+  margin-bottom: var(--retro-baseline);
+  padding: calc(var(--retro-baseline) - 1px) 20px var(--retro-baseline) 150px;
+  border-top: 1px solid var(--retro-rule);
+  border-radius: 0 0 var(--retro-radius-sm) var(--retro-radius-sm);
+
+  & .secondary-action {
+    float: right;
+
+    & a {
+      line-height: 30px;
+
+      &:hover { text-decoration: underline; }
+    }
+  }
+}
+
+/* Help text */
+.help-inline, .help-block {
+  font-size: 12px;
+  line-height: var(--retro-baseline);
+  color: var(--retro-gray-light);
+}
+.help-inline { padding-left: 5px; }
+.help-block {
+  display: block;
+  max-width: 600px;
+}
+
+/* Inline fields */
+.inline-inputs {
+  color: var(--retro-gray);
+
+  & span, & input[type="text"] { display: inline-block; }
+  & input.mini { width: 60px; }
+  & input.small { width: 90px; }
+  & span { padding: 0 2px 0 1px; }
+}
+
+/* Add-ons: symbols and text attached to an input (one segmented control) */
+.input-prepend,
+.input-append {
+  display: flex;
+  align-items: flex-start;
+
+  & input[type="text"],
+  & input[type="password"],
+  & input[type="email"],
+  & input[type="url"],
+  & input[type="search"],
+  & input[type="number"] {
+    flex: 0 1 auto;
+    border-radius: 0 var(--retro-radius-sm) var(--retro-radius-sm) 0;
+  }
+
+  & .add-on {
+    flex: none;
+    display: block;
+    width: auto;
+    min-width: 16px;
+    padding: 4px 4px 4px 5px;
+    background: var(--retro-surface);
+    color: var(--retro-gray-light);
+    font-weight: normal;
+    line-height: 18px;
+    height: 18px;
+    text-align: center;
+    text-shadow: 0 1px 0 var(--retro-glow-solid);
+    border: 1px solid var(--retro-border);
+    border-right-width: 0;
+    border-radius: var(--retro-radius-sm) 0 0 var(--retro-radius-sm);
+  }
+
+  & .active {
+    background: hsl(from var(--retro-green) h s calc(l + 30));
+    border-color: var(--retro-green);
+  }
+}
+.input-append {
+  & input[type="text"],
+  & input[type="password"],
+  & input[type="email"],
+  & input[type="url"],
+  & input[type="search"],
+  & input[type="number"] {
+    border-radius: var(--retro-radius-sm) 0 0 var(--retro-radius-sm);
+  }
+  & .add-on {
+    border-radius: 0 var(--retro-radius-sm) var(--retro-radius-sm) 0;
+    border-right-width: 1px;
+    border-left-width: 0;
+  }
+}
+
+/* Stacked radios and checkboxes */
+.inputs-list {
+  margin: 0 0 5px;
+  width: 100%;
+
+  & li {
+    display: block;
+    padding: 0;
+    width: 100%;
+
+    & label {
+      display: block;
+      float: none;
+      width: auto;
+      padding: 0;
+      line-height: var(--retro-baseline);
+      text-align: left;
+      white-space: normal;
+
+      & strong { color: var(--retro-gray); }
+      & small {
+        font-size: 12px;
+        font-weight: normal;
+      }
+    }
+    & ul.inputs-list {
+      margin-left: 25px;
+      margin-bottom: 10px;
+      padding-top: 0;
+    }
+    &:first-child { padding-top: 5px; }
+  }
+
+  & input[type="radio"],
+  & input[type="checkbox"] { margin-bottom: 0; }
+}
+
+/* Stacked forms */
+.form-stacked {
+  padding-left: 20px;
+
+  & fieldset { padding-top: calc(var(--retro-baseline) / 2); }
+  & legend { margin-left: 0; }
+  & label {
+    display: block;
+    float: none;
+    width: auto;
+    font-weight: bold;
+    text-align: left;
+    line-height: 20px;
+    padding-top: 0;
+  }
+  & .clearfix {
+    margin-bottom: calc(var(--retro-baseline) / 2);
+
+    & div.input { margin-left: 0; }
+  }
+  & .inputs-list {
+    margin-bottom: 0;
+
+    & li {
+      padding-top: 0;
+
+      & label {
+        font-weight: normal;
+        padding-top: 0;
+      }
+    }
+  }
+  & div.error {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-left: 10px;
+    margin-top: 0;
+    margin-left: -10px;
+  }
+  & .actions {
+    margin-left: -20px;
+    padding-left: 20px;
+  }
+}
+
+
+/* ==========================================================================
+   TABLES: base, zebra-striped, bordered, condensed (lib/tables.less)
+   ========================================================================== */
+
+table {
+  width: 100%;
+  margin-bottom: var(--retro-baseline);
+  padding: 0;
+  border-collapse: separate;
+  font-size: var(--retro-font-base);
+
+  & th, & td {
+    padding: 10px 10px 9px;
+    line-height: calc(var(--retro-baseline) * 0.75);
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--retro-rule);
+  }
+  & th {
+    padding-top: 9px;
+    font-weight: bold;
+    border-bottom-width: 2px;
+  }
+}
+
+/* Zebra stripes + sortable header affordances */
+.zebra-striped {
+  & tbody {
+    & tr:nth-child(odd) td { background-color: var(--retro-stripe); }
+    & tr:hover td { background-color: var(--retro-surface); }
+  }
+
+  /* tablesorter arrows (CSS triangles) */
+  & .header {
+    cursor: pointer;
+
+    &::after {
+      content: "";
+      float: right;
+      margin-top: 7px;
+      border-width: 0 4px 4px;
+      border-style: solid;
+      border-color: var(--retro-ink) transparent;
+      visibility: hidden;
+    }
+    &:hover::after { visibility: visible; }
+  }
+
+  & .headerSortUp,
+  & .headerSortDown {
+    background-color: color-mix(in srgb, rgb(141 192 219) 25%, transparent);
+    text-shadow: 0 1px 1px var(--retro-glow);
+    border-radius: var(--retro-radius-sm) var(--retro-radius-sm) 0 0;
+  }
+  & .headerSortDown::after,
+  & .headerSortDown:hover::after {
+    visibility: visible;
+    opacity: 0.6;
+  }
+  & .headerSortUp::after {
+    border-bottom: none;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid var(--retro-ink);
+    visibility: visible;
+    opacity: 0.6;
+  }
+}
+
+/* Bordered table: a single outer rim with rounded corners */
+.bordered-table {
+  border: 1px solid var(--retro-rule);
+  border-collapse: separate;
+  border-left: 0;
+  border-radius: var(--retro-radius);
+  box-shadow: inset 0 1px 0 var(--retro-bevel);
+
+  & th + th,
+  & td + td,
+  & th + td {
+    border-left: 1px solid var(--retro-rule);
+  }
+  & thead tr:first-child th:first-child,
+  & tbody tr:first-child td:first-child { border-radius: var(--retro-radius) 0 0 0; }
+  & thead tr:first-child th:last-child,
+  & tbody tr:first-child td:last-child { border-radius: 0 var(--retro-radius) 0 0; }
+  & tbody tr:last-child td { border-bottom: 0; }
+  & tbody tr:last-child td:first-child { border-radius: 0 0 0 var(--retro-radius); }
+  & tbody tr:last-child td:last-child { border-radius: 0 0 var(--retro-radius) 0; }
+}
+
+/* Condensed table: tighter cells */
+.condensed-table {
+  & th, & td { padding: 5px 5px 4px; }
+  & th { padding-top: 4px; }
+}
+
+/* Coloured table headings. Tints are pale on light and deep on dark;
+   red and purple text is lifted on dark for contrast. */
+table {
+  & .blue  { --_th: var(--retro-blue);   --_th-tint: light-dark(hsl(from var(--retro-blue) h s calc(l + 40)), hsl(from var(--retro-blue) h s calc(l - 25))); }
+  & .green { --_th: var(--retro-green);  --_th-tint: light-dark(hsl(from var(--retro-green) h s calc(l + 40)), hsl(from var(--retro-green) h s calc(l - 25))); }
+  & .red   { --_th: var(--retro-error-fg); --_th-tint: light-dark(hsl(from var(--retro-red) h s calc(l + 50)), hsl(from var(--retro-red) h s calc(l - 12))); }
+  & .yellow{ --_th: var(--retro-yellow); --_th-tint: light-dark(hsl(from var(--retro-yellow) h s calc(l + 40)), hsl(from var(--retro-yellow) h s calc(l - 40))); }
+  & .orange{ --_th: var(--retro-orange); --_th-tint: light-dark(hsl(from var(--retro-orange) h s calc(l + 40)), hsl(from var(--retro-orange) h s calc(l - 30))); }
+  & .purple{ --_th: light-dark(var(--retro-purple), hsl(from var(--retro-purple) h s calc(l + 20))); --_th-tint: light-dark(hsl(from var(--retro-purple) h s calc(l + 40)), hsl(from var(--retro-purple) h s calc(l - 20))); }
+
+  & :is(.blue, .green, .red, .yellow, .orange, .purple) {
+    color: var(--_th);
+    border-bottom-color: var(--_th);
+
+    &:is(.headerSortUp, .headerSortDown) { background-color: var(--_th-tint); }
+  }
+}
+
+
+/* ==========================================================================
+   PATTERNS (lib/patterns.less): buttons, topbar, page patterns, alerts,
+   navigation, labels & badges, modals, twipsy and popovers.
+   Buttons come first because the alerts reuse their gradient hooks.
+
+   BUTTONS
+   ========================================================================== */
+
+/* Colour hooks shared by .btn and .alert-message; each variant just swaps
+   the two gradient stops. Declared first so the structural rules below win
+   ties exactly as in the original cascade. */
+.btn, .alert-message {
+  --retro-bar-top: var(--retro-btn-top);
+  --retro-bar-bottom: var(--retro-btn-bottom);
+
+  &.danger, &.error, &.btn-danger, &.alert-danger {
+    --retro-bar-top: var(--retro-danger);
+    --retro-bar-bottom: var(--retro-danger-dark);
+  }
+  &.success, &.btn-success, &.alert-success {
+    --retro-bar-top: var(--retro-success);
+    --retro-bar-bottom: var(--retro-success-dark);
+  }
+  &.info, &.btn-info, &.alert-info {
+    --retro-bar-top: var(--retro-info);
+    --retro-bar-bottom: var(--retro-info-dark);
+  }
+  &.primary, &.btn-primary {
+    --retro-bar-top: var(--retro-primary);
+    --retro-bar-bottom: var(--retro-primary-dark);
+  }
+  &.btn-secondary {
+    --retro-bar-top: var(--retro-secondary);
+    --retro-bar-bottom: var(--retro-secondary-dark);
+  }
+}
+
+/* The ".gradientBar" mixin: top-to-bottom gradient, engraved text shadow
+   and a translucent border that darkens toward the bottom edge. */
+.btn:is(.danger, .error, .btn-danger, .success, .btn-success, .info, .btn-info,
+        .primary, .btn-primary),
+.alert-message {
+  background-color: var(--retro-bar-bottom);
+  background-repeat: repeat-x;
+  background-image: linear-gradient(to bottom, var(--retro-bar-top), var(--retro-bar-bottom));
+  text-shadow: 0 -1px 0 rgb(0 0 0 / 0.25);
+  border-color: rgb(0 0 0 / 0.1) rgb(0 0 0 / 0.1) rgb(0 0 0 / 0.25);
+}
+.btn:is(.danger, .error, .btn-danger, .success, .btn-success, .info, .btn-info,
+        .primary, .btn-primary) {
+  color: var(--retro-white);
+
+  &:hover { color: var(--retro-white); }
+}
+.alert-message:is(.danger, .error, .alert-danger, .success, .alert-success,
+                  .info, .alert-info) {
+  color: var(--retro-white);
+
+  &:hover { color: var(--retro-white); }
+}
+
+/* Base button: white-to-grey bevel, 1px darker bottom edge, inset highlight */
+.btn {
+  cursor: pointer;
+  display: inline-block;
+  background-color: var(--retro-btn-bottom);
+  background-repeat: no-repeat;
+  background-image: linear-gradient(
+    to bottom, var(--retro-btn-top), var(--retro-btn-top) 25%, var(--retro-btn-bottom)
+  );
+  padding: 5px 14px 6px;
+  text-shadow: 0 1px 1px var(--retro-glow);
+  color: var(--retro-text-btn);
+  font-size: var(--retro-font-base);
+  line-height: normal;
+  border: 1px solid var(--retro-btn-border);
+  border-bottom-color: var(--retro-btn-border-bottom);
+  border-radius: var(--retro-radius);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 1px 2px rgb(0 0 0 / 0.05);
+  transition: 0.1s linear all;
+
+  /* Sliding the gradient up 15px is the original "hover" effect: the lower
+     half falls back to the solid bottom colour, so the button looks pressed in. */
+  &:hover {
+    background-position: 0 -15px;
+    color: var(--retro-text-btn);
+    text-decoration: none;
+  }
+
+  &:is(.btn-secondary) {
+    background-color: var(--retro-secondary-dark);
+    background-image: linear-gradient(
+      to bottom, var(--retro-secondary), var(--retro-secondary) 25%, var(--retro-secondary-dark)
+    );
+  }
+
+  &:is(.primary, .btn-primary, .danger, .error, .btn-danger, .success, .btn-success,
+       .info, .btn-info) {
+    color: var(--retro-white);
+  }
+
+  /* Sizes */
+  &.large {
+    font-size: 16px;
+    line-height: normal;
+    padding: 9px 14px;
+    border-radius: var(--retro-radius-lg);
+  }
+  &.small {
+    padding: 7px 9px;
+    font-size: 11px;
+  }
+
+  /* Pressed: inset shadow */
+  &:active,
+  &.active {
+    box-shadow: inset 0 3px 7px rgb(0 0 0 / 0.1), 0 1px 2px rgb(0 0 0 / 0.05);
+  }
+
+  /* Visible keyboard focus (WCAG 2.2 AA): 2px ring, 2px offset */
+  &:focus-visible {
+    outline: 2px solid var(--retro-focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* Disabled: .disabled and :disabled are kept as separate rules in the original */
+  &.disabled {
+    cursor: default;
+    background-image: none;
+    opacity: 0.65;
+    box-shadow: none;
+  }
+  &:disabled,
+  &[aria-disabled="true"] {
+    cursor: default;
+    background-image: none;
+    opacity: 0.65;
+    box-shadow: none;
+
+    &:is(.primary, .btn-primary) { color: var(--retro-white); }
+  }
+}
+
+button.btn::-moz-focus-inner,
+input[type="submit"].btn::-moz-focus-inner {
+  padding: 0;
+  border: 0;
+}
+
+
+/* ==========================================================================
+   TOPBAR / NAVBAR
+   ========================================================================== */
+
+.topbar, .navbar {
+  height: var(--retro-topbar-height);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--retro-z-topbar);
+  overflow: visible;
+
+  /* The gradient lives on its own element (.fill) so overflowing menus stay visible */
+  & :is(.fill, .navbar-inner) {
+    background: var(--retro-topbar-bottom);
+    background-image: linear-gradient(to bottom, var(--retro-topbar-top), var(--retro-topbar-bottom));
+    background-repeat: repeat-x;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.25), inset 0 -1px 0 rgb(0 0 0 / 0.1);
+  }
+
+  & a {
+    color: var(--retro-topbar-text);
+    text-shadow: 0 -1px 0 rgb(0 0 0 / 0.25);
+
+    &:focus-visible {
+      outline-color: var(--retro-white);
+      outline-offset: -2px;
+    }
+  }
+
+  & a:hover,
+  & ul li.active a {
+    background-color: rgb(255 255 255 / 0.05);
+    color: var(--retro-white);
+    text-decoration: none;
+  }
+
+  /* Site name */
+  & h3 {
+    position: relative;
+
+    & a {
+      float: left;
+      display: block;
+      padding: 8px 20px 12px;
+      margin-left: -20px;
+      color: var(--retro-white);
+      font-size: 20px;
+      font-weight: 200;
+      line-height: 1;
+    }
+  }
+
+  /* Search form */
+  & form {
+    float: left;
+    margin: 5px 0 0 0;
+    position: relative;
+    opacity: 1;
+
+    & input {
+      background-color: rgb(255 255 255 / 0.3);
+      font-size: var(--retro-font-base);
+      line-height: 1;
+      width: 220px;
+      padding: 4px 9px;
+      color: rgb(255 255 255 / 0.75);
+      border: 1px solid #111;
+      border-radius: var(--retro-radius);
+      box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1), 0 1px 0 rgb(255 255 255 / 0.25);
+      transition: none;
+
+      &::placeholder { color: var(--retro-topbar-placeholder); }
+
+      &:hover {
+        background-color: rgb(255 255 255 / 0.5);
+        color: var(--retro-white);
+      }
+      &:focus,
+      &.focused {
+        outline: 2px solid transparent;
+        background-color: var(--retro-topbar-focus-bg);
+        color: var(--retro-topbar-focus-text);
+        text-shadow: 0 1px 0 var(--retro-topbar-focus-bg);
+        border: 0;
+        padding: 5px 10px;
+        box-shadow: 0 0 3px rgb(0 0 0 / 0.15);
+      }
+    }
+  }
+
+  /* Navigation */
+  & ul {
+    display: block;
+    float: left;
+    margin: 0 10px 0 0;
+    position: relative;
+    list-style: none;
+
+    &.secondary-nav {
+      float: right;
+      margin-left: 10px;
+      margin-right: 0;
+    }
+
+    & li {
+      display: block;
+      float: left;
+      font-size: var(--retro-font-base);
+
+      & a {
+        display: block;
+        float: none;
+        padding: 10px 10px 11px;
+        line-height: 19px;
+        text-decoration: none;
+
+        &:hover {
+          color: var(--retro-white);
+          text-decoration: none;
+        }
+      }
+      &.active a { background-color: rgb(0 0 0 / 0.5); }
+    }
+
+    /* Dropdowns */
+    &.primary-nav li ul { left: 0; }
+    &.secondary-nav li ul { right: 0; }
+
+    & li.menu {
+      position: relative;
+
+      & a.menu::after {
+        width: 0;
+        height: 0;
+        display: inline-block;
+        content: "";
+        vertical-align: top;
+        margin-top: 8px;
+        margin-left: 4px;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 4px solid var(--retro-white);
+        opacity: 0.5;
+      }
+
+      /* .open is toggled by script; :focus-within makes menus keyboard operable */
+      &.open,
+      &:focus-within {
+        & a.menu,
+        & a:hover {
+          background-color: rgb(255 255 255 / 0.1);
+          color: var(--retro-white);
+        }
+        & ul {
+          display: block;
+
+          & li {
+            & a {
+              background-color: transparent;
+              font-weight: normal;
+
+              &:hover {
+                background-color: rgb(255 255 255 / 0.1);
+                color: var(--retro-white);
+              }
+            }
+            &.active a {
+              background-color: rgb(255 255 255 / 0.1);
+              font-weight: bold;
+            }
+          }
+        }
+      }
+    }
+
+    & li ul {
+      background-color: var(--retro-topbar-top);
+      float: left;
+      display: none;
+      position: absolute;
+      top: var(--retro-topbar-height);
+      min-width: 160px;
+      max-width: 220px;
+      margin-left: 0;
+      margin-right: 0;
+      padding: 0;
+      text-align: left;
+      border: 0;
+      border-radius: 0 0 5px 5px;
+      box-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
+
+      & li {
+        float: none;
+        clear: both;
+        display: block;
+        background: none;
+        font-size: 12px;
+
+        & a {
+          display: block;
+          padding: 6px 15px;
+          clear: both;
+          font-weight: normal;
+          line-height: 19px;
+          color: var(--retro-topbar-menu-text);
+
+          &:hover {
+            background-color: rgb(255 255 255 / 0.25);
+            color: var(--retro-white);
+          }
+        }
+
+        /* Dividers: engraved hairline */
+        &.divider {
+          height: 1px;
+          overflow: hidden;
+          background: rgb(0 0 0 / 0.2);
+          border-bottom: 1px solid rgb(255 255 255 / 0.1);
+          margin: 5px 0;
+        }
+
+        /* Section separators */
+        & span {
+          clear: both;
+          display: block;
+          background: rgb(0 0 0 / 0.2);
+          padding: 6px 15px;
+          cursor: default;
+          color: var(--retro-topbar-section);
+        }
+      }
+    }
+  }
+}
+
+
+/* ==========================================================================
+   PAGE PATTERNS: hero unit, page header, footer, wells
+   ========================================================================== */
+
+.hero-unit {
+  background-color: var(--retro-surface);
+  margin-top: 60px;
+  margin-bottom: 30px;
+  padding: 60px;
+  border-radius: var(--retro-radius-lg);
+
+  & h1 {
+    margin-bottom: 0;
+    font-size: 60px;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+  & p {
+    font-size: 18px;
+    font-weight: 200;
+    line-height: calc(var(--retro-baseline) * 1.5);
+  }
+}
+
+footer {
+  margin-top: calc(var(--retro-baseline) - 1px);
+  padding-top: calc(var(--retro-baseline) - 1px);
+  border-top: 1px solid var(--retro-rule-light);
+}
+
+.page-header {
+  margin-bottom: calc(var(--retro-baseline) - 1px);
+  border-bottom: 1px solid var(--retro-rule);
+  box-shadow: 0 1px 0 var(--retro-bevel);
+
+  & h1 { margin-bottom: calc(var(--retro-baseline) / 2 - 1px); }
+}
+
+/* Wells: inset, recessed container */
+.well {
+  background-color: var(--retro-surface);
+  margin-bottom: 20px;
+  padding: 19px;
+  min-height: 20px;
+  border: 1px solid var(--retro-line-faint);
+  border-radius: var(--retro-radius);
+  box-shadow: inset 0 1px 1px var(--retro-inset-faint);
+}
+
+
+/* ==========================================================================
+   ALERTS
+   ========================================================================== */
+
+/* Colours come from the shared gradient hooks in section 5; the default
+   (no modifier) is the "warning" yellow. */
+.alert-message {
+  --retro-bar-top: var(--retro-warning);
+  --retro-bar-bottom: var(--retro-warning-dark);
+  margin-bottom: var(--retro-baseline);
+  padding: 7px 14px;
+  color: var(--retro-gray-dark);
+  text-shadow: 0 1px 0 var(--retro-glow-soft);
+  border-width: 1px;
+  border-style: solid;
+  border-radius: var(--retro-radius);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25);
+
+  & h5 { line-height: var(--retro-baseline); }
+  & p { margin-bottom: 0; }
+  & div {
+    margin-top: 5px;
+    margin-bottom: 2px;
+    line-height: 28px;
+  }
+  & .btn { box-shadow: 0 1px 0 rgb(255 255 255 / 0.25); }
+
+  &:is(.danger, .error, .alert-danger, .success, .alert-success, .info, .alert-info) {
+    color: var(--retro-white);
+    text-shadow: 0 -1px 0 rgb(0 0 0 / 0.25);
+  }
+
+  /* Block messages: flat tinted panel, no gradient */
+  &.block-message {
+    background-image: none;
+    background-color: var(--retro-block-warning-bg);
+    padding: 14px;
+    border-color: var(--retro-warning);
+    box-shadow: none;
+
+    & p { margin-right: 30px; }
+    & .alert-actions { margin-top: 5px; }
+
+    &:is(.error, .danger, .success, .info) {
+      color: var(--retro-gray-dark);
+      text-shadow: 0 1px 0 var(--retro-glow-soft);
+    }
+    &:is(.error, .danger) {
+      background-color: var(--retro-block-danger-bg);
+      border-color: var(--retro-block-danger-border);
+    }
+    &.success {
+      background-color: var(--retro-block-success-bg);
+      border-color: var(--retro-block-success-border);
+    }
+    &.info {
+      background-color: var(--retro-block-info-bg);
+      border-color: var(--retro-block-info-border);
+    }
+  }
+}
+
+/* Close button (alerts, modals, or standalone) */
+.close {
+  float: right;
+  margin-top: -2px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--retro-ink);
+  font-size: 20px;
+  font-weight: bold;
+  line-height: var(--retro-baseline);
+  text-shadow: 0 1px 0 var(--retro-glow-solid);
+  opacity: 0.2;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--retro-ink);
+    text-decoration: none;
+    opacity: 0.4;
+  }
+}
+
+
+/* ==========================================================================
+   NAVIGATION: tabs, pills, pagination
+   ========================================================================== */
+
+.tabs, .pills {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+
+  & li { display: block; }
+  & li a {
+    display: block;
+    width: auto;
+  }
+}
+
+/* Tabs: the active tab "opens" into the content below */
+.tabs {
+  width: 100%;
+  border-bottom: 1px solid var(--retro-gray-light);
+
+  & li a {
+    margin-bottom: -1px;
+    margin-right: 2px;
+    padding: 0 15px;
+    line-height: calc(var(--retro-baseline) * 2 - 1px);
+    border-radius: var(--retro-radius-sm) var(--retro-radius-sm) 0 0;
+
+    &:hover {
+      background-color: var(--retro-gray-lighter);
+      border-bottom: 1px solid var(--retro-gray-light);
+    }
+  }
+  & li.active a {
+    background-color: var(--retro-field-bg);
+    padding: 0 14px;
+    border: 1px solid var(--retro-border);
+    border-bottom: 0;
+    color: var(--retro-gray);
+  }
+}
+
+.pills {
+  & li a {
+    margin: 5px 3px 5px 0;
+    padding: 0 15px;
+    text-shadow: 0 1px 1px var(--retro-glow-solid);
+    line-height: 30px;
+    border-radius: 15px;
+
+    &:hover {
+      background: var(--retro-link-dark);
+      color: var(--retro-white);
+      text-decoration: none;
+      text-shadow: 0 1px 1px rgb(0 0 0 / 0.25);
+    }
+  }
+  & li.active a {
+    background: var(--retro-link);
+    color: var(--retro-white);
+    text-shadow: 0 1px 1px rgb(0 0 0 / 0.25);
+  }
+}
+
+/* Pagination: one segmented control with hairline dividers */
+.pagination {
+  height: calc(var(--retro-baseline) * 2);
+  margin: var(--retro-baseline) 0;
+
+  & ul {
+    display: flex;
+    width: fit-content;
+    margin: 0;
+    list-style: none;
+    border: 1px solid var(--retro-line);
+    border-radius: var(--retro-radius-sm);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+    overflow: hidden;
+
+    & li {
+      display: block;
+
+      & a {
+        display: block;
+        padding: 0 14px;
+        line-height: calc(var(--retro-baseline) * 2 - 2px);
+        border-right: 1px solid var(--retro-line);
+        text-decoration: none;
+      }
+      & a:hover,
+      &.active a {
+        background-color: var(--retro-pager-bg);
+      }
+      &.disabled a,
+      &.disabled a:hover {
+        background-color: transparent;
+        color: var(--retro-gray-light);
+      }
+      &.next a { border: 0; }
+    }
+  }
+}
+
+
+/* ==========================================================================
+   LABELS & BADGES
+   ========================================================================== */
+
+/* Both are tinted by --retro-tag. A translucent gradient overlay supplies the
+   bevel so every tint keeps the same 3D look. */
+.label, .badge {
+  --retro-tag: var(--retro-gray-light);
+  display: inline-block;
+  font-weight: bold;
+  line-height: 13px;
+  white-space: nowrap;
+  vertical-align: baseline;
+  color: var(--retro-white);
+  background-color: var(--retro-tag);
+  background-image: linear-gradient(to bottom, rgb(255 255 255 / 0.25), rgb(0 0 0 / 0.08));
+  text-shadow: 0 -1px 0 rgb(0 0 0 / 0.25);
+  border: 1px solid color-mix(in srgb, var(--retro-tag) 70%, black);
+
+  &:is(.important, .danger, .label-danger, .badge-danger, .error) { --retro-tag: var(--retro-danger-dark); }
+  &:is(.warning, .label-warning, .badge-warning) { --retro-tag: var(--retro-orange); }
+  &:is(.success, .label-success, .badge-success) { --retro-tag: var(--retro-green); }
+  &:is(.notice, .info, .label-info, .badge-info) { --retro-tag: var(--retro-info-dark); }
+  &:is(.primary, .label-primary, .badge-primary) { --retro-tag: var(--retro-primary-dark); }
+}
+.label {
+  padding: 1px 4px 2px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  border-radius: var(--retro-radius-sm);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2);
+}
+/* Badges read as recessed pills: dark inset top edge, light lip below */
+.badge {
+  padding: 1px 9px 2px;
+  font-size: 12px;
+  border-radius: 9px;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.35), 0 1px 0 var(--retro-bevel);
+}
+
+
+/* ==========================================================================
+   MODALS
+   ========================================================================== */
+
+.modal-backdrop {
+  background-color: var(--retro-backdrop);
+  position: fixed;
+  inset: 0;
+  z-index: var(--retro-z-backdrop);
+}
+
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  z-index: var(--retro-z-modal);
+  box-sizing: content-box;
+  width: 560px;
+  max-width: calc(100% - 22px);
+  max-height: calc(100vh - 22px);
+  margin: 0;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  overflow: auto;
+  color: inherit;
+  background-color: var(--retro-field-bg);
+  border: 1px solid var(--retro-line-strong);
+  border-radius: var(--retro-radius-lg);
+  box-shadow: var(--retro-shadow-pop);
+  background-clip: padding-box;
+
+  /* <dialog class="modal"> works natively; [open] controls visibility */
+  &::backdrop { background-color: var(--retro-backdrop); }
+
+  & .modal-header {
+    border-bottom: 1px solid var(--retro-rule-light);
+    padding: 5px 20px;
+
+    & .close {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      margin: 0;
+      color: #999;
+      line-height: 10px;
+      font-size: 18px;
+    }
+  }
+  & .modal-body { padding: 20px; }
+  & .modal-footer {
+    display: flow-root;
+    background-color: var(--retro-surface);
+    padding: 14px 20px 15px;
+    border-top: 1px solid var(--retro-rule);
+    border-radius: 0 0 var(--retro-radius-lg) var(--retro-radius-lg);
+    box-shadow: inset 0 1px 0 var(--retro-bevel-solid);
+    margin-bottom: 0;
+
+    & .btn {
+      float: right;
+      margin-left: 10px;
+    }
+  }
+}
+.modal[hidden] { display: none; }
+
+
+/* ==========================================================================
+   TWIPSY / TOOLTIPS & POPOVERS
+   ========================================================================== */
+
+.twipsy, .tooltip {
+  display: block;
+  position: absolute;
+  visibility: visible;
+  padding: 5px;
+  font-size: 11px;
+  z-index: var(--retro-z-backdrop);
+  opacity: 0.8;
+
+  /* Arrows: CSS triangles pointing at the target */
+  &.above .twipsy-arrow {
+    bottom: 0;
+    left: 50%;
+    margin-left: -5px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid var(--retro-tip-bg);
+  }
+  &.left .twipsy-arrow {
+    top: 50%;
+    right: 0;
+    margin-top: -5px;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 5px solid var(--retro-tip-bg);
+  }
+  &.below .twipsy-arrow {
+    top: 0;
+    left: 50%;
+    margin-left: -5px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid var(--retro-tip-bg);
+  }
+  &.right .twipsy-arrow {
+    top: 50%;
+    left: 0;
+    margin-top: -5px;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-right: 5px solid var(--retro-tip-bg);
+  }
+
+  & .twipsy-inner {
+    padding: 3px 8px;
+    background-color: var(--retro-tip-bg);
+    color: var(--retro-tip-text);
+    text-align: center;
+    max-width: 200px;
+    text-decoration: none;
+    border-radius: var(--retro-radius);
+  }
+  & .twipsy-arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+}
+
+.popover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: var(--retro-z-backdrop);
+  padding: 5px;
+  display: none;
+
+  &.show { display: block; }
+
+  &.above .arrow {
+    bottom: 0;
+    left: 50%;
+    margin-left: -5px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid var(--retro-black);
+  }
+  &.right .arrow {
+    top: 50%;
+    left: 0;
+    margin-top: -5px;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-right: 5px solid var(--retro-black);
+  }
+  &.below .arrow {
+    top: 0;
+    left: 50%;
+    margin-left: -5px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid var(--retro-black);
+  }
+  &.left .arrow {
+    top: 50%;
+    right: 0;
+    margin-top: -5px;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 5px solid var(--retro-black);
+  }
+
+  & .arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+
+  /* Dark translucent frame around a light panel */
+  & .inner {
+    background-color: rgb(0 0 0 / 0.8);
+    padding: 3px;
+    overflow: hidden;
+    width: 280px;
+    border-radius: var(--retro-radius-lg);
+    box-shadow: var(--retro-shadow-pop), 0 0 0 1px var(--retro-line-faint);
+  }
+  & .title {
+    background-color: var(--retro-surface);
+    padding: 9px 15px;
+    line-height: 1;
+    border-radius: var(--retro-radius-sm) var(--retro-radius-sm) 0 0;
+    border-bottom: 1px solid var(--retro-rule-light);
+  }
+  & .content {
+    background-color: var(--retro-field-bg);
+    padding: 14px;
+    border-radius: 0 0 var(--retro-radius-sm) var(--retro-radius-sm);
+    background-clip: padding-box;
+
+    & p, & ul, & ol { margin-bottom: 0; }
+  }
+}
+
+
+/* ==========================================================================
+   RESPONSIVE & ACCESSIBILITY (new in Retrostrap; must load last)
+   ========================================================================== */
+
+/* Tablet and below: container gains side padding so the negative-margin row
+   still fits the viewport. */
+@media (max-width: 940px) {
+  .container {
+    box-sizing: border-box;
+    padding-inline: var(--retro-grid-gutter);
+  }
+
+  /* The content column's 700px minimum would overflow next to the sidebar */
+  .container-fluid {
+    grid-template-columns: var(--retro-sidebar-width) minmax(0, 1fr);
+  }
+
+  img, video, canvas, svg { max-width: 100%; }
+  img, video { height: auto; }
+  pre { overflow-x: auto; }
+
+  .input-xxlarge, input.xxlarge, textarea.xxlarge, select.xxlarge,
+  .input-xlarge, input.xlarge, textarea.xlarge, select.xlarge {
+    max-width: 100%;
+  }
+}
+
+/* Phone: the grid collapses to a single column (spans stack, offsets clamp
+   to zero through the min() in the offset rule). */
+@media (max-width: 767px) {
+  .row { --_cols: 1; }
+
+  .container-fluid {
+    display: block;
+
+    & .sidebar { width: auto; }
+    & .content { min-width: 0; }
+  }
+
+  .hero-unit {
+    padding: 30px;
+    margin-top: 30px;
+
+    & h1 { font-size: 40px; }
+  }
+
+  .modal {
+    width: auto;
+    min-width: 0;
+
+    & .modal-header,
+    & .modal-body,
+    & .modal-footer { padding-inline: 15px; }
+  }
+
+  /* Topbar: no longer fixed or fixed-height, so items wrap onto extra rows
+     instead of overflowing. Dropdowns anchor to their own menu item. */
+  .topbar, .navbar {
+    position: relative;
+    height: auto;
+
+    & .container {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    & h3 a { margin-left: 0; }
+
+    & .container > ul {
+      display: flex;
+      flex-wrap: wrap;
+      float: none;
+      margin-right: 0;
+
+      &.secondary-nav { margin-left: auto; }
+    }
+
+    & .container > form {
+      float: none;
+      margin: 5px 10px;
+    }
+
+    & .container > ul li ul { top: 100%; }
+  }
+
+  /* Wide tables scroll sideways instead of stretching the page */
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .pagination {
+    height: auto;
+
+    & ul {
+      flex-wrap: wrap;
+      max-width: 100%;
+    }
+  }
+
+  .popover .inner { width: min(280px, 100vw - 40px); }
+
+  fieldset legend { margin-left: 0; }
+  .topbar form input,
+  .navbar form input { width: 120px; }
+  label {
+    float: none;
+    width: auto;
+    text-align: left;
+  }
+  div.input,
+  .actions { margin-left: 0; }
+  .actions { padding-left: 20px; }
+}
+
+/* Small phone */
+@media (max-width: 480px) {
+  .container { padding-inline: 10px; }
+  .container-fluid { padding-inline: 10px; }
+
+  h1 { font-size: 26px; }
+  h2 { font-size: 22px; }
+
+  .hero-unit {
+    padding: 20px;
+
+    & h1 { font-size: 32px; }
+    & p { font-size: 16px; }
+  }
+
+  /* Primary actions become full-width, easy-to-hit targets */
+  .actions .btn { margin-bottom: 5px; }
+  .modal .modal-footer .btn {
+    float: none;
+    display: block;
+    width: 100%;
+    margin: 0 0 5px;
+    box-sizing: border-box;
+  }
+
+  .topbar form,
+  .navbar form { flex: 1 1 100%; }
+  .topbar form input,
+  .navbar form input { width: 100%; box-sizing: border-box; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .btn, .label, .badge, .alert-message { border-color: ButtonText; }
+}
