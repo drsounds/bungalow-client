@@ -35,7 +35,7 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
-          routeBasePath: '/',
+          routeBasePath: 'docs',
           sidebarPath: require.resolve('./sidebars.js'),
           editUrl: 'https://github.com/drsounds/bungalow-client/tree/main/docs/',
         },
@@ -63,8 +63,8 @@ const config = {
         },
         items: [
           {type: 'docSidebar', sidebarId: 'docs', position: 'left', label: 'Docs'},
-          {to: '/specs/', label: 'Specifications', position: 'left'},
-          {to: '/java-client/', label: 'Java client', position: 'left'},
+          {to: '/docs/specs/', label: 'Specifications', position: 'left'},
+          {to: '/docs/java-client/', label: 'Java client', position: 'left'},
           {
             href: 'https://github.com/drsounds/bungalow-client',
             label: 'GitHub',
@@ -78,10 +78,10 @@ const config = {
           {
             title: 'Docs',
             items: [
-              {label: 'Introduction', to: '/'},
-              {label: 'Building', to: '/getting-started/building'},
-              {label: 'Architecture', to: '/architecture/overview'},
-              {label: 'Specifications', to: '/specs/'},
+              {label: 'Introduction', to: '/docs/'},
+              {label: 'Building', to: '/docs/getting-started/building'},
+              {label: 'Architecture', to: '/docs/architecture/overview'},
+              {label: 'Specifications', to: '/docs/specs/'},
             ],
           },
           {

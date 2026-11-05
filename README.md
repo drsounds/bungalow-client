@@ -6,9 +6,10 @@ It uses an own written GUI framework called **Space** which is a lightweight abs
 
 ## Documentation
 
-The documentation is at https://drsounds.github.io/bungalow-client/. Its
-source is in [`docs/`](docs/); run `npm install && npm start` there to
-preview it locally.
+The project site is at https://drsounds.github.io/bungalow-client/ and the
+documentation is at https://drsounds.github.io/bungalow-client/docs/. Its
+source is in [`docs/`](docs/); run `npm install && npm start` there to preview
+it locally.
 
 ## Building
 
