@@ -1025,6 +1025,7 @@ namespace space {
 
 	void SPElement::pack()
 	{
+		return;
 		if (!this->getInnerText().empty()) {
 			this->resizeToText(false, true);
 		}
@@ -1057,7 +1058,7 @@ namespace space {
 			}
 		}
 		for (auto child : this->getChildNodes()) {
-			SPElement *elm = dynamic_cast<SPElement *>(child);
+			SPElement *elm = static_cast<SPElement *>(child);
 			elm->pack();
 		}
 		//cout << "Element: " << this->getType() << "#" << this->getId() << " packed to width: " << this->getWidth() << " height: " << this->getHeight() << " flex: " << this->getFlex() << endl;

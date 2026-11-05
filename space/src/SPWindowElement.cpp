@@ -47,7 +47,7 @@ namespace space
         int width = gc->getWidth();
         int height = gc->getHeight();
         for (auto & it : this->getChildNodes()) {
-            auto *elm = dynamic_cast<SPElement *>(it);
+            auto *elm = static_cast<SPElement *>(it);
             elm->setX(0);
             elm->setY(0);
             elm->setWidth(width);
