@@ -1,0 +1,10 @@
+{
+    "BundleType": "Framework",
+    "BundleIdentifier": "views",
+    "AppName": {
+        "en": "Views"
+    },
+    "AppDescription": {
+        "en": "Views framework for Bungalow."
+    }
+}

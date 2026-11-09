@@ -1,0 +1,10 @@
+{
+    "BundleType": "Application",
+    "BundleIdentifier": "mussla",
+    "AppName": {
+        "en": "Mussla"
+    },
+    "AppDescription": {
+        "en": "Application."
+    }
+}

@@ -1,0 +1,22 @@
+/* Responsive: large desktop and up (from less/responsive-1200px-min.less) */
+
+@media (min-width: 1200px) {
+  /* Fixed, fluid and input grids all derive from these tokens */
+  :root {
+    --retro-grid-column: 70;
+    --retro-grid-gutter: 30;
+  }
+
+  /* Thumbnails */
+  .thumbnails {
+    margin-left: calc(-1 * var(--retro-grid-gutter-length));
+  }
+
+  .thumbnails > li {
+    margin-left: var(--retro-grid-gutter-length);
+  }
+
+  .row-fluid .thumbnails {
+    margin-left: 0;
+  }
+}

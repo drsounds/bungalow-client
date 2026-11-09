@@ -7,13 +7,13 @@
 #include "SPObservable.h"
 #include "SPApplicationContext.h"
 #include "DownloadManager.h"
+#include "service/PlaybackCoordinator.h"
+#include "service/ResolutionStore.h"
+#include "service/ServiceManager.h"
 
 #include <memory>
 #include <string>
 #include <vector>
-
-class SPMediaService;
-class SPPlayable;
 
 namespace space
 {
@@ -23,7 +23,8 @@ namespace space
 }
 
 // Win32 counterpart of the wxWidgets BungalowApp: owns the database, download
-// manager, media services and playback queue, and builds the MainWindow UI.
+// manager, services and playback queue, and builds the MainWindow UI. Each
+// queue entry is resolved to a service at play time by the PlaybackCoordinator.
 class BungalowApp : public space::SPApplicationContext
 {
 protected:
@@ -34,13 +35,15 @@ protected:
     std::string m_databasePath;
     std::unique_ptr<DownloadManager> m_downloadManager;
 
-    std::vector<SPMediaService*> m_mediaServices;
+    // Declared after m_database so they are destroyed before it.
+    space::service::ServiceManager                       m_services;
+    std::unique_ptr<space::service::ResolutionStore>     m_resolutionStore;
+    std::unique_ptr<space::service::PlaybackCoordinator> m_coordinator;
 
     bool m_developerMode = false;
 
-    SPPlayable*              m_currentPlayable = nullptr;
+    bool                        m_hasCurrent = false; // a queue entry is loaded on a service
     std::vector<PlayQueueEntry> m_queueEntries;
-    std::vector<SPPlayable*>    m_queuePlayables;
     int                         m_queueIndex = -1;
 
     bool                     m_isPlaying  = false;
@@ -59,7 +62,8 @@ protected:
 
     void dispatchPlaybackChanged();
     void stopCurrentPlayback();
-    void playFromIndex(int idx);
+    void playFromIndex(int idx, bool chooseService = false);
+    bool canResolve(const PlayQueueEntry& entry) const;
 
 public:
     static BungalowApp* current() { return s_instance; }
@@ -76,8 +80,12 @@ public:
     const std::string& getDatabasePath() const { return m_databasePath; }
     DownloadManager* getDownloadManager() { return m_downloadManager.get(); }
 
-    const std::vector<SPMediaService*>& getMediaServices() const { return m_mediaServices; }
-    SPMediaService* getMediaServiceForUri(const std::string& uri) const;
+    // Installed services; select them by capability with getServices<T>().
+    space::service::ServiceManager& getServiceManager() { return m_services; }
+    // Null before initialize().
+    space::service::PlaybackCoordinator* getPlaybackCoordinator() { return m_coordinator.get(); }
+    // The service that is playing (or last played), or null.
+    space::service::MediaService* getActiveService() const;
 
     void navigate(const std::string& uri);
 
@@ -92,7 +100,8 @@ public:
     void playContext(PlayContext ctx);
     void playQueueAtIndex(int idx);
     void playTrackId(int64_t trackId);
-    // Plays a library track (bungalow:track:<id>) or a media service URI.
+    // Plays a library track (bungalow:track:<id>), a recording
+    // (musik:isrc:<ISRC>) or a URI a media service accepts.
     void playUri(const std::string& uri) override;
     bool canPlayUri(const std::string& uri) const override;
 
@@ -104,8 +113,7 @@ public:
     bool        isPlaying()    const { return m_isPlaying; }
     int         getPositionMs()const { return m_positionMs; }
     int         getDurationMs()const { return m_durationMs; }
-    SPPlayable* getCurrentPlayable() const { return m_currentPlayable; }
-    bool hasCurrentPlayable() const override { return m_currentPlayable != nullptr; }
+    bool hasCurrentPlayable() const override { return m_hasCurrent; }
     std::string currentPlayableUri() const override;
 
     const std::vector<PlayQueueEntry>& getQueueEntries() const { return m_queueEntries; }

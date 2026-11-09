@@ -20,9 +20,9 @@ templates and a skinning system, and it runs on wxWidgets, plain Win32 or WTL.
         Spotify / Apple Music                         Bungalow
    ┌──────────────────────────────┐      ┌──────────────────────────────────┐
    │  discovery                   │      │  discovery   → search providers, catalogues
-   │  lookup / resolution         │      │  resolution  → media services
+   │  lookup / resolution         │      │  resolution  → MusicService + PlaybackCoordinator
    │  purchase / store            │      │  purchase    → store & curator views
-   │  streaming                   │      │  streaming   → SPMediaService
+   │  streaming                   │      │  streaming   → MediaService
    │  listening / queue           │      │  listening   → play queue
    │  the entire UI               │      │  UI          → features, concepts, skins, apps
    │  ── all welded together ──   │      │  ── each a separate contribution ──

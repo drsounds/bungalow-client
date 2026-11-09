@@ -374,8 +374,6 @@ namespace ui {
     void MainWindow::showCurrentUri(const string& uri) const {
         if (addressElement && addressElement->isVisible())
             addressElement->setValue(uri);
-        else
-            searchElement->setValue(uri);
     }
 
     int MainWindow::onBackClicked(SPObject *, SPEventArgs *) {
@@ -447,10 +445,8 @@ namespace ui {
         if (fullWidth) {
             addressElement->show();
             addressElement->setValue(uri);
-            searchElement->setValue("");
         } else {
             addressElement->hide();
-            searchElement->setValue(uri);
         }
     }
 } // namespace ui

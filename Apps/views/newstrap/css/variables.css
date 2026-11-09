@@ -1,0 +1,246 @@
+/*
+ * Variables
+ * --------------------------------------------------
+ * Every former LESS variable is a custom property on :root.
+ * Naming rule: @camelCase -> --retro-kebab-case (@btnPrimaryBackground -> --retro-btn-primary-background).
+ * Exceptions: @linkColor -> --retro-primary, @linkColorHover -> --retro-primary-hover,
+ *             @baseFontFamily -> --retro-font-base, @baseFontSize -> --retro-font-size-base,
+ *             @baseLineHeight -> --retro-line-height-base.
+ *
+ * LESS color functions map to native CSS:
+ *   darken(c, N%)   -> hsl(from c h s calc(l - N))
+ *   lighten(c, N%)  -> hsl(from c h s calc(l + N))
+ *   spin(c, N)      -> hsl(from c calc(h + N) s l)
+ *   fade(c, N%)     -> rgb(from c r g b / N%)
+ *   mix(a, b, N%)   -> color-mix(in srgb, a N%, b)
+ * Derived values stay live: change a root property at runtime and everything built on it follows.
+ */
+
+:root {
+  /* Grays */
+  --retro-black: #000;
+  --retro-gray-darker: #222;
+  --retro-gray-dark: #333;
+  --retro-gray: #555;
+  --retro-gray-light: #999;
+  --retro-gray-lighter: #eee;
+  --retro-white: #fff;
+
+  /* Accent colors */
+  --retro-blue: #049cdb;
+  --retro-blue-dark: #0064cd;
+  --retro-green: #46a546;
+  --retro-red: #9d261d;
+  --retro-yellow: #ffc40d;
+  --retro-orange: #f89406;
+  --retro-pink: #c3325f;
+  --retro-purple: #7a43b6;
+
+  /* Scaffolding */
+  --retro-body-background: var(--retro-white);
+  --retro-text-color: var(--retro-gray-dark);
+
+  /* Links (--retro-primary is the master brand color: links, primary buttons, dropdown highlights) */
+  --retro-primary: #08c;
+  --retro-link-color: var(--retro-primary);
+  --retro-primary-hover: hsl(from var(--retro-primary) h s calc(l - 15));
+
+  /* Typography */
+  --retro-sans-font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --retro-serif-font-family: Georgia, "Times New Roman", Times, serif;
+  --retro-mono-font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
+
+  --retro-font-size-base: 14px;
+  --retro-font-base: var(--retro-sans-font-family);
+  --retro-line-height-base: 20px;
+  --retro-alt-font-family: var(--retro-serif-font-family);
+
+  --retro-headings-font-family: inherit;
+  --retro-headings-font-weight: bold;
+  --retro-headings-color: inherit;
+
+  /* Component sizing (based on 14px font-size and 20px line-height) */
+  --retro-font-size-large: calc(var(--retro-font-size-base) * 1.25);
+  --retro-font-size-small: calc(var(--retro-font-size-base) * 0.85);
+  --retro-font-size-mini: calc(var(--retro-font-size-base) * 0.75);
+
+  --retro-padding-large: 11px 19px;
+  --retro-padding-small: 2px 10px;
+  --retro-padding-mini: 0 6px;
+
+  --retro-base-border-radius: 4px;
+  --retro-border-radius-large: 6px;
+  --retro-border-radius-small: 3px;
+
+  /* Tables */
+  --retro-table-background: transparent;
+  --retro-table-background-accent: #f9f9f9;
+  --retro-table-background-hover: #f5f5f5;
+  --retro-table-border: #ddd;
+
+  /* Buttons */
+  --retro-btn-background: var(--retro-white);
+  --retro-btn-background-highlight: hsl(from var(--retro-white) h s calc(l - 10));
+  --retro-btn-border: #ccc;
+
+  --retro-btn-primary-background: var(--retro-link-color);
+  --retro-btn-primary-background-highlight: hsl(from var(--retro-btn-primary-background) calc(h + 20) s l);
+
+  --retro-btn-info-background: #5bc0de;
+  --retro-btn-info-background-highlight: #2f96b4;
+
+  --retro-btn-success-background: #62c462;
+  --retro-btn-success-background-highlight: #51a351;
+
+  --retro-btn-warning-background: hsl(from var(--retro-orange) h s calc(l + 15));
+  --retro-btn-warning-background-highlight: var(--retro-orange);
+
+  --retro-btn-danger-background: #ee5f5b;
+  --retro-btn-danger-background-highlight: #bd362f;
+
+  --retro-btn-inverse-background: #444;
+  --retro-btn-inverse-background-highlight: var(--retro-gray-darker);
+
+  /* Forms */
+  --retro-input-background: var(--retro-white);
+  --retro-input-border: #ccc;
+  --retro-input-border-radius: var(--retro-base-border-radius);
+  --retro-input-disabled-background: var(--retro-gray-lighter);
+  --retro-form-actions-background: #f5f5f5;
+  --retro-input-height: calc(var(--retro-line-height-base) + 10px);
+
+  /* Dropdowns */
+  --retro-dropdown-background: var(--retro-white);
+  --retro-dropdown-border: rgb(0 0 0 / 0.2);
+  --retro-dropdown-divider-top: #e5e5e5;
+  --retro-dropdown-divider-bottom: var(--retro-white);
+
+  --retro-dropdown-link-color: var(--retro-gray-dark);
+  --retro-dropdown-link-color-hover: var(--retro-white);
+  --retro-dropdown-link-color-active: var(--retro-white);
+
+  --retro-dropdown-link-background-active: var(--retro-link-color);
+  --retro-dropdown-link-background-hover: var(--retro-dropdown-link-background-active);
+
+  /* Z-index master list */
+  --retro-zindex-dropdown: 1000;
+  --retro-zindex-popover: 1010;
+  --retro-zindex-tooltip: 1030;
+  --retro-zindex-fixed-navbar: 1030;
+  --retro-zindex-modal-backdrop: 1040;
+  --retro-zindex-modal: 1050;
+
+  /* Focus ring (replaces the .tab-focus() mixin; used with :focus-visible, >= 3:1 contrast on light and dark surfaces) */
+  --retro-focus-ring-color: var(--retro-primary-hover);
+  --retro-focus-ring-width: 2px;
+  --retro-focus-ring-offset: 2px;
+
+  /* Input placeholder text color */
+  --retro-placeholder-text: var(--retro-gray-light);
+
+  /* Hr border color */
+  --retro-hr-border: var(--retro-gray-lighter);
+
+  /* Horizontal forms & lists */
+  --retro-horizontal-component-offset: 180px;
+
+  /* Wells */
+  --retro-well-background: #f5f5f5;
+
+  /* Navbar
+     (@navbarCollapseWidth is 979px; custom properties cannot be used in media queries, so
+     the responsive files hard-code 979px / 980px.) */
+  --retro-navbar-height: 40px;
+  --retro-navbar-background-highlight: #fff;
+  --retro-navbar-background: hsl(from var(--retro-navbar-background-highlight) h s calc(l - 5));
+  --retro-navbar-border: hsl(from var(--retro-navbar-background) h s calc(l - 12));
+
+  --retro-navbar-text: #777;
+  --retro-navbar-link-color: #777;
+  --retro-navbar-link-color-hover: var(--retro-gray-dark);
+  --retro-navbar-link-color-active: var(--retro-gray);
+  --retro-navbar-link-background-hover: transparent;
+  --retro-navbar-link-background-active: hsl(from var(--retro-navbar-background) h s calc(l - 5));
+
+  --retro-navbar-brand-color: var(--retro-navbar-link-color);
+
+  /* Inverted navbar */
+  --retro-navbar-inverse-background: #111;
+  --retro-navbar-inverse-background-highlight: #222;
+  --retro-navbar-inverse-border: #252525;
+
+  --retro-navbar-inverse-text: var(--retro-gray-light);
+  --retro-navbar-inverse-link-color: var(--retro-gray-light);
+  --retro-navbar-inverse-link-color-hover: var(--retro-white);
+  --retro-navbar-inverse-link-color-active: var(--retro-navbar-inverse-link-color-hover);
+  --retro-navbar-inverse-link-background-hover: transparent;
+  --retro-navbar-inverse-link-background-active: var(--retro-navbar-inverse-background);
+
+  --retro-navbar-inverse-search-background: hsl(from var(--retro-navbar-inverse-background) h s calc(l + 25));
+  --retro-navbar-inverse-search-background-focus: var(--retro-white);
+  --retro-navbar-inverse-search-border: var(--retro-navbar-inverse-background);
+  --retro-navbar-inverse-search-placeholder-color: #ccc;
+
+  --retro-navbar-inverse-brand-color: var(--retro-navbar-inverse-link-color);
+
+  /* Pagination */
+  --retro-pagination-background: #fff;
+  --retro-pagination-border: #ddd;
+  --retro-pagination-active-background: #f5f5f5;
+
+  /* Hero unit */
+  --retro-hero-unit-background: var(--retro-gray-lighter);
+  --retro-hero-unit-heading-color: inherit;
+  --retro-hero-unit-lead-color: inherit;
+
+  /* Form states and alerts */
+  --retro-warning-text: #c09853;
+  --retro-warning-background: #fcf8e3;
+  --retro-warning-border: hsl(from var(--retro-warning-background) calc(h - 10) s calc(l - 3));
+
+  --retro-error-text: #b94a48;
+  --retro-error-background: #f2dede;
+  --retro-error-border: hsl(from var(--retro-error-background) calc(h - 10) s calc(l - 3));
+
+  --retro-success-text: #468847;
+  --retro-success-background: #dff0d8;
+  --retro-success-border: hsl(from var(--retro-success-background) calc(h - 10) s calc(l - 5));
+
+  --retro-info-text: #3a87ad;
+  --retro-info-background: #d9edf7;
+  --retro-info-border: hsl(from var(--retro-info-background) calc(h - 10) s calc(l - 7));
+
+  /* Tooltips and popovers */
+  --retro-tooltip-color: #fff;
+  --retro-tooltip-background: #000;
+  --retro-tooltip-arrow-width: 5px;
+  --retro-tooltip-arrow-color: var(--retro-tooltip-background);
+
+  --retro-popover-background: #fff;
+  --retro-popover-arrow-width: 10px;
+  --retro-popover-arrow-color: #fff;
+  --retro-popover-title-background: hsl(from var(--retro-popover-background) h s calc(l - 3));
+
+  --retro-popover-arrow-outer-width: calc(var(--retro-popover-arrow-width) + 1px);
+  --retro-popover-arrow-outer-color: rgb(0 0 0 / 0.25);
+
+  /*
+   * GRID (12 columns; 940px by default)
+   * Column/gutter sizes are plain numbers (px) so the fluid grid can derive ratios from them.
+   * The responsive-*.css files re-assign --retro-grid-column / --retro-grid-gutter on :root
+   * inside their media queries; everything below recomputes.
+   *   Fixed span N: width = N * column + (N - 1) * gutter
+   *   Fluid span N: ratios --retro-fluid-column / --retro-fluid-gutter (fractions of the row)
+   */
+  --retro-grid-columns: 12;
+  --retro-grid-column: 60;
+  --retro-grid-gutter: 20;
+  --retro-grid-row: calc(var(--retro-grid-columns) * var(--retro-grid-column) + (var(--retro-grid-columns) - 1) * var(--retro-grid-gutter));
+
+  --retro-grid-column-length: calc(var(--retro-grid-column) * 1px);
+  --retro-grid-gutter-length: calc(var(--retro-grid-gutter) * 1px);
+  --retro-grid-row-length: calc(var(--retro-grid-row) * 1px);
+
+  --retro-fluid-column: calc(var(--retro-grid-column) / var(--retro-grid-row));
+  --retro-fluid-gutter: calc(var(--retro-grid-gutter) / var(--retro-grid-row));
+}

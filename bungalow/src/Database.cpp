@@ -214,6 +214,23 @@ void Database::initialize() {
         );
     )");
 
+    // "Play with…" picks — which music service plays a track (service::ResolutionStore).
+    // Bound to the library track when there is one, and always to a stable key.
+    exec(R"(
+        CREATE TABLE IF NOT EXISTS music_service_tracks (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            track_id     INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
+            track_key    TEXT    NOT NULL,
+            service_id   TEXT    NOT NULL,
+            match_isrc   TEXT,
+            match_title  TEXT,
+            match_artist TEXT,
+            match_uri    TEXT
+        );
+    )");
+    exec("CREATE INDEX IF NOT EXISTS music_service_tracks_track_id ON music_service_tracks(track_id);");
+    exec("CREATE INDEX IF NOT EXISTS music_service_tracks_track_key ON music_service_tracks(track_key);");
+
     // Downloads — tracks file downloads from the web browser
     exec(R"(
         CREATE TABLE IF NOT EXISTS downloads (
@@ -1241,6 +1258,13 @@ std::vector<Database::TrackRow> Database::getTracksForRecording(const std::strin
 {
     return queryTrackRows(m_db,
         "WHERE rec.isrc = ?1 ORDER BY rel.release_date, rel.name COLLATE NOCASE, t.id;", isrc);
+}
+
+std::vector<Database::TrackRow> Database::getTracksByTitle(const std::string& title)
+{
+    return queryTrackRows(m_db,
+        "WHERE rec.name = ?1 COLLATE NOCASE ORDER BY rel.release_date, rel.name COLLATE NOCASE, t.id;",
+        title);
 }
 
 std::vector<Database::ReleaseSummary> Database::getReleasesForArtist(const std::string& isni)

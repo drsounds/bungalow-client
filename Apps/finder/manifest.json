@@ -1,0 +1,11 @@
+{
+    "BundleType": "Application",
+    "BundleIdentifier": "finder",
+    "BundleVersion": "0.1.0",
+    "AppName": {
+        "en": "App Finder"
+    },
+    "AppDescription": {
+        "en": "Find and manage your apps within Bungalow."
+    }
+}

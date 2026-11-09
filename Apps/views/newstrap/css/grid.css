@@ -1,0 +1,200 @@
+/* Grid system (from less/grid.less + the #grid mixins in less/mixins.less) */
+
+/* Per-element column span/offset, consumed by the grid rules below. Not inherited, so nested rows can't leak into each other. */
+@property --_span {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 1;
+}
+
+@property --_offset {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+
+/* Fixed (940px): span N = N * column + (N - 1) * gutter */
+[class*="span"] {
+  float: left;
+  min-height: 1px;
+  margin-left: var(--retro-grid-gutter-length);
+}
+
+.container,
+.navbar-static-top .container,
+.navbar-fixed-top .container,
+.navbar-fixed-bottom .container {
+  width: var(--retro-grid-row-length);
+}
+
+.span1 { --_span: 1; }
+.span2 { --_span: 2; }
+.span3 { --_span: 3; }
+.span4 { --_span: 4; }
+.span5 { --_span: 5; }
+.span6 { --_span: 6; }
+.span7 { --_span: 7; }
+.span8 { --_span: 8; }
+.span9 { --_span: 9; }
+.span10 { --_span: 10; }
+.span11 { --_span: 11; }
+.span12 { --_span: 12; }
+
+.span1,
+.span2,
+.span3,
+.span4,
+.span5,
+.span6,
+.span7,
+.span8,
+.span9,
+.span10,
+.span11,
+.span12 {
+  width: calc(var(--_span) * var(--retro-grid-column-length) + (var(--_span) - 1) * var(--retro-grid-gutter-length));
+}
+
+.offset1 { --_offset: 1; }
+.offset2 { --_offset: 2; }
+.offset3 { --_offset: 3; }
+.offset4 { --_offset: 4; }
+.offset5 { --_offset: 5; }
+.offset6 { --_offset: 6; }
+.offset7 { --_offset: 7; }
+.offset8 { --_offset: 8; }
+.offset9 { --_offset: 9; }
+.offset10 { --_offset: 10; }
+.offset11 { --_offset: 11; }
+.offset12 { --_offset: 12; }
+
+.offset1,
+.offset2,
+.offset3,
+.offset4,
+.offset5,
+.offset6,
+.offset7,
+.offset8,
+.offset9,
+.offset10,
+.offset11,
+.offset12 {
+  margin-left: calc(var(--_offset) * (var(--retro-grid-column-length) + var(--retro-grid-gutter-length)) + var(--retro-grid-gutter-length));
+}
+
+/* Fluid: span N = N * column + (N - 1) * gutter, as fractions of the row (inputs and other non-grid-item descendants use these) */
+.row-fluid {
+  width: 100%;
+}
+
+.row-fluid [class*="span"] {
+  display: block;
+  float: left;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--retro-input-height);
+  margin-left: calc(100% * var(--retro-fluid-gutter));
+}
+
+.row-fluid [class*="span"]:first-child {
+  margin-left: 0;
+}
+
+.row-fluid .controls-row [class*="span"] + [class*="span"] {
+  margin-left: calc(100% * var(--retro-fluid-gutter));
+}
+
+.row-fluid .span1,
+.row-fluid .span2,
+.row-fluid .span3,
+.row-fluid .span4,
+.row-fluid .span5,
+.row-fluid .span6,
+.row-fluid .span7,
+.row-fluid .span8,
+.row-fluid .span9,
+.row-fluid .span10,
+.row-fluid .span11,
+.row-fluid .span12 {
+  width: calc(100% * (var(--_span) * var(--retro-fluid-column) + (var(--_span) - 1) * var(--retro-fluid-gutter)));
+}
+
+.row-fluid .offset1,
+.row-fluid .offset2,
+.row-fluid .offset3,
+.row-fluid .offset4,
+.row-fluid .offset5,
+.row-fluid .offset6,
+.row-fluid .offset7,
+.row-fluid .offset8,
+.row-fluid .offset9,
+.row-fluid .offset10,
+.row-fluid .offset11,
+.row-fluid .offset12 {
+  margin-left: calc(100% * (var(--_offset) * (var(--retro-fluid-column) + var(--retro-fluid-gutter)) + var(--retro-fluid-gutter)));
+}
+
+.row-fluid .offset1:first-child,
+.row-fluid .offset2:first-child,
+.row-fluid .offset3:first-child,
+.row-fluid .offset4:first-child,
+.row-fluid .offset5:first-child,
+.row-fluid .offset6:first-child,
+.row-fluid .offset7:first-child,
+.row-fluid .offset8:first-child,
+.row-fluid .offset9:first-child,
+.row-fluid .offset10:first-child,
+.row-fluid .offset11:first-child,
+.row-fluid .offset12:first-child {
+  margin-left: calc(100% * (var(--_offset) * (var(--retro-fluid-column) + var(--retro-fluid-gutter))));
+}
+
+/*
+ * Modern layout: from 768px up, rows are CSS Grids and direct span and offset children are grid items.
+ * Below 768px responsive-767px-max.css stacks everything as blocks, exactly like the original.
+ */
+@media (min-width: 768px) {
+  /* Fixed rows: as many fixed-width tracks as fit, so nested rows get the track count of their parent span */
+  .row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, var(--retro-grid-column-length));
+    column-gap: var(--retro-grid-gutter-length);
+    align-items: start;
+  }
+
+  /* The offset is added to the span, then taken back as a margin, so the box keeps the exact span width */
+  .row > [class*="span"] {
+    float: none;
+    grid-column: span calc(var(--_span) + var(--_offset));
+    margin-left: calc(var(--_offset) * (var(--retro-grid-column-length) + var(--retro-grid-gutter-length)));
+  }
+
+  /* Fluid rows: 12 equal tracks */
+  .row-fluid {
+    display: grid;
+    grid-template-columns: repeat(var(--retro-grid-columns), minmax(0, 1fr));
+    column-gap: calc(100% * var(--retro-fluid-gutter));
+    align-items: start;
+  }
+
+  .row-fluid > [class*="span"][class] {
+    --_total: calc(var(--_span) + var(--_offset));
+    --_ml: calc(100% * var(--_offset) * (var(--retro-fluid-column) + var(--retro-fluid-gutter)) / (var(--_total) * var(--retro-fluid-column) + (var(--_total) - 1) * var(--retro-fluid-gutter)));
+    float: none;
+    grid-column: span var(--_total);
+    width: calc(100% - var(--_ml));
+    margin-left: var(--_ml);
+  }
+}
+
+/* Reset utility classes due to specificity */
+[class*="span"].hide,
+.row-fluid [class*="span"].hide {
+  display: none;
+}
+
+[class*="span"].pull-right,
+.row-fluid [class*="span"].pull-right {
+  float: right;
+}

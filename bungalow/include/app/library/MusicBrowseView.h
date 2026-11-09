@@ -68,8 +68,12 @@ namespace space {
 
             // ── Helpers for subclasses ────────────────────────────────────────
 
-            /** Play the page's rows as a queue, starting at @p row. */
-            void playFrom(Page& page, int row);
+            /**
+             * Play the page's rows as a queue, starting at @p row.
+             * @p chooseService is "Play with…": ask which service plays the
+             * row, which also lets a row without a local file try the others.
+             */
+            void playFrom(Page& page, int row, bool chooseService = false);
 
             /** Optional entries of trackContextMenu(). */
             enum TrackMenuFlags : unsigned {

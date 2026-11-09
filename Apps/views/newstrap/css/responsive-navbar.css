@@ -1,0 +1,196 @@
+/* Responsive: navbar (from less/responsive-navbar.less) */
+
+/* Tablets and below */
+@media (max-width: 979px) {
+  /* Unfix the topbar */
+  body {
+    padding-top: 0;
+  }
+
+  .navbar-fixed-top,
+  .navbar-fixed-bottom {
+    position: static;
+  }
+
+  .navbar-fixed-top {
+    margin-bottom: var(--retro-line-height-base);
+  }
+
+  .navbar-fixed-bottom {
+    margin-top: var(--retro-line-height-base);
+  }
+
+  .navbar-fixed-top .navbar-inner,
+  .navbar-fixed-bottom .navbar-inner {
+    padding: 5px;
+  }
+
+  .navbar .container {
+    width: auto;
+    padding: 0;
+  }
+
+  /* Account for brand name */
+  .navbar .brand {
+    padding-left: 10px;
+    padding-right: 10px;
+    margin: 0 0 0 -5px;
+  }
+
+  /* Collapsible navbar: nav collapse clears brand */
+  .nav-collapse {
+    clear: both;
+  }
+
+  /* Block-level the nav */
+  .nav-collapse .nav {
+    float: none;
+    margin: 0 0 calc(var(--retro-line-height-base) / 2);
+  }
+
+  .nav-collapse .nav > li {
+    float: none;
+  }
+
+  .nav-collapse .nav > li > a {
+    margin-bottom: 2px;
+  }
+
+  .nav-collapse .nav > .divider-vertical {
+    display: none;
+  }
+
+  .nav-collapse .nav .nav-header {
+    color: var(--retro-navbar-text);
+    text-shadow: none;
+  }
+
+  /* Nav and dropdown links in navbar */
+  .nav-collapse .nav > li > a,
+  .nav-collapse .dropdown-menu a {
+    padding: 9px 15px;
+    font-weight: bold;
+    color: var(--retro-navbar-link-color);
+    border-radius: 3px;
+  }
+
+  /* Buttons */
+  .nav-collapse .btn {
+    padding: 4px 10px 4px;
+    font-weight: normal;
+    border-radius: var(--retro-base-border-radius);
+  }
+
+  .nav-collapse .dropdown-menu li + li a {
+    margin-bottom: 2px;
+  }
+
+  .nav-collapse .nav > li > a:hover,
+  .nav-collapse .nav > li > a:focus,
+  .nav-collapse .dropdown-menu a:hover,
+  .nav-collapse .dropdown-menu a:focus {
+    background-color: var(--retro-navbar-background);
+  }
+
+  .navbar-inverse .nav-collapse .nav > li > a,
+  .navbar-inverse .nav-collapse .dropdown-menu a {
+    color: var(--retro-navbar-inverse-link-color);
+  }
+
+  .navbar-inverse .nav-collapse .nav > li > a:hover,
+  .navbar-inverse .nav-collapse .nav > li > a:focus,
+  .navbar-inverse .nav-collapse .dropdown-menu a:hover,
+  .navbar-inverse .nav-collapse .dropdown-menu a:focus {
+    background-color: var(--retro-navbar-inverse-background);
+  }
+
+  /* Buttons in the navbar */
+  .nav-collapse.in .btn-group {
+    margin-top: 5px;
+    padding: 0;
+  }
+
+  /* Dropdowns in the navbar */
+  .nav-collapse .dropdown-menu {
+    position: static;
+    top: auto;
+    left: auto;
+    float: none;
+    display: none;
+    max-width: none;
+    margin: 0 15px;
+    padding: 0;
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .nav-collapse .open > .dropdown-menu {
+    display: block;
+  }
+
+  .nav-collapse .dropdown-menu::before,
+  .nav-collapse .dropdown-menu::after {
+    display: none;
+  }
+
+  .nav-collapse .dropdown-menu .divider {
+    display: none;
+  }
+
+  .nav-collapse .nav > li > .dropdown-menu::before,
+  .nav-collapse .nav > li > .dropdown-menu::after {
+    display: none;
+  }
+
+  /* Forms in navbar */
+  .nav-collapse .navbar-form,
+  .nav-collapse .navbar-search {
+    float: none;
+    padding: calc(var(--retro-line-height-base) / 2) 15px;
+    margin: calc(var(--retro-line-height-base) / 2) 0;
+    border-top: 1px solid var(--retro-navbar-background);
+    border-bottom: 1px solid var(--retro-navbar-background);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .1), 0 1px 0 rgb(255 255 255 / .1);
+  }
+
+  .navbar-inverse .nav-collapse .navbar-form,
+  .navbar-inverse .nav-collapse .navbar-search {
+    border-top-color: var(--retro-navbar-inverse-background);
+    border-bottom-color: var(--retro-navbar-inverse-background);
+  }
+
+  /* Pull right (secondary) nav content */
+  .navbar .nav-collapse .nav.pull-right {
+    float: none;
+    margin-left: 0;
+  }
+
+  /* Hide everything in the navbar save .brand and toggle button */
+  .nav-collapse,
+  .nav-collapse.collapse {
+    overflow: hidden;
+    height: 0;
+  }
+
+  /* Navbar button */
+  .navbar .btn-navbar {
+    display: block;
+  }
+
+  /* Static navbar */
+  .navbar-static .navbar-inner {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
+/* Default desktop */
+@media (min-width: 980px) {
+  /* Required to make the collapsing navbar work on regular desktops */
+  .nav-collapse.collapse {
+    height: auto !important;
+    overflow: visible !important;
+  }
+}

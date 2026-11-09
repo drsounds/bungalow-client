@@ -1,0 +1,273 @@
+/* Tables (from less/tables.less) */
+
+/* Base tables */
+table {
+  max-width: 100%;
+  background-color: var(--retro-table-background);
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* Baseline styles */
+.table {
+  width: 100%;
+  margin-bottom: var(--retro-line-height-base);
+
+  /* Cells */
+  & th,
+  & td {
+    padding: 8px;
+    line-height: var(--retro-line-height-base);
+    text-align: left;
+    vertical-align: top;
+    border-top: 1px solid var(--retro-table-border);
+  }
+  & th {
+    font-weight: bold;
+  }
+  /* Bottom align for column headings */
+  & thead th {
+    vertical-align: bottom;
+  }
+  /* Remove top border from thead by default */
+  & caption + thead tr:first-child th,
+  & caption + thead tr:first-child td,
+  & colgroup + thead tr:first-child th,
+  & colgroup + thead tr:first-child td,
+  & thead:first-child tr:first-child th,
+  & thead:first-child tr:first-child td {
+    border-top: 0;
+  }
+  /* Account for multiple tbody instances */
+  & tbody + tbody {
+    border-top: 2px solid var(--retro-table-border);
+  }
+
+  /* Nesting */
+  & .table {
+    background-color: var(--retro-body-background);
+  }
+}
+
+
+/* Condensed table w/ half padding (.condensed-table: legacy 1.x alias) */
+.table-condensed,
+.condensed-table {
+  & th,
+  & td {
+    padding: 4px 5px;
+  }
+}
+
+
+/* Bordered version (.bordered-table: legacy 1.x alias) */
+.table-bordered,
+.bordered-table {
+  border: 1px solid var(--retro-table-border);
+  border-collapse: separate; /* Done so we can round those corners! */
+  border-left: 0;
+  border-radius: var(--retro-base-border-radius);
+
+  & th,
+  & td {
+    border-left: 1px solid var(--retro-table-border);
+  }
+  /* Prevent a double border */
+  & caption + thead tr:first-child th,
+  & caption + tbody tr:first-child th,
+  & caption + tbody tr:first-child td,
+  & colgroup + thead tr:first-child th,
+  & colgroup + tbody tr:first-child th,
+  & colgroup + tbody tr:first-child td,
+  & thead:first-child tr:first-child th,
+  & tbody:first-child tr:first-child th,
+  & tbody:first-child tr:first-child td {
+    border-top: 0;
+  }
+  /* For first th/td in the first row in the first thead or tbody */
+  & thead:first-child tr:first-child > th:first-child,
+  & tbody:first-child tr:first-child > td:first-child,
+  & tbody:first-child tr:first-child > th:first-child {
+    border-top-left-radius: var(--retro-base-border-radius);
+  }
+  /* For last th/td in the first row in the first thead or tbody */
+  & thead:first-child tr:first-child > th:last-child,
+  & tbody:first-child tr:first-child > td:last-child,
+  & tbody:first-child tr:first-child > th:last-child {
+    border-top-right-radius: var(--retro-base-border-radius);
+  }
+  /* For first th/td (can be either) in the last row in the last thead, tbody, and tfoot */
+  & thead:last-child tr:last-child > th:first-child,
+  & tbody:last-child tr:last-child > td:first-child,
+  & tbody:last-child tr:last-child > th:first-child,
+  & tfoot:last-child tr:last-child > td:first-child,
+  & tfoot:last-child tr:last-child > th:first-child {
+    border-bottom-left-radius: var(--retro-base-border-radius);
+  }
+  /* For last th/td (can be either) in the last row in the last thead, tbody, and tfoot */
+  & thead:last-child tr:last-child > th:last-child,
+  & tbody:last-child tr:last-child > td:last-child,
+  & tbody:last-child tr:last-child > th:last-child,
+  & tfoot:last-child tr:last-child > td:last-child,
+  & tfoot:last-child tr:last-child > th:last-child {
+    border-bottom-right-radius: var(--retro-base-border-radius);
+  }
+
+  /* Clear border-radius for first and last td in the last row in the last tbody for table with tfoot */
+  & tfoot + tbody:last-child tr:last-child td:first-child {
+    border-bottom-left-radius: 0;
+  }
+  & tfoot + tbody:last-child tr:last-child td:last-child {
+    border-bottom-right-radius: 0;
+  }
+
+  /* Special fixes to round the left border on the first td/th */
+  & caption + thead tr:first-child th:first-child,
+  & caption + tbody tr:first-child td:first-child,
+  & colgroup + thead tr:first-child th:first-child,
+  & colgroup + tbody tr:first-child td:first-child {
+    border-top-left-radius: var(--retro-base-border-radius);
+  }
+  & caption + thead tr:first-child th:last-child,
+  & caption + tbody tr:first-child td:last-child,
+  & colgroup + thead tr:first-child th:last-child,
+  & colgroup + tbody tr:first-child td:last-child {
+    border-top-right-radius: var(--retro-base-border-radius);
+  }
+}
+
+
+/* Zebra-striping: alternating gray and transparent backgrounds (.zebra-striped: legacy 1.x alias) */
+.table-striped,
+.zebra-striped {
+  & tbody > tr:nth-child(odd) > td,
+  & tbody > tr:nth-child(odd) > th {
+    background-color: var(--retro-table-background-accent);
+  }
+}
+
+
+/* Hover effect (after the potential zebra striping) */
+.table-hover {
+  & tbody tr:hover > td,
+  & tbody tr:hover > th {
+    background-color: var(--retro-table-background-hover);
+  }
+}
+
+
+/* Table cell sizing */
+
+/* Reset default grid behavior */
+table td[class*="span"],
+table th[class*="span"],
+.row-fluid table td[class*="span"],
+.row-fluid table th[class*="span"] {
+  display: table-cell;
+  float: none; /* undo default grid column styles */
+  margin-left: 0; /* undo default grid column styles */
+}
+
+/* Change the column widths to account for td/th padding (16px) */
+.table td,
+.table th {
+  &.span1 {
+    float: none;
+    width: calc(1 * var(--retro-grid-column-length) + 0 * var(--retro-grid-gutter-length) - 16px);
+    margin-left: 0;
+  }
+  &.span2 {
+    float: none;
+    width: calc(2 * var(--retro-grid-column-length) + 1 * var(--retro-grid-gutter-length) - 16px);
+    margin-left: 0;
+  }
+  &.span3 {
+    float: none;
+    width: calc(3 * var(--retro-grid-column-length) + 2 * var(--retro-grid-gutter-length) - 16px);
+    margin-left: 0;
+  }
+  &.span4 {
+    float: none;
+    width: calc(4 * var(--retro-grid-column-length) + 3 * var(--retro-grid-gutter-length) - 16px);
+    margin-left: 0;
+  }
+  &.span5 {
+    float: none;
+    width: calc(5 * var(--retro-grid-column-length) + 4 * var(--retro-grid-gutter-length) - 16px);
+    margin-left: 0;
+  }
+  &.span6 {
+    float: none;
+    width: calc(6 * var(--retro-grid-column-length) + 5 * var(--retro-grid-gutter-length) - 16px);
+    margin-left: 0;
+  }
+  &.span7 {
+    float: none;
+    width: calc(7 * var(--retro-grid-column-length) + 6 * var(--retro-grid-gutter-length) - 16px);
+    margin-left: 0;
+  }
+  &.span8 {
+    float: none;
+    width: calc(8 * var(--retro-grid-column-length) + 7 * var(--retro-grid-gutter-length) - 16px);
+    margin-left: 0;
+  }
+  &.span9 {
+    float: none;
+    width: calc(9 * var(--retro-grid-column-length) + 8 * var(--retro-grid-gutter-length) - 16px);
+    margin-left: 0;
+  }
+  &.span10 {
+    float: none;
+    width: calc(10 * var(--retro-grid-column-length) + 9 * var(--retro-grid-gutter-length) - 16px);
+    margin-left: 0;
+  }
+  &.span11 {
+    float: none;
+    width: calc(11 * var(--retro-grid-column-length) + 10 * var(--retro-grid-gutter-length) - 16px);
+    margin-left: 0;
+  }
+  &.span12 {
+    float: none;
+    width: calc(12 * var(--retro-grid-column-length) + 11 * var(--retro-grid-gutter-length) - 16px);
+    margin-left: 0;
+  }
+}
+
+
+/* Table backgrounds (exact selectors required to override .table-striped) */
+.table tbody tr {
+  &.success > td {
+    background-color: var(--retro-success-background);
+  }
+  &.error > td {
+    background-color: var(--retro-error-background);
+  }
+  &.warning > td {
+    background-color: var(--retro-warning-background);
+  }
+  &.info > td {
+    background-color: var(--retro-info-background);
+  }
+}
+
+/* Hover states for .table-hover */
+.table-hover tbody tr {
+  &.success:hover > td {
+    background-color: hsl(from var(--retro-success-background) h s calc(l - 5));
+  }
+  &.error:hover > td {
+    background-color: hsl(from var(--retro-error-background) h s calc(l - 5));
+  }
+  &.warning:hover > td {
+    background-color: hsl(from var(--retro-warning-background) h s calc(l - 5));
+  }
+  &.info:hover > td {
+    background-color: hsl(from var(--retro-info-background) h s calc(l - 5));
+  }
+}
+
+
+/* Legacy Bootstrap 1.x aliases */
+/* .zebra-striped, .bordered-table and .condensed-table are listed alongside
+   .table-striped, .table-bordered and .table-condensed above, so they share
+   those exact declarations (and cascade position) with no duplication. */

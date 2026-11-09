@@ -10,4 +10,7 @@
 struct PlayContext {
     std::vector<PlayQueueEntry> entries;
     std::size_t                 startIndex = 0;
+    /// "Play with…": ask which service plays the start entry, even when only
+    /// one can or a choice was remembered.
+    bool                        chooseService = false;
 };

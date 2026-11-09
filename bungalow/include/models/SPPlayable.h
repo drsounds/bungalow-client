@@ -8,25 +8,17 @@
 #include <vector>
 
 class SPDBConnection;
-class SPMediaService;
 
 /// Maps the `playables` table (id INTEGER PK AUTOINCREMENT, uri TEXT NOT NULL UNIQUE).
+/// Which service plays a URI is decided at play time by service::PlaybackCoordinator.
 class SPPlayable : public SPModel {
 public:
     int64_t     id = 0;
     std::string uri;
 
-    /// The media service responsible for playing this URI.
-    /// Resolved from the registered service list via resolveService().
-    /// Non-owning – lifetime is managed by BungalowApp.
-    SPMediaService* service = nullptr;
-
     SPPlayable() = default;
     explicit SPPlayable(std::string uri);
     SPPlayable(int64_t id, std::string uri);
-
-    /// Walk @p services and set service to the first entry that acceptsUri(uri).
-    void resolveService(const std::vector<SPMediaService*>& services);
 
     bool isPersisted() const override { return id > 0; }
     bool save(SPDBConnection& conn) override;

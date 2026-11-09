@@ -44,9 +44,11 @@ client, and what comes next.
 | `SiteUri`, bookmarks, `CefRuntime` | ✅ `space::web`, `windows/include/web` |
 | Skins, themes (`Taste`, `ThemeManager`) | ✅ `SPSkin` with HSL tint; no separate Chrome/Design layer yet |
 | `Plugin`, `PluginManager`, jar plugins | ⏳ app bundles cover apps and skins; there are no compiled plugins |
-| `Service`, `ServiceManager`, capability lookup | ⏳ `SPService` / `SPMediaService`, chosen by URI |
-| `MusicService`, `MusicCatalogueService`, `AuthAspect` | ⏳ not yet |
-| `PlaybackCoordinator`, "Play with…", `ResolutionStore` | ⏳ a single service per URI |
+| `Service`, `ServiceManager`, capability lookup | ✅ `space::service` (`getServices<T>()`) |
+| `MusicService`, `MusicCatalogueService`, `AuthAspect` | ✅ `space::service`; local files are the only installed back-end, and no catalogue or sign-in service exists yet |
+| `PlaybackCoordinator`, "Play with…", `ResolutionStore` | ✅ `space::service`; the chooser is a popup menu and is skipped when only one service matches |
+| `AvailabilityResolver` (Buy/Stream column) | ⏳ not yet: rows without a local file stay greyed out, though "Play with…" can still resolve them |
+| `PlaylistService` | ⏳ playlists are stored by `RootlistManager` and the database, not by a service |
 | `musik:` URIs (`MusikUri`, [RFC-0002](./specs/rfc-0002-musik-uri-scheme.md)) | ⏳ `musik:` is an alias of `bungalow:`; the identifiers are in the schema, but there is no RFC-0002 parser yet |
 | Playlist sharing (`Upsl`, `Base62`, [RFC-0001](./specs/rfc-0001-universal-playlist-sharing.md)) | ⏳ not yet |
 | Chrome / Design | ⏳ one shell (`views/app.xml`) |
@@ -67,20 +69,22 @@ client, and what comes next.
 
 ## Roadmap
 
-1. **Services by capability**: a `ServiceManager` with `getServices<T>()`,
-   so callers ask for a capability (play, search a catalogue, sign in) instead
-   of a specific service.
-2. **Cross-service resolution**: a vendor-neutral play request resolved over
-   every installed music service at play time, with a remembered "Play with…"
-   choice.
+1. **More services**: streaming and catalogue back-ends (for example
+   MusicBrainz, Subsonic/Jellyfin) implementing the `space::service`
+   capabilities, plus availability in track lists so rows without a local
+   file aren't greyed out when another service can play them.
+2. **Background resolution**: `PlaybackCoordinator` looks tracks up on the UI
+   thread, which is fine for the library database but not for network
+   services.
 3. **`musik:` URIs** ([RFC-0002](./specs/rfc-0002-musik-uri-scheme.md)):
    parse the identifier, name and query forms instead of only aliasing the
    prefix, and use them in playlists, drag and drop and the queue.
 4. **Decentralised playlists** ([RFC-0001](./specs/rfc-0001-universal-playlist-sharing.md)):
    create, parse and preview `musik:federated:` links, then add hosted
    links, Ed25519 verification and ActivityPub subscriptions.
-5. **Catalogue and store aspects**, so catalogues and stores can be installed
-   side by side and searched together.
+5. **Catalogue search and a store aspect**: feed every `MusicCatalogueService`
+   into unified search, and add a store capability so stores can be installed
+   side by side.
 6. **Connect the Apps API** to the library, player and search.
 7. **Declarative `<app>` concepts**, so a whole feature (entities, views,
    sidebar) can be declared in markup or YAML, as described in the

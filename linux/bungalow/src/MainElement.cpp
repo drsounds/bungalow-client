@@ -565,7 +565,10 @@ int MainElement::onBackClicked(SPObject *, SPEventArgs *) {
 		return 0;
 	viewStack->goBack();
 	const string &uri = viewStack->getCurrentUri();
-	searchElement->setValue(uri);
+	if (fullWidth) {
+		addressElement->setValue(uri);
+	}
+	
 	treeView->forEachItem([&uri](SPTreeItem *item) {
 		if (item->getUri() && !item->getUri()->getUri().empty())
 			item->setSelected(item->getUri()->getUri() == uri);
@@ -579,7 +582,7 @@ int MainElement::onForwardClicked(SPObject *, SPEventArgs *) {
 		return 0;
 	viewStack->goForward();
 	const string &uri = viewStack->getCurrentUri();
-	searchElement->setValue(uri);
+	//searchElement->setValue(uri);
 	treeView->forEachItem([&uri](SPTreeItem *item) {
 		if (item->getUri() && !item->getUri()->getUri().empty())
 			item->setSelected(item->getUri()->getUri() == uri);

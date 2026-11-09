@@ -65,7 +65,7 @@ public:
     }
 
     // ── Renderer process ──────────────────────────────────────────────────
-    void BungalowCefApp::OnBeforeCommandLineProcessing(
+    void OnBeforeCommandLineProcessing(
         const CefString& process_type,
         CefRefPtr<CefCommandLine> command_line) {
         

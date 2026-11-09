@@ -5,9 +5,11 @@ sidebar_position: 6
 
 # Playback
 
-Playback is separated from the views that start it. A view builds a list of
-display entries. The application turns them into a play queue and picks the
-**media service** that can play each entry's URI.
+Playback is separated from the views that start it, and from the vendor that
+plays the bytes. A view builds a list of entries carrying whatever identity it
+has (a file, an ISRC, a library track). The application turns them into a play
+queue, and each entry is **resolved to a service at play time**, so the same
+library row can play from local files today and a streaming service tomorrow.
 
 ## `SPApplicationContext`
 
@@ -49,64 +51,93 @@ struct PlayQueueEntry {
     std::string displayTitle;
     std::string displayArtist;
     std::string coverArtPath;
-    std::string uri;          // resolved playback URI (empty when !playable)
+    std::string uri;             // direct playback URI, e.g. the local file (may be empty)
     bool        playable = true; // false → greyed out, skipped by next/prev
+    std::string isrc;            // identity resolved across music services
+    int64_t     trackId = 0;     // library track, 0 when not from the library
 };
 
 struct PlayContext {
     std::vector<PlayQueueEntry> entries;
     std::size_t                 startIndex = 0;
+    bool                        chooseService = false; // "Play with…"
 };
 ```
 
-`BungalowApp::playContext()` replaces the queue and plays the start entry.
+`BungalowApp::playContext()` replaces the queue and plays the start entry. An
+entry stays playable when a service accepts its `uri` or it has an ISRC.
 `playbackNext()` and `playbackPrev()` skip entries that aren't playable. The
 queue is shown in the `PlayQueueView` panel next to the view stack.
 
 `playUri(uri)` is the single-item shortcut:
 
 * `bungalow:track:<id>` plays a track from the library database.
+* `musik:isrc:<ISRC>` names a recording and is resolved across the music
+  services.
 * Any other URI is played if a media service accepts it.
 
 `canPlayUri()` returns true for exactly those URIs. Search results and
 templates use it to decide between playing and navigating.
 
-## Media services
+## Services
 
-```cpp
-class SPService {
-public:
-    virtual bool acceptsUri(const std::string& uri) const = 0;
-    virtual void startLogin() = 0;
-    virtual void logout() = 0;
-    virtual std::string getId() const = 0;
-    virtual std::string getName() const = 0;
-    virtual bool isLoggedIn() const = 0;
-    virtual std::string getLoggedInUser() const = 0;
-};
+The back-ends are `space::service` Services, selected by capability (see
+[Aspects](./aspects.md#services-and-capabilities)):
 
-class SPMediaService : public SPService {
-public:
-    virtual void load(const std::string& uri) = 0;
-    virtual void play() = 0;
-    virtual void pause() = 0;
-    virtual void stop() = 0;
-    virtual void seek(int posMs) = 0;
-    virtual int getDurationMs() const { return 0; }
-    virtual int getPositionMs() const { return 0; }
-};
+* `MediaService`: `acceptsUri()`, `loadUri()`, `play()`, `pause()`, `stop()`,
+  `seek()`, position and duration, and playback listeners. A failed load is
+  reported with `fireError()`, which moves the service to the `Error` state.
+* `MusicService`: a `MediaService` that can also `lookup(isrc)` and
+  `lookupByTitleArtist(title, artist)` without loading anything, and offers
+  `findCandidates()` for the chooser.
+
+`LocalMediaService` (id `local`) is a `MusicService`. It accepts `file://`
+URIs and plays MP3, AIFF, M4A and WAV through the `sp_audio_*` bridge
+(`windows/src/WinAudio.cpp` on Windows, `AVAudioPlayerBridge.mm` on macOS).
+Its lookups find library tracks of that recording or title that have a local
+file.
+
+## Resolution
+
+`BungalowApp` turns the entry it is about to play into a `PlayRequest`
+(`trackId`, `isrc`, title, artist, and the entry's `uri` as `fallbackUri`) and
+hands it to the `PlaybackCoordinator`:
+
+```
+resolveAndPlay(request, forceChooser)
+  ├─ unless forced: a remembered pick (ResolutionStore)? → play it on that service
+  ├─ gatherMatches(request): for each MusicService
+  │     accepts fallbackUri? → that exact item
+  │     else findCandidates(isrc, title, artist)
+  ├─ no match  → play fallbackUri on a service that accepts it, else NotFound
+  ├─ one match → play it (unless forced)
+  └─ several   → the chooser; "Always play with…" saves the pick
 ```
 
-The application chooses the first service whose `acceptsUri()` returns true.
-`LocalMediaService` (id `local`) accepts `file://` URIs and plays MP3, AIFF,
-M4A and WAV. It uses `AVAudioPlayer` on macOS; on Windows, playback goes
-through `windows/src/WinAudio.cpp`.
+The service that played becomes the **active** service
+(`getActiveService()`); pause, seek and the position timer talk to it.
+
+The chooser is a popup menu listing each match twice: "Play with …" and
+"Always play with …". The track context menu in the library views has a
+**Play with…** item, which forces the chooser even when one service matches
+or a pick is remembered, and lets a track without a local file try the other
+services.
+
+Picks are stored in the `music_service_tracks` table by `ResolutionStore`.
+A pick is bound to the library track (deleted with it) and to the request's
+`trackKey()` (`isrc:<ISRC>`, else the URI, else title and artist), and
+records the matched URI so it replays the exact item.
+
+Lookups run on the UI thread. That's fine for the library database; network
+services will need resolution moved to a background thread.
+
+`bungalow/tests/ServiceTest.cpp` covers capability lookup, the service
+lifecycle, resolution and remembered picks.
 
 ## Compared with the Java client
 
-The Java client resolves a vendor-neutral `PlayRequest` across every installed
-`MusicService` at play time, lets you choose with a "Play with…" dialog and
-remembers the choice. The C++ client doesn't do cross-service resolution yet; a
-URI is matched to a single service. See
-[Playback & resolution](../java-client/playback-and-resolution.md) and the
-[roadmap](../roadmap.md).
+This follows the Java client's
+[Playback & resolution](../java-client/playback-and-resolution.md), with two
+differences: the chooser is skipped when exactly one service matches, and
+there is no `AvailabilityResolver` yet, so track lists still grey out rows
+without a local file. See the [roadmap](../roadmap.md).

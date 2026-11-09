@@ -1,0 +1,36 @@
+/*
+ * Mixins (from less/mixins.less)
+ * Mixins don't exist in native CSS: each one is expanded where it was used. Only the
+ * mixins that were also real classes remain here.
+ */
+
+/* Clearfix */
+.clearfix {
+  &::before,
+  &::after {
+    display: table;
+    content: "";
+    line-height: 0;
+  }
+
+  &::after {
+    clear: both;
+  }
+}
+
+/* Block level inputs */
+.input-block-level {
+  display: block;
+  width: 100%;
+  min-height: var(--retro-input-height);
+  box-sizing: border-box;
+}
+
+/* CSS image replacement */
+.hide-text {
+  font: 0/0 a;
+  color: transparent;
+  text-shadow: none;
+  background-color: transparent;
+  border: 0;
+}

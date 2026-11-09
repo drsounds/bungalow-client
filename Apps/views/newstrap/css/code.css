@@ -1,0 +1,54 @@
+/* Code, inline and block (from less/code.less) */
+
+code,
+pre {
+  padding: 0 3px 2px;
+  font-family: var(--retro-mono-font-family);
+  font-size: calc(var(--retro-font-size-base) - 2px);
+  color: var(--retro-gray-dark);
+  border-radius: 3px;
+}
+
+/* Inline code */
+code {
+  padding: 2px 4px;
+  color: #d14;
+  background-color: #f7f7f9;
+  border: 1px solid #e1e1e8;
+  white-space: nowrap;
+}
+
+/* Blocks of code */
+pre {
+  display: block;
+  padding: calc((var(--retro-line-height-base) - 1px) / 2);
+  margin: 0 0 calc(var(--retro-line-height-base) / 2);
+  font-size: calc(var(--retro-font-size-base) - 1px);
+  line-height: var(--retro-line-height-base);
+  word-break: break-all;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  background-color: #f5f5f5;
+  border: 1px solid rgb(0 0 0 / .15);
+  border-radius: var(--retro-base-border-radius);
+
+  /* Make prettyprint styles more spaced out for readability */
+  &.prettyprint {
+    margin-bottom: var(--retro-line-height-base);
+  }
+
+  /* Account for some code outputs that place code tags in pre tags */
+  & code {
+    padding: 0;
+    color: inherit;
+    white-space: pre-wrap;
+    background-color: transparent;
+    border: 0;
+  }
+}
+
+/* Enable scrollable blocks of code */
+.pre-scrollable {
+  max-height: 340px;
+  overflow-y: scroll;
+}

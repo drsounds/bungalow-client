@@ -1,0 +1,24 @@
+/* Hero unit (from less/hero-unit.less) */
+
+.hero-unit {
+  padding: 60px;
+  margin-bottom: 30px;
+  font-size: 18px;
+  font-weight: 200;
+  line-height: calc(var(--retro-line-height-base) * 1.5);
+  color: var(--retro-hero-unit-lead-color);
+  background-color: var(--retro-hero-unit-background);
+  border-radius: 6px;
+
+  & h1 {
+    margin-bottom: 0;
+    font-size: 60px;
+    line-height: 1;
+    color: var(--retro-hero-unit-heading-color);
+    letter-spacing: -1px;
+  }
+
+  & li {
+    line-height: calc(var(--retro-line-height-base) * 1.5);
+  }
+}

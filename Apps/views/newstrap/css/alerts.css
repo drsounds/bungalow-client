@@ -1,0 +1,75 @@
+/* Alerts (from less/alerts.less) */
+
+/* Base styles (.alert-message is a legacy alias) */
+.alert,
+.alert-message {
+  padding: 8px 35px 8px 14px;
+  margin-bottom: var(--retro-line-height-base);
+  text-shadow: 0 1px 0 rgb(255 255 255 / .5);
+  background-color: var(--retro-warning-background);
+  border: 1px solid var(--retro-warning-border);
+  border-radius: var(--retro-base-border-radius);
+}
+.alert,
+.alert-message,
+.alert h4,
+.alert-message h4 {
+  /* Specified for the h4 to prevent conflicts of changing headings color */
+  color: var(--retro-warning-text);
+}
+.alert h4,
+.alert-message h4 {
+  margin: 0;
+}
+
+/* Adjust close link position */
+.alert .close,
+.alert-message .close {
+  position: relative;
+  top: -2px;
+  right: -21px;
+  line-height: var(--retro-line-height-base);
+}
+
+
+/* Alternate styles */
+.alert-success {
+  background-color: var(--retro-success-background);
+  border-color: var(--retro-success-border);
+  color: var(--retro-success-text);
+}
+.alert-success h4 {
+  color: var(--retro-success-text);
+}
+.alert-danger,
+.alert-error {
+  background-color: var(--retro-error-background);
+  border-color: var(--retro-error-border);
+  color: var(--retro-error-text);
+}
+.alert-danger h4,
+.alert-error h4 {
+  color: var(--retro-error-text);
+}
+.alert-info {
+  background-color: var(--retro-info-background);
+  border-color: var(--retro-info-border);
+  color: var(--retro-info-text);
+}
+.alert-info h4 {
+  color: var(--retro-info-text);
+}
+
+
+/* Block alerts */
+.alert-block {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+.alert-block > p,
+.alert-block > ul {
+  margin-bottom: 0;
+}
+.alert-block p + p {
+  margin-top: 5px;
+}

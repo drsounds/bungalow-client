@@ -131,6 +131,7 @@ std::vector<PlayQueueEntry> LibraryDataSource::buildQueueEntries(sqlite3* db) co
         e.displayTitle  = row.name;
         e.displayArtist = row.artists;
         e.playable      = row.playable;
+        e.trackId       = row.trackId;
         if (row.playable) {
             auto it = uriMap.find(row.trackId);
             if (it != uriMap.end()) {

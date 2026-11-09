@@ -1,0 +1,113 @@
+/* Labels and badges (from less/labels-badges.less) */
+
+/* Base classes */
+.label,
+.badge {
+  display: inline-block;
+  padding: 2px 4px;
+  font-size: calc(var(--retro-font-size-base) * .846);
+  font-weight: bold;
+  line-height: 14px; /* ensure proper line-height if floated */
+  color: var(--retro-white);
+  vertical-align: baseline;
+  white-space: nowrap;
+  text-shadow: 0 -1px 0 rgb(0 0 0 / .25);
+  background-color: var(--retro-gray-light);
+}
+/* Set unique padding and border-radii */
+.label {
+  border-radius: 3px;
+}
+.badge {
+  padding-left: 9px;
+  padding-right: 9px;
+  border-radius: 9px;
+}
+
+/* Empty labels/badges collapse */
+.label,
+.badge {
+  &:empty {
+    display: none;
+  }
+}
+
+/* Hover/focus state, but only for links */
+a {
+  &.label:hover,
+  &.label:focus,
+  &.badge:hover,
+  &.badge:focus {
+    color: var(--retro-white);
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  &.label:focus-visible,
+  &.badge:focus-visible {
+    outline: var(--retro-focus-ring-width) solid var(--retro-focus-ring-color);
+    outline-offset: var(--retro-focus-ring-offset);
+  }
+}
+
+/* Colors: only links ([href]) get a background-color change on hover */
+/* Important (red) */
+.label-important,
+.badge-important {
+  background-color: var(--retro-error-text);
+}
+.label-important[href],
+.badge-important[href] {
+  background-color: hsl(from var(--retro-error-text) h s calc(l - 10));
+}
+/* Warnings (orange) */
+.label-warning,
+.badge-warning {
+  background-color: var(--retro-orange);
+}
+.label-warning[href],
+.badge-warning[href] {
+  background-color: hsl(from var(--retro-orange) h s calc(l - 10));
+}
+/* Success (green) */
+.label-success,
+.badge-success {
+  background-color: var(--retro-success-text);
+}
+.label-success[href],
+.badge-success[href] {
+  background-color: hsl(from var(--retro-success-text) h s calc(l - 10));
+}
+/* Info (turquoise) */
+.label-info,
+.badge-info {
+  background-color: var(--retro-info-text);
+}
+.label-info[href],
+.badge-info[href] {
+  background-color: hsl(from var(--retro-info-text) h s calc(l - 10));
+}
+/* Inverse (black) */
+.label-inverse,
+.badge-inverse {
+  background-color: var(--retro-gray-dark);
+}
+.label-inverse[href],
+.badge-inverse[href] {
+  background-color: hsl(from var(--retro-gray-dark) h s calc(l - 10));
+}
+
+/* Quick fix for labels/badges in buttons */
+.btn {
+  & .label,
+  & .badge {
+    position: relative;
+    top: -1px;
+  }
+}
+.btn-mini {
+  & .label,
+  & .badge {
+    top: 0;
+  }
+}

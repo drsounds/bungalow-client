@@ -80,7 +80,7 @@ it ships a [Frutiger Aero skin](./space/skins.md) with HSL tinting.
 ## What Bungalow proposes
 
 - **Discovery is pluggable** (search providers, catalogues, curators), so there is no single gatekeeper.
-- **Streaming is pluggable** (`SPMediaService`), so there is no back-end lock-in.
+- **Streaming is pluggable** (`MediaService`, `MusicService`), and each track is resolved to a service at play time, so there is no back-end lock-in.
 - **The library is local and vendor-neutral**, so cancelling a service doesn't erase your collection.
 - **Purchase sits next to streaming** (store views), reviving the PlaysForSure marketplace idea.
 - **The look is pluggable** (skins, including skins shipped in app bundles).

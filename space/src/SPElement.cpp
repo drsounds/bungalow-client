@@ -1025,7 +1025,6 @@ namespace space {
 
 	void SPElement::pack()
 	{
-		return;
 		if (!this->getInnerText().empty()) {
 			this->resizeToText(false, true);
 		}
@@ -1057,6 +1056,7 @@ namespace space {
 				break;
 			}
 		}
+		return;
 		for (auto child : this->getChildNodes()) {
 			SPElement *elm = static_cast<SPElement *>(child);
 			elm->pack();

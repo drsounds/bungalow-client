@@ -1,0 +1,9 @@
+/* Responsive: tablet to desktop (from less/responsive-768px-979px.less) */
+
+@media (min-width: 768px) and (max-width: 979px) {
+  /* Fixed, fluid and input grids all derive from these tokens */
+  :root {
+    --retro-grid-column: 42;
+    --retro-grid-gutter: 20;
+  }
+}

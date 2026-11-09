@@ -24,6 +24,9 @@
  *                    number, is_primary
  *  saves           – id (PK autoincrement), track_id → tracks,
  *                    saved_at, deleted_at
+ *  music_service_tracks – remembered "Play with…" picks: track_id → tracks
+ *                    (nullable), track_key, service_id, match_isrc/title/
+ *                    artist/uri (see service::ResolutionStore)
  *  bookmarks       – id (PK autoincrement), uri (UNIQUE), title,
  *                    parent_id → bookmarks, created_at
  *  playlists       – id (UUID4 TEXT PK), name, handle (federated owner,
@@ -303,6 +306,8 @@ public:
     std::vector<TrackRow> getTracksForArtist(const std::string& isni);
     /** Tracks of one recording (one per release it appears on). */
     std::vector<TrackRow> getTracksForRecording(const std::string& isrc);
+    /** Tracks whose recording is named @p title (any case). */
+    std::vector<TrackRow> getTracksByTitle(const std::string& title);
     /** Releases the artist is credited on, or that contain their recordings. */
     std::vector<ReleaseSummary> getReleasesForArtist(const std::string& isni);
 

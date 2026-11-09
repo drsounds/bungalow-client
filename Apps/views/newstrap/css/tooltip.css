@@ -1,0 +1,98 @@
+/* Tooltips (from less/tooltip.less); .twipsy* are legacy aliases */
+
+/* Base class */
+.tooltip,
+.twipsy {
+  position: absolute;
+  z-index: var(--retro-zindex-tooltip);
+  display: block;
+  visibility: visible;
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0;
+
+  &.in {
+    opacity: 0.8;
+  }
+
+  &.top {
+    margin-top: -3px;
+    padding: 5px 0;
+  }
+
+  &.right {
+    margin-left: 3px;
+    padding: 0 5px;
+  }
+
+  &.bottom {
+    margin-top: 3px;
+    padding: 5px 0;
+  }
+
+  &.left {
+    margin-left: -3px;
+    padding: 0 5px;
+  }
+}
+
+/* Wrapper for the tooltip content */
+.tooltip-inner,
+.twipsy-inner {
+  max-width: 200px;
+  padding: 8px;
+  color: var(--retro-tooltip-color);
+  text-align: center;
+  text-decoration: none;
+  background-color: var(--retro-tooltip-background);
+  border-radius: var(--retro-base-border-radius);
+}
+
+/* Arrows */
+.tooltip-arrow,
+.twipsy-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+}
+
+.tooltip,
+.twipsy {
+  &.top .tooltip-arrow,
+  &.top .twipsy-arrow {
+    bottom: 0;
+    left: 50%;
+    margin-left: calc(-1 * var(--retro-tooltip-arrow-width));
+    border-width: var(--retro-tooltip-arrow-width) var(--retro-tooltip-arrow-width) 0;
+    border-top-color: var(--retro-tooltip-arrow-color);
+  }
+
+  &.right .tooltip-arrow,
+  &.right .twipsy-arrow {
+    top: 50%;
+    left: 0;
+    margin-top: calc(-1 * var(--retro-tooltip-arrow-width));
+    border-width: var(--retro-tooltip-arrow-width) var(--retro-tooltip-arrow-width) var(--retro-tooltip-arrow-width) 0;
+    border-right-color: var(--retro-tooltip-arrow-color);
+  }
+
+  &.left .tooltip-arrow,
+  &.left .twipsy-arrow {
+    top: 50%;
+    right: 0;
+    margin-top: calc(-1 * var(--retro-tooltip-arrow-width));
+    border-width: var(--retro-tooltip-arrow-width) 0 var(--retro-tooltip-arrow-width) var(--retro-tooltip-arrow-width);
+    border-left-color: var(--retro-tooltip-arrow-color);
+  }
+
+  &.bottom .tooltip-arrow,
+  &.bottom .twipsy-arrow {
+    top: 0;
+    left: 50%;
+    margin-left: calc(-1 * var(--retro-tooltip-arrow-width));
+    border-width: 0 var(--retro-tooltip-arrow-width) var(--retro-tooltip-arrow-width);
+    border-bottom-color: var(--retro-tooltip-arrow-color);
+  }
+}

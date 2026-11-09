@@ -1,0 +1,34 @@
+/* Close icons (from less/close.less) */
+
+.close {
+  float: right;
+  font-size: 20px;
+  font-weight: bold;
+  line-height: var(--retro-line-height-base);
+  color: var(--retro-black);
+  text-shadow: 0 1px 0 rgb(255 255 255 / 1);
+  opacity: .2;
+
+  &:hover,
+  &:focus {
+    color: var(--retro-black);
+    text-decoration: none;
+    cursor: pointer;
+    opacity: .4;
+  }
+
+  &:focus-visible {
+    outline: var(--retro-focus-ring-width) solid var(--retro-focus-ring-color);
+    outline-offset: var(--retro-focus-ring-offset);
+  }
+}
+
+/* Additional properties for button version (iOS requires the button element) */
+button.close {
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}

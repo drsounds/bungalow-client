@@ -11,14 +11,15 @@
 #include "SPObservable.h"
 #include "SPApplicationContext.h"
 #include "DownloadManager.h"
+#include "service/PlaybackCoordinator.h"
+#include "service/ResolutionStore.h"
+#include "service/ServiceManager.h"
 
 #include <memory>
 #include <string>
 #include <vector>
 
 class SpaceFrame;
-class SPMediaService;
-class SPPlayable;
 
 namespace space
 {
@@ -38,19 +39,21 @@ protected:
     std::string m_databasePath;
     std::unique_ptr<DownloadManager> m_downloadManager;
 
-    /// Registered media service instances, searched in order by acceptsUri.
-    std::vector<SPMediaService*> m_mediaServices;
+    /// Installed services, selected by capability. Declared after m_database
+    /// so they are destroyed before it.
+    space::service::ServiceManager                       m_services;
+    std::unique_ptr<space::service::ResolutionStore>     m_resolutionStore;
+    /// Resolves each queue entry to a service at play time.
+    std::unique_ptr<space::service::PlaybackCoordinator> m_coordinator;
 
     bool m_developerMode = false;
 
     // ── Playback state ────────────────────────────────────────────────────────
-    /// Non-owning alias into m_queuePlayables[m_queueIndex]; null when stopped.
-    SPPlayable*              m_currentPlayable = nullptr;
+    /// A queue entry is loaded on a service; false when stopped.
+    bool                        m_hasCurrent = false;
 
     /// Display metadata for every slot in the current queue.
     std::vector<PlayQueueEntry> m_queueEntries;
-    /// Runtime objects parallel to m_queueEntries; nullptr for unplayable slots.
-    std::vector<SPPlayable*>    m_queuePlayables;
     /// Index of the currently-playing entry, or -1 when stopped.
     int                         m_queueIndex = -1;
 
@@ -76,7 +79,11 @@ protected:
     void stopCurrentPlayback();
 
     /// Start playing the entry at idx, skipping forward past unplayable entries.
-    void playFromIndex(int idx);
+    /// chooseService asks which service plays it ("Play with…").
+    void playFromIndex(int idx, bool chooseService = false);
+
+    /// Whether some service could play the entry: its own URI, or its ISRC.
+    bool canResolve(const PlayQueueEntry& entry) const;
 
 public:
     static BungalowApp* current() { return dynamic_cast<BungalowApp*>(wxTheApp); }
@@ -86,8 +93,12 @@ public:
     const std::string& getDatabasePath() const { return m_databasePath; }
     DownloadManager* getDownloadManager() { return m_downloadManager.get(); }
 
-    const std::vector<SPMediaService*>& getMediaServices() const { return m_mediaServices; }
-    SPMediaService* getMediaServiceForUri(const std::string& uri) const;
+    /// Installed services; select them by capability with getServices<T>().
+    space::service::ServiceManager& getServiceManager() { return m_services; }
+    /// Null before OnInit().
+    space::service::PlaybackCoordinator* getPlaybackCoordinator() { return m_coordinator.get(); }
+    /// The service that is playing (or last played), or null.
+    space::service::MediaService* getActiveService() const;
 
     void navigate(const std::string& uri);
 
@@ -116,7 +127,8 @@ public:
 
     /// Compatibility wrappers that build a single-entry PlayContext.
     void playTrackId(int64_t trackId);
-    // Plays a library track (bungalow:track:<id>) or a media service URI.
+    // Plays a library track (bungalow:track:<id>), a recording
+    // (musik:isrc:<ISRC>) or a URI a media service accepts.
     void playUri(const std::string& uri) override;
     bool canPlayUri(const std::string& uri) const override;
 
@@ -128,8 +140,7 @@ public:
     bool        isPlaying()    const { return m_isPlaying; }
     int         getPositionMs()const { return m_positionMs; }
     int         getDurationMs()const { return m_durationMs; }
-    SPPlayable* getCurrentPlayable() const { return m_currentPlayable; }
-    bool hasCurrentPlayable() const override { return m_currentPlayable != nullptr; }
+    bool hasCurrentPlayable() const override { return m_hasCurrent; }
     std::string currentPlayableUri() const override;
 
     const std::vector<PlayQueueEntry>& getQueueEntries() const { return m_queueEntries; }

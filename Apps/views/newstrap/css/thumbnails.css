@@ -1,0 +1,72 @@
+/* Thumbnails (from less/thumbnails.less) */
+
+/* Make wrapper ul behave like the grid */
+.thumbnails {
+  margin-left: calc(-1 * var(--retro-grid-gutter-length));
+  list-style: none;
+
+  &::before,
+  &::after {
+    display: table;
+    content: "";
+    line-height: 0;
+  }
+
+  &::after {
+    clear: both;
+  }
+}
+
+/* Fluid rows have no left margin */
+.row-fluid .thumbnails {
+  margin-left: 0;
+}
+
+/* Float li to make thumbnails appear in a row */
+.thumbnails > li {
+  float: left;
+  margin-bottom: var(--retro-line-height-base);
+  margin-left: var(--retro-grid-gutter-length);
+}
+
+/* The actual thumbnail (can be `a` or `div`) */
+.thumbnail {
+  display: block;
+  padding: 4px;
+  line-height: var(--retro-line-height-base);
+  border: 1px solid #ddd;
+  border-radius: var(--retro-base-border-radius);
+  box-shadow: 0 1px 3px rgb(0 0 0 / .055);
+  transition: all .2s ease-in-out;
+}
+
+/* Add a hover/focus state for linked versions only */
+a.thumbnail:hover,
+a.thumbnail:focus {
+  border-color: var(--retro-link-color);
+  box-shadow: 0 1px 4px rgb(0 105 214 / .25);
+}
+
+a.thumbnail:focus-visible {
+  outline: var(--retro-focus-ring-width) solid var(--retro-focus-ring-color);
+  outline-offset: var(--retro-focus-ring-offset);
+}
+
+/* Images and captions */
+.thumbnail > img {
+  display: block;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.thumbnail .caption {
+  padding: 9px;
+  color: var(--retro-gray);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumbnail {
+    transition: none;
+  }
+}

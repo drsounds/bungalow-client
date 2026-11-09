@@ -6,7 +6,7 @@
 #include "PlayContext.h"
 #include "SPElement.h"
 #include "Database.h"
-#include "services/LocalMediaService.h"
+#include "service/LocalMediaService.h"
 #include "models/SPPlayable.h"
 #include "models/SPPlayableTrack.h"
 #include "models/SPTrack.h"
@@ -57,6 +57,29 @@ wxBEGIN_EVENT_TABLE(BungalowApp, wxApp)
     EVT_TIMER(ID_POSITION_TIMER, BungalowApp::onPositionTimer)
 wxEND_EVENT_TABLE()
 
+using space::service::MediaService;
+using space::service::PlaybackCoordinator;
+using space::service::PlayRequest;
+using space::service::ServiceMatch;
+
+// The "Play with…" chooser: a popup menu listing every match, once to play it
+// now and once to always play the track with it.
+static std::optional<PlaybackCoordinator::Choice>
+chooseServiceMatch(const PlayRequest&, const std::vector<ServiceMatch>& matches) {
+    const int count = static_cast<int>(matches.size());
+    space::platform::MenuItems items;
+    for (int i = 0; i < count; ++i)
+        items.emplace_back(i + 1, "Play with " + matches[i].label()); // id 0 is the separator
+    items.emplace_back(0, "");
+    for (int i = 0; i < count; ++i)
+        items.emplace_back(count + i + 1, "Always play with " + matches[i].label());
+
+    const int id = space::platform::showPopupMenu(items);
+    if (id <= 0) return std::nullopt;
+    if (id <= count) return PlaybackCoordinator::Choice{static_cast<std::size_t>(id - 1), false};
+    return PlaybackCoordinator::Choice{static_cast<std::size_t>(id - count - 1), true};
+}
+
 // ── Initialisation ────────────────────────────────────────────────────────────
 
 bool BungalowApp::OnInit(){
@@ -80,9 +103,6 @@ bool BungalowApp::OnInit(){
     // Swimming apps' JS timers and repaints
     space::platform::wxwidgets::installSwimmingScheduler();
 #endif
-
-    // Register media services (searched in order by acceptsUri)
-    m_mediaServices.push_back(new LocalMediaService());
 
     // Resolve the resources/ directory: it sits next to the executable, or
     // one level up when the binary lives in a build subdirectory.
@@ -109,6 +129,13 @@ bool BungalowApp::OnInit(){
     m_databasePath = resourcesDir.GetPath().ToStdString() + "/bungalow.db";
     m_database = std::make_unique<Database>(m_databasePath);
     m_downloadManager = std::make_unique<DownloadManager>(m_database->handle());
+
+    // Services, selected by capability; each track is resolved to one at play time.
+    m_resolutionStore = std::make_unique<space::service::ResolutionStore>(m_database->handle());
+    m_coordinator = std::make_unique<PlaybackCoordinator>(m_services, m_resolutionStore.get());
+    m_coordinator->setChooser(chooseServiceMatch);
+    m_services.registerService(std::make_unique<space::service::LocalMediaService>(m_database.get()));
+    m_services.startAll();
 
     // Global URI entity store: views render the JSON-cached entity at once
     // and update when the resolver delivers fresh data.
@@ -230,31 +257,27 @@ bool BungalowApp::OnInit(){
 int BungalowApp::OnExit() {
     if (space::SPApplicationContext::current() == this)
         space::SPApplicationContext::setCurrent(nullptr);
-    m_positionTimer.Stop();
-    for (SPMediaService* svc : m_mediaServices)
-        delete svc;
-    m_mediaServices.clear();
-    // Clean up play queue
-    for (SPPlayable* p : m_queuePlayables)
-        delete p;
-    m_queuePlayables.clear();
+    stopCurrentPlayback();
+    m_coordinator.reset();
+    m_services.shutdownAll();
+    m_resolutionStore.reset();
     m_queueEntries.clear();
-    m_currentPlayable = nullptr;
+    m_queueIndex = -1;
     return wxApp::OnExit();
 }
 
+/// The entry's own URI, which views compare their rows against, even when the
+/// entry resolved to another service.
 std::string BungalowApp::currentPlayableUri() const {
-    return m_currentPlayable ? m_currentPlayable->uri : std::string();
+    if (!m_hasCurrent || m_queueIndex < 0 || m_queueIndex >= static_cast<int>(m_queueEntries.size()))
+        return {};
+    return m_queueEntries[m_queueIndex].uri;
 }
 
-// ── Service lookup ────────────────────────────────────────────────────────────
+// ── Services ──────────────────────────────────────────────────────────────────
 
-SPMediaService* BungalowApp::getMediaServiceForUri(const std::string& uri) const {
-    for (SPMediaService* svc : m_mediaServices) {
-        if (svc && svc->acceptsUri(uri))
-            return svc;
-    }
-    return nullptr;
+MediaService* BungalowApp::getActiveService() const {
+    return m_coordinator ? m_coordinator->getActiveService() : nullptr;
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -294,55 +317,47 @@ static bool parseTrackUri(const std::string& uri, int64_t& trackId) {
 
 void BungalowApp::stopCurrentPlayback() {
     m_positionTimer.Stop();
-    if (m_currentPlayable && m_currentPlayable->service)
-        m_currentPlayable->service->stop();
-    m_currentPlayable = nullptr;
-    m_isPlaying       = false;
-    m_positionMs      = 0;
+    if (m_hasCurrent) {
+        if (MediaService* svc = getActiveService())
+            svc->stop();
+    }
+    m_hasCurrent = false;
+    m_isPlaying  = false;
+    m_positionMs = 0;
+}
+
+bool BungalowApp::canResolve(const PlayQueueEntry& entry) const {
+    if (!m_coordinator) return false;
+    if (!entry.uri.empty() && m_coordinator->serviceForUri(entry.uri)) return true;
+    return !entry.isrc.empty();
 }
 
 void BungalowApp::playContext(PlayContext ctx) {
     stopCurrentPlayback();
 
-    // Release old runtime objects
-    for (SPPlayable* p : m_queuePlayables)
-        delete p;
-    m_queuePlayables.clear();
-    m_queueEntries.clear();
-    m_queueIndex = -1;
-
-    // Build runtime playables for each entry that has a URI
+    // Entries nothing could play are greyed out and skipped
     for (auto& entry : ctx.entries) {
-        SPPlayable* p = nullptr;
-        if (entry.playable && !entry.uri.empty()) {
-            p = new SPPlayable(entry.uri);
-            p->resolveService(m_mediaServices);
-            if (!p->service) {
-                // URI couldn't be resolved — mark slot as unplayable
-                entry.playable = false;
-                delete p;
-                p = nullptr;
-            }
-        }
-        m_queuePlayables.push_back(p); // nullptr for unplayable slots
+        if (entry.playable && !canResolve(entry))
+            entry.playable = false;
     }
     m_queueEntries = std::move(ctx.entries);
+    m_queueIndex   = -1;
 
     // Notify the play queue panel that the full list has changed
     m_playbackEvents.dispatchEvent("queue:changed", nullptr, nullptr);
 
     // Start playing at the requested index (skips forward past unplayable)
-    playFromIndex(static_cast<int>(ctx.startIndex));
+    playFromIndex(static_cast<int>(ctx.startIndex), ctx.chooseService);
 }
 
-void BungalowApp::playFromIndex(int idx) {
+void BungalowApp::playFromIndex(int idx, bool chooseService) {
     const int size = static_cast<int>(m_queueEntries.size());
 
     // Advance past any unplayable entries
     while (idx < size && !m_queueEntries[idx].playable)
         ++idx;
 
-    if (idx >= size) {
+    if (idx >= size || !m_coordinator) {
         // Nothing playable from here — stay stopped
         m_isPlaying = false;
         dispatchPlaybackChanged();
@@ -350,25 +365,36 @@ void BungalowApp::playFromIndex(int idx) {
     }
 
     m_queueIndex = idx;
-    SPPlayable*       p     = m_queuePlayables[idx];
     const PlayQueueEntry& entry = m_queueEntries[idx];
+    const std::string title = entry.displayTitle.empty() ? uriBasename(entry.uri) : entry.displayTitle;
 
-    if (!p || !p->service) {
-        m_isPlaying = false;
+    PlayRequest request;
+    request.trackId     = entry.trackId;
+    request.isrc        = entry.isrc;
+    request.title       = title;
+    request.artist      = entry.displayArtist;
+    request.fallbackUri = entry.uri;
+
+    const auto result = m_coordinator->resolveAndPlay(request, chooseService);
+    if (!result.played()) {
+        m_hasCurrent = false;
+        m_isPlaying  = false;
+        if (result.status == PlaybackCoordinator::Status::NotFound)
+            showError("No installed service can play \"" + title + "\".");
+        else if (result.status == PlaybackCoordinator::Status::Failed)
+            showError("Couldn't play \"" + title + "\".");
         dispatchPlaybackChanged();
         return;
     }
 
-    m_trackTitle   = entry.displayTitle.empty() ? uriBasename(entry.uri) : entry.displayTitle;
+    m_trackTitle   = title;
     m_artistName   = entry.displayArtist;
     m_coverArtPath = entry.coverArtPath;
 
-    p->service->load(entry.uri);
-    p->service->play();
-    m_currentPlayable = p;
-    m_isPlaying       = true;
-    m_positionMs      = 0;
-    m_durationMs      = p->service->getDurationMs();
+    m_hasCurrent = true;
+    m_isPlaying  = true;
+    m_positionMs = 0;
+    m_durationMs = result.service->getDurationMs();
 
     dispatchPlaybackChanged();
     m_positionTimer.Start(500);
@@ -423,6 +449,8 @@ void BungalowApp::playTrackId(int64_t trackId) {
     e.coverArtPath  = coverArt;
     e.uri           = playableOpt->uri;
     e.playable      = true;
+    e.trackId       = trackId;
+    if (trackOpt) e.isrc = trackOpt->recordingId; // recordings are keyed by ISRC
 
     PlayContext ctx;
     ctx.entries.push_back(std::move(e));
@@ -438,9 +466,15 @@ void BungalowApp::playUri(const std::string& uri) {
     }
 
     PlayQueueEntry e;
-    e.displayTitle = uriBasename(uri);
-    e.uri          = uri;
-    e.playable     = true;
+    e.playable = true;
+    if (auto request = PlaybackCoordinator::requestForContentUri(uri)) {
+        // A recording, not a source: resolved across the music services.
+        e.isrc         = request->isrc;
+        e.displayTitle = request->isrc;
+    } else {
+        e.displayTitle = uriBasename(uri);
+        e.uri          = uri;
+    }
 
     PlayContext ctx;
     ctx.entries.push_back(std::move(e));
@@ -450,18 +484,18 @@ void BungalowApp::playUri(const std::string& uri) {
 
 bool BungalowApp::canPlayUri(const std::string& uri) const {
     int64_t trackId = 0;
-    return parseTrackUri(uri, trackId) || getMediaServiceForUri(uri) != nullptr;
+    return parseTrackUri(uri, trackId) || (m_coordinator && m_coordinator->canPlayUri(uri));
 }
 
 void BungalowApp::togglePlayPause() {
-    if (!m_currentPlayable) return;
+    if (!m_hasCurrent) return;
 
     m_isPlaying = !m_isPlaying;
-    if (m_currentPlayable->service) {
+    if (MediaService* svc = getActiveService()) {
         if (m_isPlaying)
-            m_currentPlayable->service->play();
+            svc->play();
         else
-            m_currentPlayable->service->pause();
+            svc->pause();
     }
 
     if (m_isPlaying)
@@ -473,11 +507,11 @@ void BungalowApp::togglePlayPause() {
 }
 
 void BungalowApp::seekTo(int posMs) {
-    if (!m_currentPlayable) return;
+    if (!m_hasCurrent) return;
 
     m_positionMs = posMs;
-    if (m_currentPlayable->service)
-        m_currentPlayable->service->seek(posMs);
+    if (MediaService* svc = getActiveService())
+        svc->seek(posMs);
 
     dispatchPlaybackChanged();
 }
@@ -521,11 +555,9 @@ void BungalowApp::dispatchPlaybackChanged() {
 }
 
 void BungalowApp::onPositionTimer(wxTimerEvent& /*event*/) {
-    if (!m_isPlaying || !m_currentPlayable) return;
+    if (!m_isPlaying || !m_hasCurrent) return;
 
-    SPMediaService* svc = m_currentPlayable->service;
-
-    if (svc) {
+    if (MediaService* svc = getActiveService()) {
         m_positionMs = svc->getPositionMs();
         // Refresh duration (AVAudioPlayer might not have it ready immediately)
         if (m_durationMs == 0)

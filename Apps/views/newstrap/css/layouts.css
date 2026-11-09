@@ -1,0 +1,35 @@
+/* Layouts (from less/layouts.less) */
+
+/* Container (centered, fixed-width layouts); width comes from grid.css */
+.container {
+  margin-right: auto;
+  margin-left: auto;
+
+  &::before,
+  &::after {
+    display: table;
+    content: "";
+    line-height: 0;
+  }
+
+  &::after {
+    clear: both;
+  }
+}
+
+/* Fluid layouts (left aligned, with sidebar, min- & max-width content) */
+.container-fluid {
+  padding-right: calc(var(--retro-grid-gutter) * 1px);
+  padding-left: calc(var(--retro-grid-gutter) * 1px);
+
+  &::before,
+  &::after {
+    display: table;
+    content: "";
+    line-height: 0;
+  }
+
+  &::after {
+    clear: both;
+  }
+}

@@ -20,6 +20,7 @@ struct MusicEntityRow {
     std::string              artist;  // display artist for the play queue
     bool                     playable = true;
     // Track rows only:
+    std::string              isrc;       // the track's recording, for cross-service resolution
     std::string              releaseKey; // UPC of the track's release, "" if none
     int                      number = 0;
     bool                     saved  = false;
@@ -57,6 +58,7 @@ public:
             r.playUri  = t.playUri;
             r.artist   = t.artists;
             r.playable = !t.playUri.empty();
+            r.isrc       = t.isrc;
             r.releaseKey = t.upc;
             r.number     = t.number;
             r.saved      = t.saved;

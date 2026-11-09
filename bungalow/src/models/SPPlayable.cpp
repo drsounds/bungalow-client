@@ -1,6 +1,5 @@
 #include "models/SPPlayable.h"
 #include "models/SPDBConnection.h"
-#include "services/SPMediaService.h"
 #include <utility>
 
 // ── Constructors ──────────────────────────────────────────────────────────────
@@ -9,18 +8,6 @@ SPPlayable::SPPlayable(std::string uri) : uri(std::move(uri)) {}
 
 SPPlayable::SPPlayable(int64_t id, std::string uri)
     : id(id), uri(std::move(uri)) {}
-
-// ── Service resolution ────────────────────────────────────────────────────────
-
-void SPPlayable::resolveService(const std::vector<SPMediaService*>& services) {
-    service = nullptr;
-    for (SPMediaService* s : services) {
-        if (s && s->acceptsUri(uri)) {
-            service = s;
-            return;
-        }
-    }
-}
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 

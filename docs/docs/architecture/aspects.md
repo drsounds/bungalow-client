@@ -68,15 +68,40 @@ them again:
 | `feature::FeatureManager` | `Feature` | mounts the feature's views in the view stack |
 | `concepts::ConceptManager` | `Concept` | activates the concept with a recording context |
 | `search::SearchManager` | `SearchProvider` | adds the provider to unified search |
+| `service::ServiceManager` | `Service` | calls `onCreate()`; unregistering calls `onStop()` and `onDestroy()` |
 
 `bungalow/tests/AspectTest.cpp` covers registration, replacement by id and
 ordering.
 
-## Compared with the Java client
+## Services and capabilities
 
-The Java client uses the same model. There, `ServiceManager` additionally
-selects back-ends **by capability** (`getServices(MediaService.class)`). The
-C++ client doesn't have a service manager yet: media services are owned by
-`BungalowApp` and chosen by URI (`SPService::acceptsUri`). See
-[Playback](./playback.md) and [Aspects & Services](../java-client/aspects-and-services.md)
-in the Java docs.
+A **Service** is a back-end: an aspect with a lifecycle (`onCreate`,
+`onStart`, `onStop`, `onDestroy`). What it can do is expressed by also
+deriving from **capability** interfaces, so one object can combine several.
+Headers: `bungalow/include/service/`.
+
+| Capability | Responsibility |
+|------------|----------------|
+| `MediaService` | load a URI it `acceptsUri()`, play / pause / stop / seek, playback listeners |
+| `MusicService` | a `MediaService` that also looks tracks up by ISRC or title and artist, without loading them |
+| `MusicCatalogueService` | search and browse a catalogue (artists, releases, recordings) |
+| `AuthAspect` | sign in and out; not a `Service` itself, a back-end implements it next to one |
+
+Callers never name a vendor. They ask the `ServiceManager` for a capability:
+
+```cpp
+for (MusicService* ms : services.getServices<MusicService>()) { … }
+AuthAspect* auth = services.getService<AuthAspect>();
+```
+
+Both use `dynamic_cast`, so a Service is offered for every interface it
+implements. The capabilities derive from `Service` **virtually**, so a class
+implementing `MusicService` and `MusicCatalogueService` has a single
+`Service` base. A `Service*` therefore can't be `static_cast` down to its
+class; use `registerService(std::unique_ptr<T>)`, which returns the typed
+pointer.
+
+`BungalowApp` owns the `ServiceManager` and registers `LocalMediaService`
+(id `local`). See [Playback](./playback.md) for how a track is resolved to a
+service, and [Aspects & Services](../java-client/aspects-and-services.md) for
+the Java client, which the C++ model follows.

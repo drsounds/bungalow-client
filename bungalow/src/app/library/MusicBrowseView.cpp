@@ -254,18 +254,22 @@ int MusicBrowseView::onToolButtonClicked(SPObject* /*sender*/, SPEventArgs* args
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-void MusicBrowseView::playFrom(Page& page, int row) {
+void MusicBrowseView::playFrom(Page& page, int row, bool chooseService) {
 	auto* app = BungalowApp::current();
 	const MusicEntityRow* r = page.source->rowAt(row);
 	if (!app || !r)
 		return;
-	if (!r->playable) {
+	const bool resolvable = chooseService && !r->isrc.empty();
+	if (!r->playable && !resolvable) {
 		app->showError("\"" + r->title + "\" has no playable file or stream.");
 		return;
 	}
 	PlayContext ctx;
 	ctx.entries = page.source->buildQueueEntries();
 	ctx.startIndex = static_cast<std::size_t>(row);
+	ctx.chooseService = chooseService;
+	if (resolvable && ctx.startIndex < ctx.entries.size())
+		ctx.entries[ctx.startIndex].playable = true;
 	app->playContext(std::move(ctx));
 }
 
@@ -278,6 +282,7 @@ void MusicBrowseView::trackContextMenu(Page& page, int row, unsigned flags) {
 
 	enum {
 		ID_PLAY = 10300,
+		ID_PLAY_WITH,
 		ID_SAVE,
 		ID_UNSAVE,
 		ID_OPEN_RELEASE,
@@ -287,6 +292,8 @@ void MusicBrowseView::trackContextMenu(Page& page, int row, unsigned flags) {
 		ID_DELETE
 	};
 	platform::MenuItems items = {{ID_PLAY, "Play"}};
+	if (!track.isrc.empty())
+		items.push_back({ID_PLAY_WITH, "Play with..."});
 	if (track.saved)
 		items.push_back({ID_UNSAVE, "Remove from Library"});
 	else
@@ -305,6 +312,9 @@ void MusicBrowseView::trackContextMenu(Page& page, int row, unsigned flags) {
 	switch (platform::showPopupMenu(items)) {
 	case ID_PLAY:
 		playFrom(page, row);
+		break;
+	case ID_PLAY_WITH:
+		playFrom(page, row, true);
 		break;
 	case ID_SAVE:
 		m_db->ensureSave(track.trackId);

@@ -47,6 +47,8 @@ std::vector<PlayQueueEntry> MusicEntityDataSource::buildQueueEntries() const {
         e.displayArtist = r.artist;
         e.uri           = r.playUri;
         e.playable      = r.playable && !r.playUri.empty();
+        e.isrc          = r.isrc;
+        e.trackId       = r.trackId;
         entries.push_back(std::move(e));
     }
     return entries;

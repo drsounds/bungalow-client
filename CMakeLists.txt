@@ -62,9 +62,9 @@ file(GLOB BUNGALOW_SOURCES CONFIGURE_DEPENDS "bungalow/src/*.cpp")
 file(GLOB SPACE_HEADERS CONFIGURE_DEPENDS "space/include/*.h")
 file(GLOB BUNGALOW_HEADERS CONFIGURE_DEPENDS "bungalow/include/*.h")
 # The client architecture, one directory per package: aspect, feature,
-# concept, search, navigation, playlist, ui and web, plus the built-in
-# contributions in app.
-set(BUNGALOW_PACKAGES aspect app concept feature navigation playlist search ui web)
+# concept, search, navigation, playlist, service, ui and web, plus the
+# built-in contributions in app.
+set(BUNGALOW_PACKAGES aspect app concept feature navigation playlist search service ui web)
 set(BUNGALOW_PACKAGE_SOURCES)
 set(BUNGALOW_PACKAGE_HEADERS)
 foreach(package IN LISTS BUNGALOW_PACKAGES)
@@ -325,6 +325,18 @@ if(BUILD_TESTING)
         target_include_directories(bungalow-rootlist-test PRIVATE bungalow/include)
         target_link_libraries(bungalow-rootlist-test PRIVATE SQLite3::SQLite3)
         add_test(NAME bungalow-rootlist-test COMMAND bungalow-rootlist-test)
+
+        add_executable(bungalow-service-test
+            bungalow/tests/ServiceTest.cpp
+            bungalow/src/Database.cpp
+            bungalow/src/service/MediaService.cpp
+            bungalow/src/service/MusicService.cpp
+            bungalow/src/service/PlaybackCoordinator.cpp
+            bungalow/src/service/ResolutionStore.cpp
+            bungalow/src/service/ServiceManager.cpp)
+        target_include_directories(bungalow-service-test PRIVATE bungalow/include)
+        target_link_libraries(bungalow-service-test PRIVATE SQLite3::SQLite3)
+        add_test(NAME bungalow-service-test COMMAND bungalow-service-test)
     endif()
 
     if(BUNGALOW_ENABLE_SWIMMING)

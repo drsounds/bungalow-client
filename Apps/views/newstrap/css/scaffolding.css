@@ -1,0 +1,48 @@
+/* Scaffolding (from less/scaffolding.less) */
+
+/* Body reset */
+body {
+  margin: 0;
+  font-family: var(--retro-font-base);
+  font-size: var(--retro-font-size-base);
+  line-height: var(--retro-line-height-base);
+  color: var(--retro-text-color);
+  background-color: var(--retro-body-background);
+}
+
+/* Links */
+a {
+  color: var(--retro-link-color);
+  text-decoration: none;
+
+  &:hover,
+  &:focus {
+    color: var(--retro-primary-hover);
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: var(--retro-focus-ring-width) solid var(--retro-focus-ring-color);
+    outline-offset: var(--retro-focus-ring-offset);
+  }
+}
+
+/* Images */
+
+/* Rounded corners */
+.img-rounded {
+  border-radius: 6px;
+}
+
+/* Add polaroid-esque trim */
+.img-polaroid {
+  padding: 4px;
+  background-color: #fff;
+  border: 1px solid rgb(0 0 0 / .2);
+  box-shadow: 0 1px 3px rgb(0 0 0 / .1);
+}
+
+/* Perfect circle */
+.img-circle {
+  border-radius: 500px;
+}

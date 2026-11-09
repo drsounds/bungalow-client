@@ -1,0 +1,23 @@
+/* Breadcrumbs (from less/breadcrumbs.less) */
+
+.breadcrumb {
+  padding: 8px 15px;
+  margin: 0 0 var(--retro-line-height-base);
+  list-style: none;
+  background-color: #f5f5f5;
+  border-radius: var(--retro-base-border-radius);
+
+  & > li {
+    display: inline-block;
+    text-shadow: 0 1px 0 var(--retro-white);
+
+    & > .divider {
+      padding: 0 5px;
+      color: #ccc;
+    }
+  }
+
+  & > .active {
+    color: var(--retro-gray-light);
+  }
+}
