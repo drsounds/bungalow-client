@@ -2,6 +2,8 @@
 
 #include "service/MusicService.h"
 
+#include <memory>
+#include <mutex>
 #include <string>
 
 class Database;
@@ -14,14 +16,19 @@ namespace service {
 /// is one of the matches the PlaybackCoordinator gathers.
 ///
 /// Audio goes through the sp_audio_* bridge: WinAudio.cpp (Media Foundation)
-/// on Windows, AVAudioPlayerBridge.mm (AVAudioEngine) on macOS.
+/// on Windows, AVAudioPlayerBridge.mm (AVAudioEngine) on macOS. Transport
+/// calls belong on the UI thread; lookups may run on any thread.
 class LocalMediaService : public MusicService {
 public:
-    /// @p database may be null, in which case lookups find nothing; it must
-    /// outlive the service otherwise.
-    explicit LocalMediaService(Database* database = nullptr) : m_database(database) {}
+    static constexpr const char* kId = "local";
 
-    std::string getId() const override   { return "local"; }
+    /// Lookups read the library at @p databasePath through their own
+    /// read-only connection, so they can run beside the UI thread's writes.
+    /// With an empty path, or one that can't be opened, they find nothing.
+    explicit LocalMediaService(const std::string& databasePath = {});
+    ~LocalMediaService() override;
+
+    std::string getId() const override   { return kId; }
     std::string getName() const override { return "Local Files"; }
 
     // ── MediaService ───────────────────────────────────────────────────────
@@ -48,8 +55,9 @@ public:
                                                  const std::string& artist) override;
 
 private:
-    Database*   m_database;
-    std::string m_loadedUri;
+    std::unique_ptr<Database> m_lookupDb;
+    std::mutex                m_lookupMutex; // the connection is used by one thread at a time
+    std::string               m_loadedUri;
 };
 
 } // namespace service

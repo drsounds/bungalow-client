@@ -43,6 +43,14 @@ MusicBrowseView::MusicBrowseView(SPElement* parent, Database* db) :
 		"toolbuttonclicked",
 		reinterpret_cast<SPCallback>(&MusicBrowseView::onToolButtonClicked),
 		this, this->tabBar);
+	if (auto* app = BungalowApp::current()) {
+		if (auto resolver = app->getAvailabilityResolver().lock()) {
+			m_availabilityChanged = resolver->subscribe([this] {
+				for (auto& page : m_pages)
+					page->table->invalidate();
+			});
+		}
+	}
 }
 
 MusicBrowseView::~MusicBrowseView() {}
@@ -54,6 +62,8 @@ MusicBrowseView::Page& MusicBrowseView::addPage(const std::string& id,
 	auto page = std::make_unique<Page>();
 	page->id = id;
 	page->source = std::make_unique<MusicEntityDataSource>(std::move(columns));
+	if (auto* app = BungalowApp::current())
+		page->source->setAvailability(app->getAvailabilityResolver());
 
 	auto* section = new SPSectionElement(this->tabStack);
 	section->setId(id);
@@ -124,6 +134,9 @@ void MusicBrowseView::setHash(const std::string& hash) {
 void MusicBrowseView::refresh() {
 	if (!m_db)
 		return;
+	if (auto* app = BungalowApp::current())
+		if (auto resolver = app->getAvailabilityResolver().lock())
+			resolver->clear();
 	reload();
 	for (auto& page : m_pages)
 		page->table->invalidate();
@@ -260,7 +273,7 @@ void MusicBrowseView::playFrom(Page& page, int row, bool chooseService) {
 	if (!app || !r)
 		return;
 	const bool resolvable = chooseService && !r->isrc.empty();
-	if (!r->playable && !resolvable) {
+	if (!page.source->isRowPlayable(row) && !resolvable) {
 		app->showError("\"" + r->title + "\" has no playable file or stream.");
 		return;
 	}

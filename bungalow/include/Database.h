@@ -157,11 +157,16 @@ public:
         bool        saved = false;
     };
 
+    enum class OpenMode {
+        ReadWrite, ///< create the file and schema if needed (the application's connection)
+        ReadOnly,  ///< an existing database, untouched; usable from a background thread
+    };
+
     /**
      * Open (or create) the SQLite database at @p path.
      * Throws std::runtime_error if the file cannot be opened.
      */
-    explicit Database(const std::string& path);
+    explicit Database(const std::string& path, OpenMode mode = OpenMode::ReadWrite);
     ~Database();
 
     // Non-copyable, movable
@@ -388,6 +393,8 @@ public:
     decodeColumnsPublic(const std::string& encoded) { return decodeColumns(encoded); }
 
 private:
+    static constexpr int kBusyTimeoutMs = 3000;
+
     sqlite3* m_db = nullptr;
 
     void initialize();

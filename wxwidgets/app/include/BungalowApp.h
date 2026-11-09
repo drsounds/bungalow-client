@@ -11,6 +11,8 @@
 #include "SPObservable.h"
 #include "SPApplicationContext.h"
 #include "DownloadManager.h"
+#include "service/AvailabilityResolver.h"
+#include "service/BackgroundWorker.h"
 #include "service/PlaybackCoordinator.h"
 #include "service/ResolutionStore.h"
 #include "service/ServiceManager.h"
@@ -45,6 +47,10 @@ protected:
     std::unique_ptr<space::service::ResolutionStore>     m_resolutionStore;
     /// Resolves each queue entry to a service at play time.
     std::unique_ptr<space::service::PlaybackCoordinator> m_coordinator;
+    /// Which services can play a track; views hold weak references.
+    std::shared_ptr<space::service::AvailabilityResolver> m_availability;
+    /// Where service lookups run, one at a time.
+    std::unique_ptr<space::service::BackgroundWorker>    m_worker;
 
     bool m_developerMode = false;
 
@@ -82,6 +88,9 @@ protected:
     /// chooseService asks which service plays it ("Play with…").
     void playFromIndex(int idx, bool chooseService = false);
 
+    /// Finishes playFromIndex() once the entry is resolved to a service.
+    void onResolved(int idx, const space::service::PlaybackCoordinator::Result& result);
+
     /// Whether some service could play the entry: its own URI, or its ISRC.
     bool canResolve(const PlayQueueEntry& entry) const;
 
@@ -99,6 +108,9 @@ public:
     space::service::PlaybackCoordinator* getPlaybackCoordinator() { return m_coordinator.get(); }
     /// The service that is playing (or last played), or null.
     space::service::MediaService* getActiveService() const;
+    /// Which services can play a track, for greying out track lists. Empty
+    /// before OnInit() and after OnExit().
+    std::weak_ptr<space::service::AvailabilityResolver> getAvailabilityResolver() const { return m_availability; }
 
     void navigate(const std::string& uri);
 

@@ -329,6 +329,8 @@ if(BUILD_TESTING)
         add_executable(bungalow-service-test
             bungalow/tests/ServiceTest.cpp
             bungalow/src/Database.cpp
+            bungalow/src/service/AvailabilityResolver.cpp
+            bungalow/src/service/BackgroundWorker.cpp
             bungalow/src/service/MediaService.cpp
             bungalow/src/service/MusicService.cpp
             bungalow/src/service/PlaybackCoordinator.cpp

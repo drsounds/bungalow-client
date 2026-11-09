@@ -16,27 +16,66 @@ const std::string kMusikIsrcPrefix = "musik:isrc:";
 PlaybackCoordinator::PlaybackCoordinator(ServiceManager& services, ResolutionStore* store)
     : m_services(services), m_store(store) {}
 
+PlaybackCoordinator::~PlaybackCoordinator() = default;
+
+void PlaybackCoordinator::setExecutors(Executor background, Executor ui) {
+    m_background = background ? std::move(background) : inlineExecutor();
+    m_ui = ui ? std::move(ui) : inlineExecutor();
+}
+
 // ── Resolution ────────────────────────────────────────────────────────────────
 
-PlaybackCoordinator::Result PlaybackCoordinator::resolveAndPlay(const PlayRequest& request,
-                                                                bool forceChooser) {
+void PlaybackCoordinator::resolveAndPlay(const PlayRequest& request, bool forceChooser, Callback done) {
+    const std::uint64_t generation = ++m_generation;
+    if (!done) done = [](const Result&) {};
+
     if (!forceChooser && m_store) {
         if (auto pick = m_store->find(request)) {
             Result r = playPick(*pick);
             // A pick whose Service is gone or can't play it any more falls
             // through to a fresh resolution.
-            if (r.played()) return r;
+            if (r.played()) {
+                done(r);
+                return;
+            }
         }
     }
 
-    const std::vector<ServiceMatch> matches = gatherMatches(request);
+    // The worker gets its own copies: it must not touch the coordinator, which
+    // may be gone by the time the lookups finish.
+    const std::vector<MusicService*> services = m_services.getServices<MusicService>();
+    std::weak_ptr<bool> alive = m_alive;
+    Executor ui = m_ui;
+    m_background([this, alive, ui, services, request, generation, done]() {
+        std::vector<ServiceMatch> matches = gather(services, request);
+        ui([this, alive, request, generation, done, matches = std::move(matches)]() mutable {
+            if (alive.expired()) return;
+            done(choose(generation, request, std::move(matches)));
+        });
+    });
+}
+
+PlaybackCoordinator::Result PlaybackCoordinator::choose(std::uint64_t generation, const PlayRequest& request,
+                                                        std::vector<ServiceMatch> matches) {
+    if (generation != m_generation) return Result{Status::Superseded};
+
+    // A Service may have been unregistered while the lookups ran.
+    const auto registered = m_services.getServices<MusicService>();
+    matches.erase(std::remove_if(matches.begin(), matches.end(),
+                                 [&](const ServiceMatch& m) {
+                                     return std::find(registered.begin(), registered.end(), m.service) ==
+                                            registered.end();
+                                 }),
+                  matches.end());
+
     if (matches.empty()) return playFallback(request);
-
-    if (matches.size() == 1 && !forceChooser) return playMatch(matches.front(), request);
-
     if (!m_chooser) return playMatch(matches.front(), request);
 
+    // Unresolved tracks always go to the chooser, even with one match, so the
+    // user learns which Service plays them and can pin that choice.
     const std::optional<Choice> choice = m_chooser(request, matches);
+    // The chooser is modal and pumps messages: a newer play may have started.
+    if (generation != m_generation) return Result{Status::Superseded};
     if (!choice || choice->index >= matches.size()) return Result{Status::Cancelled};
 
     const ServiceMatch& match = matches[choice->index];
@@ -46,8 +85,13 @@ PlaybackCoordinator::Result PlaybackCoordinator::resolveAndPlay(const PlayReques
 }
 
 std::vector<ServiceMatch> PlaybackCoordinator::gatherMatches(const PlayRequest& request) const {
+    return gather(m_services.getServices<MusicService>(), request);
+}
+
+std::vector<ServiceMatch> PlaybackCoordinator::gather(const std::vector<MusicService*>& services,
+                                                      const PlayRequest& request) {
     std::vector<ServiceMatch> matches;
-    for (MusicService* ms : m_services.getServices<MusicService>()) {
+    for (MusicService* ms : services) {
         try {
             // The request already names an item this Service plays (the row's
             // own file, say): that item is its match, not whatever a lookup
@@ -120,15 +164,24 @@ std::optional<PlayRequest> PlaybackCoordinator::requestForContentUri(const std::
     return request;
 }
 
-PlaybackCoordinator::Result PlaybackCoordinator::playUri(const std::string& uri) {
-    if (auto request = requestForContentUri(uri)) return resolveAndPlay(*request);
+void PlaybackCoordinator::playUri(const std::string& uri, Callback done) {
+    if (!done) done = [](const Result&) {};
+    if (auto request = requestForContentUri(uri)) {
+        resolveAndPlay(*request, false, std::move(done));
+        return;
+    }
+    ++m_generation;
     MediaService* ms = serviceForUri(uri);
-    if (!ms) return Result{Status::NotFound};
+    if (!ms) {
+        done(Result{Status::NotFound});
+        return;
+    }
     ms->loadUri(uri);
-    return started(*ms, uri);
+    done(started(*ms, uri));
 }
 
 PlaybackCoordinator::Result PlaybackCoordinator::playOn(MusicService& service, const PlayRequest& request) {
+    ++m_generation;
     if (!request.isrc.empty())
         service.loadByIsrc(request.isrc);
     else

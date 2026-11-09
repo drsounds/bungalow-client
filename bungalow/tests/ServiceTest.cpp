@@ -1,24 +1,33 @@
 // The service ecosystem: capability lookup and lifecycle in ServiceManager,
-// cross-service resolution in PlaybackCoordinator, remembered picks in
-// ResolutionStore.
+// cross-service resolution in PlaybackCoordinator (synchronous and in the
+// background), remembered picks in ResolutionStore, track availability in
+// AvailabilityResolver, and the BackgroundWorker they run on.
 
 #include "Database.h"
 #include "service/AuthAspect.h"
+#include "service/AvailabilityResolver.h"
+#include "service/BackgroundWorker.h"
 #include "service/MusicCatalogueService.h"
 #include "service/MusicService.h"
 #include "service/PlaybackCoordinator.h"
 #include "service/ResolutionStore.h"
 #include "service/ServiceManager.h"
 
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <filesystem>
 #include <iostream>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 using namespace space::service;
+using Status = PlaybackCoordinator::Status;
 
 namespace {
 
@@ -57,6 +66,7 @@ public:
     void seek(int) override {}
 
     std::optional<Candidate> lookup(const std::string& isrc) override {
+        ++lookups;
         if (throws) throw std::runtime_error("lookup failed");
         auto it = byIsrc.find(isrc);
         if (it == byIsrc.end()) return std::nullopt;
@@ -71,6 +81,7 @@ public:
     std::map<std::string, std::string> byIsrc, byTitle;
     std::string loaded;
     int plays = 0;
+    int lookups = 0;
     bool throws = false;
     bool failLoads = false;
 
@@ -106,6 +117,24 @@ public:
     std::optional<Recording> getRecordingByIsrc(const std::string&) override { return std::nullopt; }
 };
 
+/// An executor that queues tasks until the test runs them.
+struct ManualExecutor {
+    std::vector<std::function<void()>> tasks;
+    Executor executor() {
+        return [this](std::function<void()> task) { tasks.push_back(std::move(task)); };
+    }
+    /// Runs everything queued, including tasks queued while running.
+    int drain() {
+        int ran = 0;
+        while (!tasks.empty()) {
+            auto batch = std::move(tasks);
+            tasks.clear();
+            for (auto& task : batch) { task(); ++ran; }
+        }
+        return ran;
+    }
+};
+
 PlayRequest request(const std::string& isrc, const std::string& title = "Song",
                     const std::string& fallback = {}) {
     PlayRequest r;
@@ -114,6 +143,18 @@ PlayRequest request(const std::string& isrc, const std::string& title = "Song",
     r.artist = "Artist";
     r.fallbackUri = fallback;
     return r;
+}
+
+/// resolveAndPlay with inline executors, returning its result.
+PlaybackCoordinator::Result play(PlaybackCoordinator& coordinator, const PlayRequest& req, bool force = false) {
+    PlaybackCoordinator::Result out{Status::Superseded};
+    bool called = false;
+    coordinator.resolveAndPlay(req, force, [&](const PlaybackCoordinator::Result& r) {
+        out = r;
+        called = true;
+    });
+    check(called, "inline executors resolve synchronously");
+    return out;
 }
 
 void testServiceManager() {
@@ -169,75 +210,121 @@ void testCoordinator() {
     std::vector<MediaService*> activeChanges;
     coordinator.addActiveServiceListener([&](MediaService* s) { activeChanges.push_back(s); });
 
+    // Without a chooser, the first match plays.
+    auto r = play(coordinator, request("BOTH"));
+    check(r.played() && r.service == local, "no chooser: first match");
+
     int chooserCalls = 0;
-    std::optional<PlaybackCoordinator::Choice> nextChoice;
+    std::size_t lastMatchCount = 0;
+    std::optional<PlaybackCoordinator::Choice> nextChoice = PlaybackCoordinator::Choice{0, false};
     coordinator.setChooser([&](const PlayRequest&, const std::vector<ServiceMatch>& matches) {
         ++chooserCalls;
-        check(matches.size() == 2, "the chooser sees one match per service");
+        lastMatchCount = matches.size();
         return nextChoice;
     });
 
-    // One match: plays at once, no chooser.
-    auto r = coordinator.resolveAndPlay(request("ONLYLOCAL"));
+    // A single match still goes to the chooser, so it can be pinned.
+    r = play(coordinator, request("ONLYLOCAL"));
+    check(chooserCalls == 1 && lastMatchCount == 1, "a single match asks too");
     check(r.played() && r.service == local && local->loaded == "file:///a.mp3", "single match plays");
-    check(chooserCalls == 0, "a single match doesn't ask");
     check(coordinator.getActiveService() == local, "the playing service becomes active");
 
     // Title fallback when the ISRC is unknown.
-    r = coordinator.resolveAndPlay(request("", "Untagged"));
+    r = play(coordinator, request("", "Untagged"));
     check(r.played() && remote->loaded == "remote:u", "resolves by title and artist");
     check(activeChanges.size() == 2 && activeChanges[1] == remote, "active-service listeners fire on change");
 
     // Several matches: the chooser decides; cancelling plays nothing.
     nextChoice = std::nullopt;
     const int playsBefore = local->plays + remote->plays;
-    r = coordinator.resolveAndPlay(request("BOTH"));
-    check(r.status == PlaybackCoordinator::Status::Cancelled, "cancelled chooser");
+    r = play(coordinator, request("BOTH"));
+    check(r.status == Status::Cancelled && lastMatchCount == 2, "cancelled chooser");
     check(local->plays + remote->plays == playsBefore, "cancelling plays nothing");
 
     nextChoice = PlaybackCoordinator::Choice{1, false};
-    r = coordinator.resolveAndPlay(request("BOTH"));
+    r = play(coordinator, request("BOTH"));
     check(r.played() && r.service == remote && remote->loaded == "remote:b", "the chosen match plays");
 
-    // Forcing the chooser asks even for a single match.
-    chooserCalls = 0;
-    nextChoice = std::nullopt;
-    remote->byIsrc.erase("BOTH");
-    coordinator.setChooser([&](const PlayRequest&, const std::vector<ServiceMatch>&) {
-        ++chooserCalls;
-        return nextChoice;
-    });
-    coordinator.resolveAndPlay(request("BOTH"), true);
-    check(chooserCalls == 1, "Play with… always shows the chooser");
-    remote->byIsrc["BOTH"] = "remote:b";
-
     // No matches: the fallback URI plays on a service that accepts it.
-    r = coordinator.resolveAndPlay(request("NOPE", "Nope", "remote:direct"));
+    nextChoice = PlaybackCoordinator::Choice{0, false};
+    r = play(coordinator, request("NOPE", "Nope", "remote:direct"));
     check(r.played() && remote->loaded == "remote:direct", "fallback URI");
-    r = coordinator.resolveAndPlay(request("NOPE", "Nope"));
-    check(r.status == PlaybackCoordinator::Status::NotFound, "nothing can play it");
+    r = play(coordinator, request("NOPE", "Nope"));
+    check(r.status == Status::NotFound, "nothing can play it");
 
     // A row's own file beats the service's lookup of the same recording.
-    r = coordinator.resolveAndPlay(request("ONLYLOCAL", "Song", "file:///compilation/a.mp3"));
+    r = play(coordinator, request("ONLYLOCAL", "Song", "file:///compilation/a.mp3"));
     check(r.played() && local->loaded == "file:///compilation/a.mp3", "the request's own item is the match");
 
     // A throwing service is skipped; a failing load is reported.
     remote->throws = true;
-    r = coordinator.resolveAndPlay(request("BOTH"));
-    check(r.played() && r.service == local, "a throwing service is skipped");
+    r = play(coordinator, request("BOTH"));
+    check(r.played() && r.service == local && lastMatchCount == 1, "a throwing service is skipped");
     remote->throws = false;
     local->failLoads = true;
-    r = coordinator.resolveAndPlay(request("ONLYLOCAL"));
-    check(r.status == PlaybackCoordinator::Status::Failed, "a load error is reported");
+    r = play(coordinator, request("ONLYLOCAL"));
+    check(r.status == Status::Failed, "a load error is reported");
     local->failLoads = false;
 
     // Direct URIs route by scheme; musik:isrc: is resolved like a request.
     check(coordinator.canPlayUri("file:///x.mp3") && !coordinator.canPlayUri("http://x"), "canPlayUri");
-    r = coordinator.playUri("musik:isrc:ONLYLOCAL");
-    check(r.played() && local->loaded == "file:///a.mp3", "musik:isrc: resolves across services");
+    bool uriPlayed = false;
+    coordinator.playUri("musik:isrc:ONLYLOCAL", [&](const PlaybackCoordinator::Result& res) { uriPlayed = res.played(); });
+    check(uriPlayed && local->loaded == "file:///a.mp3", "musik:isrc: resolves across services");
 
     manager.unregisterAspect("local");
     check(coordinator.getActiveService() == nullptr, "an unregistered service is no longer active");
+}
+
+void testBackgroundResolution() {
+    ServiceManager manager;
+    auto* local = manager.registerService(std::make_unique<FakeMusicService>("local", "file://"));
+    local->byIsrc["A"] = "file:///a.mp3";
+    local->byIsrc["B"] = "file:///b.mp3";
+
+    ManualExecutor background, ui;
+    std::vector<Status> results;
+    {
+        PlaybackCoordinator coordinator(manager);
+        coordinator.setExecutors(background.executor(), ui.executor());
+        coordinator.setChooser([](const PlayRequest&, const std::vector<ServiceMatch>&) {
+            return std::optional<PlaybackCoordinator::Choice>(PlaybackCoordinator::Choice{0, false});
+        });
+        auto record = [&](const PlaybackCoordinator::Result& r) { results.push_back(r.status); };
+
+        coordinator.resolveAndPlay(request("A"), false, record);
+        check(results.empty() && local->lookups == 0, "lookups wait for the background executor");
+        background.drain();
+        check(local->lookups == 1 && results.empty(), "lookups ran; the result waits for the UI");
+        ui.drain();
+        check(results.size() == 1 && results[0] == Status::Played && local->loaded == "file:///a.mp3",
+              "the result plays on the UI executor");
+
+        // A newer play supersedes one still being resolved.
+        results.clear();
+        coordinator.resolveAndPlay(request("A"), false, record);
+        coordinator.resolveAndPlay(request("B"), false, record);
+        background.drain();
+        ui.drain();
+        check(results.size() == 2 && results[0] == Status::Superseded && results[1] == Status::Played,
+              "the older resolution is superseded");
+        check(local->loaded == "file:///b.mp3", "only the newer request plays");
+
+        // cancelPending supersedes too.
+        results.clear();
+        coordinator.resolveAndPlay(request("A"), false, record);
+        coordinator.cancelPending();
+        background.drain();
+        ui.drain();
+        check(results.size() == 1 && results[0] == Status::Superseded, "cancelPending");
+
+        // Destroyed before its result arrives: the result is dropped.
+        results.clear();
+        coordinator.resolveAndPlay(request("A"), false, record);
+        background.drain();
+    }
+    ui.drain();
+    check(results.empty(), "a destroyed coordinator drops late results");
 }
 
 void testResolutionStore() {
@@ -248,6 +335,11 @@ void testResolutionStore() {
         db.upsertRecording("BOTH", "Song", "");
         const int64_t trackId = db.upsertTrack("BOTH", "");
 
+        // A read-only connection beside the writer sees its data.
+        Database reader(path.string(), Database::OpenMode::ReadOnly);
+        check(reader.getTracksForRecording("BOTH").size() == 1, "read-only connection reads");
+        check(reader.getTracksByTitle("song").size() == 1, "title lookup ignores case");
+
         ServiceManager manager;
         auto* local = manager.registerService(std::make_unique<FakeMusicService>("local", "file://"));
         auto* remote = manager.registerService(std::make_unique<FakeMusicService>("remote", "remote:"));
@@ -257,27 +349,30 @@ void testResolutionStore() {
         ResolutionStore store(db.handle());
         PlaybackCoordinator coordinator(manager, &store);
         int chooserCalls = 0;
-        coordinator.setChooser([&](const PlayRequest&, const std::vector<ServiceMatch>&) {
+        // Always picks the last match (remote, while it is installed).
+        coordinator.setChooser([&](const PlayRequest&, const std::vector<ServiceMatch>& matches) {
             ++chooserCalls;
-            return std::optional<PlaybackCoordinator::Choice>(PlaybackCoordinator::Choice{1, true});
+            return std::optional<PlaybackCoordinator::Choice>(PlaybackCoordinator::Choice{matches.size() - 1, true});
         });
 
         PlayRequest fromLibrary = request("BOTH");
         fromLibrary.trackId = trackId;
-        coordinator.resolveAndPlay(fromLibrary);
+        play(coordinator, fromLibrary);
         check(chooserCalls == 1, "first play asks");
         auto pick = store.find(fromLibrary);
         check(pick && pick->serviceId == "remote" && pick->matchUri == "remote:b", "always remembers the pick");
 
         remote->loaded.clear();
-        coordinator.resolveAndPlay(fromLibrary);
+        play(coordinator, fromLibrary);
         check(chooserCalls == 1 && remote->loaded == "remote:b", "a remembered pick plays without asking");
-        coordinator.resolveAndPlay(request("BOTH"));
+        play(coordinator, request("BOTH"));
         check(chooserCalls == 1, "the pick is found by key from outside the library too");
+        play(coordinator, fromLibrary, true);
+        check(chooserCalls == 2, "Play with… asks despite the pick");
 
         // A pick whose service is gone falls back to resolving afresh.
         manager.unregisterAspect("remote");
-        auto r = coordinator.resolveAndPlay(fromLibrary);
+        auto r = play(coordinator, fromLibrary);
         check(r.played() && r.service == local, "a pick for a missing service is ignored");
 
         coordinator.forgetPick(fromLibrary);
@@ -294,12 +389,120 @@ void testResolutionStore() {
     std::filesystem::remove(path);
 }
 
+void testAvailability() {
+    ServiceManager manager;
+    auto* local = manager.registerService(std::make_unique<FakeMusicService>("local", "file://"));
+    auto* remote = manager.registerService(std::make_unique<FakeMusicService>("remote", "remote:"));
+    local->byIsrc["MINE"] = "file:///m.mp3";
+    remote->byIsrc["STREAM"] = "remote:s";
+    remote->byTitle["Untagged"] = "remote:u";
+
+    ManualExecutor background, ui;
+    AvailabilityResolver resolver(manager, background.executor(), ui.executor());
+    int notified = 0;
+    auto subscription = resolver.subscribe([&] { ++notified; });
+
+    check(!resolver.availabilityFor(request("MINE")).resolved, "unknown tracks start unresolved");
+    check(!resolver.availabilityFor(request("STREAM")).resolved, "second request joins the batch");
+    check(!resolver.availabilityFor(request("MINE")).resolved, "asking again doesn't probe twice");
+    ui.drain();                       // the deferred flush
+    check(background.tasks.size() == 1, "requests from one paint are probed as one batch");
+    background.drain();
+    ui.drain();
+    check(notified == 1, "subscribers hear once per batch");
+    check(local->lookups == 2 && remote->lookups == 2, "each track was probed once per service");
+
+    auto mine = resolver.availabilityFor(request("MINE"));
+    check(mine.resolved && mine.local && !mine.hasStream() && mine.playable(), "local availability");
+    auto stream = resolver.availabilityFor(request("STREAM"));
+    check(stream.resolved && !stream.local && stream.streamServices == std::vector<std::string>{"Fake remote"},
+          "stream availability names the service");
+    check(background.tasks.empty() && ui.tasks.empty(), "cached answers don't probe");
+
+    // Title fallback, and nothing at all.
+    resolver.availabilityFor(request("", "Untagged"));
+    resolver.availabilityFor(request("NONE", "Nothing"));
+    ui.drain();
+    background.drain();
+    ui.drain();
+    check(resolver.availabilityFor(request("", "Untagged")).hasStream(), "title lookups count");
+    auto none = resolver.availabilityFor(request("NONE", "Nothing"));
+    check(none.resolved && !none.playable(), "an unplayable track resolves as such");
+
+    // Results probed before clear() are discarded.
+    resolver.availabilityFor(request("LATE"));
+    ui.drain();
+    background.drain();
+    resolver.clear();
+    ui.drain();
+    check(!resolver.availabilityFor(request("MINE")).resolved, "clear forgets results");
+    check(!resolver.availabilityFor(request("LATE")).resolved, "stale probes are dropped");
+
+    // A dropped subscription isn't called.
+    subscription.reset();
+    const int before = notified;
+    ui.drain();
+    background.drain();
+    ui.drain();
+    check(notified == before, "unsubscribed listeners aren't called");
+}
+
+void testBackgroundWorker() {
+    std::mutex m;
+    std::condition_variable cv;
+    std::vector<int> order;
+    std::thread::id workerThread;
+    {
+        BackgroundWorker worker;
+        for (int i = 0; i < 5; ++i) {
+            worker.post([&, i] {
+                std::lock_guard<std::mutex> lock(m);
+                order.push_back(i);
+                workerThread = std::this_thread::get_id();
+                cv.notify_all();
+            });
+        }
+        worker.post([] { throw std::runtime_error("ignored"); });
+        worker.executor()([&] {
+            std::lock_guard<std::mutex> lock(m);
+            order.push_back(99);
+            cv.notify_all();
+        });
+        std::unique_lock<std::mutex> lock(m);
+        check(cv.wait_for(lock, std::chrono::seconds(5), [&] { return order.size() == 6; }),
+              "the worker runs every task");
+    }
+    check(order == std::vector<int>({0, 1, 2, 3, 4, 99}), "tasks run in order, past a throwing one");
+    check(workerThread != std::this_thread::get_id(), "tasks run on the worker thread");
+
+    // Destroying the worker drops what is still queued.
+    std::atomic<int> ran{0};
+    std::atomic<bool> started{false}, release{false};
+    std::thread releaser;
+    {
+        BackgroundWorker worker;
+        worker.post([&] { started = true; while (!release) std::this_thread::yield(); ++ran; });
+        for (int i = 0; i < 10; ++i) worker.post([&] { ++ran; });
+        while (!started) std::this_thread::yield();
+        // Lets the running task finish while the destructor is waiting for it.
+        releaser = std::thread([&] {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            release = true;
+        });
+    }
+    releaser.join();
+    check(ran == 1, "the running task finishes; queued ones are dropped on destruction");
+}
+
 } // namespace
 
 int main() {
     testServiceManager();
     testCoordinator();
+    testBackgroundResolution();
     testResolutionStore();
+    testAvailability();
+    testBackgroundWorker();
     if (failures == 0) std::cout << "service test passed\n";
     return failures == 0 ? 0 : 1;
 }

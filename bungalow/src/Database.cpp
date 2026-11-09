@@ -40,13 +40,20 @@ static std::string generateUUID4()
 
 // ── Construction / destruction ────────────────────────────────────────────────
 
-Database::Database(const std::string& path) {
-    if (sqlite3_open(path.c_str(), &m_db) != SQLITE_OK) {
-        std::string err = sqlite3_errmsg(m_db);
+Database::Database(const std::string& path, OpenMode mode) {
+    const int flags = mode == OpenMode::ReadOnly
+        ? SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
+        : SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
+    if (sqlite3_open_v2(path.c_str(), &m_db, flags, nullptr) != SQLITE_OK) {
+        std::string err = m_db ? sqlite3_errmsg(m_db) : "out of memory";
         sqlite3_close(m_db);
         m_db = nullptr;
         throw std::runtime_error("Failed to open database '" + path + "': " + err);
     }
+    // Background readers (service lookups) share the file with this
+    // connection: wait for their locks instead of failing with SQLITE_BUSY.
+    sqlite3_busy_timeout(m_db, kBusyTimeoutMs);
+    if (mode == OpenMode::ReadOnly) return;
     exec("PRAGMA foreign_keys = ON;");
     initialize();
     initializeCustomTables();

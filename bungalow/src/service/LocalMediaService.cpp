@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <exception>
 
 // ── sp_audio_* bridge ─────────────────────────────────────────────────────────
 // WinAudio.cpp on Windows, AVAudioPlayerBridge.mm on macOS.
@@ -43,6 +44,17 @@ std::string displayTitle(const Database::TrackRow& track) {
 }
 
 } // namespace
+
+LocalMediaService::LocalMediaService(const std::string& databasePath) {
+    if (databasePath.empty()) return;
+    try {
+        m_lookupDb = std::make_unique<Database>(databasePath, Database::OpenMode::ReadOnly);
+    } catch (const std::exception&) {
+        // Without the library, lookups find nothing; file:// URIs still play.
+    }
+}
+
+LocalMediaService::~LocalMediaService() = default;
 
 // ── MediaService ──────────────────────────────────────────────────────────────
 
@@ -92,8 +104,9 @@ int LocalMediaService::getPositionMs() const {
 // ── MusicService ──────────────────────────────────────────────────────────────
 
 std::optional<MusicService::Candidate> LocalMediaService::lookup(const std::string& isrc) {
-    if (!m_database || isrc.empty()) return std::nullopt;
-    for (const auto& track : m_database->getTracksForRecording(isrc)) {
+    if (!m_lookupDb || isrc.empty()) return std::nullopt;
+    std::lock_guard<std::mutex> lock(m_lookupMutex);
+    for (const auto& track : m_lookupDb->getTracksForRecording(isrc)) {
         if (acceptsUri(track.playUri))
             return Candidate{track.playUri, displayTitle(track), track.artists, true};
     }
@@ -102,9 +115,10 @@ std::optional<MusicService::Candidate> LocalMediaService::lookup(const std::stri
 
 std::optional<MusicService::Candidate> LocalMediaService::lookupByTitleArtist(const std::string& title,
                                                                               const std::string& artist) {
-    if (!m_database || title.empty()) return std::nullopt;
+    if (!m_lookupDb || title.empty()) return std::nullopt;
     const std::string wantedArtist = lower(artist);
-    for (const auto& track : m_database->getTracksByTitle(title)) {
+    std::lock_guard<std::mutex> lock(m_lookupMutex);
+    for (const auto& track : m_lookupDb->getTracksByTitle(title)) {
         if (!acceptsUri(track.playUri)) continue;
         if (!wantedArtist.empty() && lower(track.artists).find(wantedArtist) == std::string::npos) continue;
         return Candidate{track.playUri, displayTitle(track), track.artists, false};

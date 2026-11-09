@@ -104,40 +104,72 @@ file.
 hands it to the `PlaybackCoordinator`:
 
 ```
-resolveAndPlay(request, forceChooser)
-  ├─ unless forced: a remembered pick (ResolutionStore)? → play it on that service
-  ├─ gatherMatches(request): for each MusicService
-  │     accepts fallbackUri? → that exact item
-  │     else findCandidates(isrc, title, artist)
-  ├─ no match  → play fallbackUri on a service that accepts it, else NotFound
-  ├─ one match → play it (unless forced)
-  └─ several   → the chooser; "Always play with…" saves the pick
+resolveAndPlay(request, forceChooser, done)              UI thread
+  ├─ unless forced: a remembered pick (ResolutionStore)? → play it, done(Played)
+  ├─ gather matches                                      background worker
+  │     for each MusicService:
+  │       accepts fallbackUri? → that exact item
+  │       else findCandidates(isrc, title, artist)
+  └─ back on the UI thread:
+        a newer play started meanwhile → done(Superseded)
+        no match → play fallbackUri on a service that accepts it, else NotFound
+        matches  → the chooser (even for one); "Always play with…" saves the pick
 ```
 
 The service that played becomes the **active** service
 (`getActiveService()`); pause, seek and the position timer talk to it.
 
 The chooser is a popup menu listing each match twice: "Play with …" and
-"Always play with …". The track context menu in the library views has a
-**Play with…** item, which forces the chooser even when one service matches
-or a pick is remembered, and lets a track without a local file try the other
-services.
+"Always play with …". As in the Java client it appears for every track that
+has no remembered pick, even when only one service can play it, so the first
+play of each track asks once; "Always play with…" stops it asking for that
+track. The track context menu in the library views has a **Play with…** item,
+which shows the chooser even when a pick is remembered, and lets a track
+without a local file try the other services.
 
 Picks are stored in the `music_service_tracks` table by `ResolutionStore`.
 A pick is bound to the library track (deleted with it) and to the request's
 `trackKey()` (`isrc:<ISRC>`, else the URI, else title and artist), and
 records the matched URI so it replays the exact item.
 
-Lookups run on the UI thread. That's fine for the library database; network
-services will need resolution moved to a background thread.
+## Threads
+
+Service lookups can be slow (a network service), so they never run on the UI
+thread. `BungalowApp` owns one `BackgroundWorker`, a thread that runs tasks in
+order, and gives the `PlaybackCoordinator` and the `AvailabilityResolver` two
+executors: the worker for lookups, and the UI thread (`postToUi` on Windows,
+`CallAfter` in wxWidgets) for the results. This means:
+
+* `MusicService::lookup`, `lookupByTitleArtist` and `findCandidates` run on
+  the worker, alongside transport calls on the UI thread. `LocalMediaService`
+  reads the library through its own read-only connection, behind a mutex.
+* Every connection has a busy timeout, so a write on the UI thread waits for
+  a background read instead of failing.
+* A play started while another is still resolving supersedes it, and
+  `cancelPending()` does the same.
+* Nothing may post to the worker once it is gone: shutdown destroys the
+  coordinator and the resolver, then the worker, then the services.
+* With no executors set, both run inline, which makes every play synchronous
+  (the tests rely on this).
+
+## Availability
+
+`AvailabilityResolver` answers "can anything play this track?" for track
+lists. `MusicEntityDataSource` asks it about track rows that have no local
+file; a row another service can play is no longer greyed out, and is queued
+as playable. It never blocks a paint: an unknown track is greyed out until the
+probe answers. The rows asked for during one paint are probed together on the
+worker with each service's cheap lookups, the result is cached by track key,
+and `MusicBrowseView` repaints its tables when a batch arrives. Refreshing a
+browse view clears the cache, since the library may have changed.
 
 `bungalow/tests/ServiceTest.cpp` covers capability lookup, the service
-lifecycle, resolution and remembered picks.
+lifecycle, resolution (inline and in the background), remembered picks,
+availability and the worker.
 
 ## Compared with the Java client
 
 This follows the Java client's
-[Playback & resolution](../java-client/playback-and-resolution.md), with two
-differences: the chooser is skipped when exactly one service matches, and
-there is no `AvailabilityResolver` yet, so track lists still grey out rows
-without a local file. See the [roadmap](../roadmap.md).
+[Playback & resolution](../java-client/playback-and-resolution.md). The
+chooser is a popup menu rather than a dialog with an "always" checkbox, and
+availability greys rows out instead of filling a Buy/Stream column.

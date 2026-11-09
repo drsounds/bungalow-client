@@ -7,6 +7,8 @@
 #include "SPObservable.h"
 #include "SPApplicationContext.h"
 #include "DownloadManager.h"
+#include "service/AvailabilityResolver.h"
+#include "service/BackgroundWorker.h"
 #include "service/PlaybackCoordinator.h"
 #include "service/ResolutionStore.h"
 #include "service/ServiceManager.h"
@@ -39,6 +41,10 @@ protected:
     space::service::ServiceManager                       m_services;
     std::unique_ptr<space::service::ResolutionStore>     m_resolutionStore;
     std::unique_ptr<space::service::PlaybackCoordinator> m_coordinator;
+    // Views hold weak references, so they never outlive it unknowingly.
+    std::shared_ptr<space::service::AvailabilityResolver> m_availability;
+    // Where service lookups run, one at a time.
+    std::unique_ptr<space::service::BackgroundWorker>    m_worker;
 
     bool m_developerMode = false;
 
@@ -63,6 +69,7 @@ protected:
     void dispatchPlaybackChanged();
     void stopCurrentPlayback();
     void playFromIndex(int idx, bool chooseService = false);
+    void onResolved(int idx, const space::service::PlaybackCoordinator::Result& result);
     bool canResolve(const PlayQueueEntry& entry) const;
 
 public:
@@ -86,6 +93,9 @@ public:
     space::service::PlaybackCoordinator* getPlaybackCoordinator() { return m_coordinator.get(); }
     // The service that is playing (or last played), or null.
     space::service::MediaService* getActiveService() const;
+    // Which services can play a track, for greying out track lists. Empty
+    // before initialize() and after shutdown().
+    std::weak_ptr<space::service::AvailabilityResolver> getAvailabilityResolver() const { return m_availability; }
 
     void navigate(const std::string& uri);
 

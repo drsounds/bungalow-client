@@ -35,7 +35,20 @@ int MusicEntityDataSource::getTrackIdForRow(int row) {
 
 bool MusicEntityDataSource::isRowPlayable(int row) {
     const MusicEntityRow* r = rowAt(row);
-    return r && r->playable;
+    return r && (r->playable || playableElsewhere(*r));
+}
+
+bool MusicEntityDataSource::playableElsewhere(const MusicEntityRow& r) const {
+    // Rows with a local file never need asking.
+    if (r.isrc.empty() || !r.playUri.empty()) return false;
+    auto resolver = m_availability.lock();
+    if (!resolver) return false;
+    service::PlayRequest request;
+    request.trackId = r.trackId;
+    request.isrc    = r.isrc;
+    request.title   = r.title;
+    request.artist  = r.artist;
+    return resolver->availabilityFor(request).playable();
 }
 
 std::vector<PlayQueueEntry> MusicEntityDataSource::buildQueueEntries() const {
@@ -46,7 +59,7 @@ std::vector<PlayQueueEntry> MusicEntityDataSource::buildQueueEntries() const {
         e.displayTitle  = r.title;
         e.displayArtist = r.artist;
         e.uri           = r.playUri;
-        e.playable      = r.playable && !r.playUri.empty();
+        e.playable      = (r.playable && !r.playUri.empty()) || playableElsewhere(r);
         e.isrc          = r.isrc;
         e.trackId       = r.trackId;
         entries.push_back(std::move(e));

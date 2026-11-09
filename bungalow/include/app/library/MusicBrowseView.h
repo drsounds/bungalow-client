@@ -63,7 +63,10 @@ namespace space {
                 return false;
             }
 
-            /** reload() then repaint every table. */
+            /**
+             * reload() then repaint every table. Availability is asked again,
+             * since what the library holds may have changed.
+             */
             void refresh();
 
             // ── Helpers for subclasses ────────────────────────────────────────
@@ -106,6 +109,8 @@ namespace space {
             Page* m_dragPage = nullptr;
             int m_dragStartX = 0;
             int m_dragStartY = 0;
+            // Repaints the tables when track availability arrives.
+            service::AvailabilityResolver::Subscription m_availabilityChanged;
         };
 
         /**

@@ -3,7 +3,9 @@
 #include "Database.h"
 #include "PlayQueueEntry.h"
 #include "SPTableDataSource.h"
+#include "service/AvailabilityResolver.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -70,6 +72,14 @@ public:
     /** One play-queue entry per row, in display order. */
     std::vector<PlayQueueEntry> buildQueueEntries() const;
 
+    /**
+     * Ask @p resolver about track rows without a local file, so the ones
+     * another service can play aren't greyed out. Until it answers they are.
+     */
+    void setAvailability(std::weak_ptr<service::AvailabilityResolver> resolver) {
+        m_availability = std::move(resolver);
+    }
+
     // ── SPTableDataSource interface ───────────────────────────────────────────
     int         getColumnCount()                    override { return static_cast<int>(m_columns.size()); }
     int         getRowCount()                       override { return static_cast<int>(m_rows.size()); }
@@ -80,8 +90,12 @@ public:
     bool        isRowPlayable(int row)              override;
 
 private:
+    /** A track row without a local file that another service can play. */
+    bool playableElsewhere(const MusicEntityRow& row) const;
+
     std::vector<std::string>    m_columns;
     std::vector<MusicEntityRow> m_rows;
+    std::weak_ptr<service::AvailabilityResolver> m_availability;
 };
 
 } // namespace space

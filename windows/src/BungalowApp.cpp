@@ -145,12 +145,19 @@ space::ui::MainWindow* BungalowApp::initialize(space::Space* spaceInstance, spac
     m_database = std::make_unique<Database>(m_databasePath);
     m_downloadManager = std::make_unique<DownloadManager>(m_database->handle());
 
-    // Services, selected by capability; each track is resolved to one at play time.
+    // Services, selected by capability; each track is resolved to one at play
+    // time. Their lookups run on the worker and report back on the UI thread.
+    m_services.registerService(std::make_unique<space::service::LocalMediaService>(m_databasePath));
+    m_services.startAll();
+    m_worker = std::make_unique<space::service::BackgroundWorker>();
+    const space::service::Executor ui = [](std::function<void()> task) {
+        space::win::postToUi(std::move(task));
+    };
     m_resolutionStore = std::make_unique<space::service::ResolutionStore>(m_database->handle());
     m_coordinator = std::make_unique<PlaybackCoordinator>(m_services, m_resolutionStore.get());
+    m_coordinator->setExecutors(m_worker->executor(), ui);
     m_coordinator->setChooser(chooseServiceMatch);
-    m_services.registerService(std::make_unique<space::service::LocalMediaService>(m_database.get()));
-    m_services.startAll();
+    m_availability = std::make_shared<space::service::AvailabilityResolver>(m_services, m_worker->executor(), ui);
 
     // Global URI entity store: views render the JSON-cached entity at once
     // and update when the resolver delivers fresh data.
@@ -243,7 +250,11 @@ void BungalowApp::shutdown() {
     if (space::SPApplicationContext::current() == this)
         space::SPApplicationContext::setCurrent(nullptr);
     stopCurrentPlayback();
+    // Nothing may post to the worker once it is gone, and the services must
+    // outlive the lookups it is running.
     m_coordinator.reset();
+    m_availability.reset();
+    m_worker.reset();
     m_services.shutdownAll();
     m_resolutionStore.reset();
     m_queueEntries.clear();
@@ -289,6 +300,10 @@ static std::string uriBasename(const std::string& uri) {
     return name;
 }
 
+static std::string entryTitle(const PlayQueueEntry& entry) {
+    return entry.displayTitle.empty() ? uriBasename(entry.uri) : entry.displayTitle;
+}
+
 // bungalow:track:<id> names a track of the library.
 static bool parseTrackUri(const std::string& uri, int64_t& trackId) {
     static const std::string kPrefix = "bungalow:track:";
@@ -303,6 +318,7 @@ static bool parseTrackUri(const std::string& uri, int64_t& trackId) {
 
 void BungalowApp::stopCurrentPlayback() {
     stopPositionTimer();
+    if (m_coordinator) m_coordinator->cancelPending();
     if (m_hasCurrent) {
         if (MediaService* svc = getActiveService())
             svc->stop();
@@ -349,16 +365,26 @@ void BungalowApp::playFromIndex(int idx, bool chooseService) {
 
     m_queueIndex = idx;
     const PlayQueueEntry& entry = m_queueEntries[idx];
-    const std::string title = entry.displayTitle.empty() ? uriBasename(entry.uri) : entry.displayTitle;
 
     PlayRequest request;
     request.trackId     = entry.trackId;
     request.isrc        = entry.isrc;
-    request.title       = title;
+    request.title       = entryTitle(entry);
     request.artist      = entry.displayArtist;
     request.fallbackUri = entry.uri;
 
-    const auto result = m_coordinator->resolveAndPlay(request, chooseService);
+    // Resolution finishes later, on the UI thread, unless a pick is remembered.
+    m_coordinator->resolveAndPlay(request, chooseService,
+                                  [this, idx](const PlaybackCoordinator::Result& result) { onResolved(idx, result); });
+}
+
+void BungalowApp::onResolved(int idx, const PlaybackCoordinator::Result& result) {
+    // A newer play replaced this one; it reports for itself.
+    if (result.status == PlaybackCoordinator::Status::Superseded) return;
+    if (idx != m_queueIndex || idx < 0 || idx >= static_cast<int>(m_queueEntries.size())) return;
+
+    const PlayQueueEntry& entry = m_queueEntries[idx];
+    const std::string title = entryTitle(entry);
     if (!result.played()) {
         m_hasCurrent = false;
         m_isPlaying  = false;
