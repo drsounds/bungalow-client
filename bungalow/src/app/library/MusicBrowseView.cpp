@@ -31,10 +31,6 @@ std::string libraryKey(const std::string& kind, const std::string& uri) {
 	return uri.substr(prefix.size());
 }
 
-std::string displayId(const std::string& key) {
-	return key.rfind("local:", 0) == 0 ? "" : key;
-}
-
 // ── Construction ──────────────────────────────────────────────────────────────
 
 MusicBrowseView::MusicBrowseView(SPElement* parent, Database* db) :
@@ -58,7 +54,7 @@ MusicBrowseView::~MusicBrowseView() {}
 MusicBrowseView::Page& MusicBrowseView::addPage(const std::string& id,
 												const std::string& title,
 												const std::string& uri,
-												std::vector<std::string> columns) {
+												std::vector<MusicColumn> columns) {
 	auto page = std::make_unique<Page>();
 	page->id = id;
 	page->source = std::make_unique<MusicEntityDataSource>(std::move(columns));
@@ -199,12 +195,7 @@ int MusicBrowseView::onTableMouseMove(SPObject* sender, SPEventArgs* eventArgs) 
 			std::abs(args->getY() - m_dragStartY) < 4)
 			return 0;
 
-		std::vector<std::string> refs;
-		for (const int row : page->table->getSelectedRows()) {
-			const MusicEntityRow* entity = page->source->rowAt(row);
-			if (entity && !entity->contentRef.empty())
-				refs.push_back(entity->contentRef);
-		}
+		std::vector<std::string> refs = page->source->urisForRows(page->table->getSelectedRows());
 		if (!refs.empty())
 			MusicDragDrop::begin(std::move(refs), page->table);
 	}
@@ -213,6 +204,8 @@ int MusicBrowseView::onTableMouseMove(SPObject* sender, SPEventArgs* eventArgs) 
 		page->table->setDropIndex(page->table->dropIndexAtY(args->getY()));
 	else
 		page->table->setDropIndex(-1);
+	if (MusicDragDrop::active())
+		MusicDragDrop::dispatchMove(args->getX(), args->getY());
 	return 0;
 }
 
@@ -224,8 +217,10 @@ int MusicBrowseView::onTableMouseUp(SPObject* sender, SPEventArgs* eventArgs) {
 	page->table->setDropIndex(-1);
 	if (m_dragPage == page) {
 		SPElement::releaseMouseCapture();
-		if (MusicDragDrop::active())
+		if (MusicDragDrop::active()) {
 			MusicDragDrop::markReleased();
+			MusicDragDrop::dispatchEnd(args->getX(), args->getY());
+		}
 		m_dragPage = nullptr;
 	}
 
@@ -269,12 +264,12 @@ int MusicBrowseView::onToolButtonClicked(SPObject* /*sender*/, SPEventArgs* args
 
 void MusicBrowseView::playFrom(Page& page, int row, bool chooseService) {
 	auto* app = BungalowApp::current();
-	const MusicEntityRow* r = page.source->rowAt(row);
-	if (!app || !r)
+	const auto entity = page.source->rowAt(row);
+	if (!app || !entity)
 		return;
-	const bool resolvable = chooseService && !r->isrc.empty();
+	const bool resolvable = chooseService && !entity->isrc().empty();
 	if (!page.source->isRowPlayable(row) && !resolvable) {
-		app->showError("\"" + r->title + "\" has no playable file or stream.");
+		app->showError("\"" + entity->name() + "\" has no playable file or stream.");
 		return;
 	}
 	PlayContext ctx;
@@ -287,11 +282,12 @@ void MusicBrowseView::playFrom(Page& page, int row, bool chooseService) {
 }
 
 void MusicBrowseView::trackContextMenu(Page& page, int row, unsigned flags) {
-	const MusicEntityRow* r = page.source->rowAt(row);
-	if (!r || !m_db)
+	// Holding the entity keeps it alive when refresh() replaces the rows.
+	const auto track = page.source->rowAs<TrackEntity>(row);
+	if (!track || !m_db)
 		return;
-	// Copy what the actions need: refresh() replaces the rows.
-	const MusicEntityRow track = *r;
+	const int trackId = static_cast<int>(track->trackId());
+	const std::string releaseKey = track->release() ? track->release()->upc : "";
 
 	enum {
 		ID_PLAY = 10300,
@@ -305,19 +301,19 @@ void MusicBrowseView::trackContextMenu(Page& page, int row, unsigned flags) {
 		ID_DELETE
 	};
 	platform::MenuItems items = {{ID_PLAY, "Play"}};
-	if (!track.isrc.empty())
+	if (!track->isrc().empty())
 		items.push_back({ID_PLAY_WITH, "Play with..."});
-	if (track.saved)
+	if (track->saved())
 		items.push_back({ID_UNSAVE, "Remove from Library"});
 	else
 		items.push_back({ID_SAVE, "Save to Library"});
 	items.push_back({0, ""});
-	if ((flags & kTrackOpenRelease) && !track.releaseKey.empty())
+	if ((flags & kTrackOpenRelease) && !releaseKey.empty())
 		items.push_back({ID_OPEN_RELEASE, "Go to Release"});
 	if (flags & kTrackOpenRecording)
 		items.push_back({ID_OPEN_RECORDING, "Go to Recording"});
 	items.push_back({ID_EDIT, "Edit..."});
-	if (!track.releaseKey.empty())
+	if (!releaseKey.empty())
 		items.push_back({ID_NUMBER, "Track Number..."});
 	items.push_back({0, ""});
 	items.push_back({ID_DELETE, "Delete Track"});
@@ -330,31 +326,31 @@ void MusicBrowseView::trackContextMenu(Page& page, int row, unsigned flags) {
 		playFrom(page, row, true);
 		break;
 	case ID_SAVE:
-		m_db->ensureSave(track.trackId);
+		m_db->ensureSave(trackId);
 		refresh();
 		break;
 	case ID_UNSAVE:
-		m_db->removeSave(track.trackId);
+		m_db->removeSave(trackId);
 		refresh();
 		break;
 	case ID_OPEN_RELEASE:
-		open(libraryUri("release", track.releaseKey));
+		open(libraryUri("release", releaseKey));
 		break;
 	case ID_OPEN_RECORDING:
-		open(libraryUri("recording", track.key));
+		open(libraryUri("recording", track->recording().isrc));
 		break;
 	case ID_EDIT:
-		if (platform::showAddTrackDialog(m_db->handle(), track.trackId))
+		if (platform::showAddTrackDialog(m_db->handle(), trackId))
 			refresh();
 		break;
 	case ID_NUMBER:
-		if (edit::trackNumber(*m_db, track.trackId, track.number))
+		if (edit::trackNumber(*m_db, trackId, track->track().number))
 			refresh();
 		break;
 	case ID_DELETE:
-		if (platform::showConfirmDialog("Delete Track", "Delete the track \"" + track.title +
+		if (platform::showConfirmDialog("Delete Track", "Delete the track \"" + track->name() +
 										"\"? The recording stays in the library.")) {
-			m_db->deleteTrack(track.trackId);
+			m_db->deleteTrack(trackId);
 			refresh();
 		}
 		break;

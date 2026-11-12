@@ -44,6 +44,9 @@ public:
     void remove(SPTreeItem* item);
     int onDragMove(SPObject* sender, SPEventArgs* args);
     int onDragEnd(SPObject* sender, SPEventArgs* args);
+    bool overTree(int x, int y) const;
+    void handleDragMove(int x, int y);
+    void handleDragEnd(int x, int y);
     void onDragHoverDwell();
 
     SPTreeViewElement* getTreeView() const { return m_tree; }

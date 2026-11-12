@@ -3,6 +3,7 @@
 #include "SPTabBarElement.h"
 #include "PlatformUi.h"
 #include "Database.h"
+#include "app/library/MusicEntityRepository.h"
 
 namespace space {
 namespace views {
@@ -10,7 +11,8 @@ namespace views {
 TracksLibraryView::TracksLibraryView(SPElement *parent, Database *db) :
 	MusicBrowseView(parent, db) {
 	addPage("tracks", "All Tracks", "bungalow:library:tracks",
-			{"Name", "Artists", "Release", "#", "Saved"});
+			{MusicColumn::Name, MusicColumn::Artists, MusicColumn::Release, MusicColumn::Number,
+			 MusicColumn::Saved});
 	this->tabBar->addToolButton("add", "+");
 }
 
@@ -19,13 +21,7 @@ bool TracksLibraryView::acceptsUri(const std::string &uri) {
 }
 
 void TracksLibraryView::reload() {
-	m_pages.front()->source->setTrackRows(
-		m_db->getAllTracks(), [](const Database::TrackRow &t) {
-			return std::vector<std::string>{
-				t.name, t.artists, t.releaseName,
-				t.number > 0 ? std::to_string(t.number) : "",
-				t.saved ? "Yes" : ""};
-		});
+	m_pages.front()->source->setEntities(MusicEntityRepository(*m_db).tracks());
 }
 
 void TracksLibraryView::onActivate(Page &page, int row) {

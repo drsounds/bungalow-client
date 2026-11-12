@@ -4,14 +4,17 @@
 #include "Database.h"
 #include "PlatformUi.h"
 #include "app/library/MusicEditActions.h"
+#include "app/library/MusicEntityRepository.h"
 
 namespace space {
 namespace views {
 
 ArtistDetailView::ArtistDetailView(SPElement *parent, Database *db) :
 	MusicBrowseView(parent, db) {
-	addPage("tracks", "Tracks", "", {"Name", "Release", "Artists", "Saved"});
-	addPage("releases", "Releases", "", {"Name", "Date", "Artists", "Tracks"});
+	addPage("tracks", "Tracks", "",
+			{MusicColumn::Name, MusicColumn::Release, MusicColumn::Artists, MusicColumn::Saved});
+	addPage("releases", "Releases", "",
+			{MusicColumn::Name, MusicColumn::Date, MusicColumn::Artists, MusicColumn::TrackCount});
 	this->tabBar->addToolButton("edit", "Edit");
 	this->tabBar->addToolButton("delete", "Delete");
 }
@@ -27,32 +30,18 @@ void ArtistDetailView::navigate(const std::string &uri) {
 }
 
 void ArtistDetailView::reload() {
-	Database::ArtistRecord artist = m_db->getArtist(m_isni);
+	const MusicEntityRepository library(*m_db);
+	const auto artist = library.artist(m_isni);
 	// The first tab carries the artist's name, as the page heading.
-	this->tabBar->getTabs().front()->name = artist.isni.empty() ? "Artist not found" : artist.name;
+	this->tabBar->getTabs().front()->name = artist ? artist->name() : "Artist not found";
 
-	m_pages[0]->source->setTrackRows(
-		m_db->getTracksForArtist(m_isni), [](const Database::TrackRow &t) {
-			return std::vector<std::string>{t.name, t.releaseName, t.artists,
-											t.saved ? "Yes" : ""};
-		});
-
-	std::vector<MusicEntityRow> releases;
-	for (const auto &rel : m_db->getReleasesForArtist(m_isni)) {
-		MusicEntityRow r;
-		r.key = rel.release.upc;
-		r.contentRef = "musik:upc:" + rel.release.upc;
-		r.title = rel.release.name;
-		r.cells = {rel.release.name, rel.release.releaseDate, rel.artists,
-				   std::to_string(rel.trackCount)};
-		releases.push_back(std::move(r));
-	}
-	m_pages[1]->source->setRows(std::move(releases));
+	m_pages[0]->source->setEntities(library.tracksForArtist(m_isni));
+	m_pages[1]->source->setEntities(library.releasesForArtist(m_isni));
 }
 
 void ArtistDetailView::onActivate(Page &page, int row) {
 	if (page.id == "releases")
-		open(libraryUri("release", page.source->rowAt(row)->key));
+		open(libraryUri("release", page.source->rowAt(row)->id()));
 	else
 		playFrom(page, row);
 }
@@ -64,7 +53,7 @@ void ArtistDetailView::onContextMenu(Page &page, int row) {
 	}
 	enum { ID_OPEN = 10700 };
 	if (platform::showPopupMenu({{ID_OPEN, "Go to Release"}}) == ID_OPEN)
-		open(libraryUri("release", page.source->rowAt(row)->key));
+		open(libraryUri("release", page.source->rowAt(row)->id()));
 }
 
 void ArtistDetailView::onToolButton(const std::string &id) {

@@ -4,13 +4,15 @@
 #include "Database.h"
 #include "PlatformUi.h"
 #include "app/library/MusicEditActions.h"
+#include "app/library/MusicEntityRepository.h"
 
 namespace space {
 namespace views {
 
 RecordingDetailView::RecordingDetailView(SPElement *parent, Database *db) :
 	MusicBrowseView(parent, db) {
-	addPage("appearances", "Appearances", "", {"Release", "#", "Artists", "Saved"});
+	addPage("appearances", "Appearances", "",
+			{MusicColumn::Appearance, MusicColumn::Number, MusicColumn::Artists, MusicColumn::Saved});
 	this->tabBar->addToolButton("edit", "Edit");
 	this->tabBar->addToolButton("delete", "Delete");
 }
@@ -26,19 +28,14 @@ void RecordingDetailView::navigate(const std::string &uri) {
 }
 
 void RecordingDetailView::reload() {
-	Database::RecordingRecord rec = m_db->getRecording(m_isrc);
-	std::string heading = rec.isrc.empty() ? "Recording not found" : rec.name;
-	if (!rec.version.empty())
-		heading += " (" + rec.version + ")";
+	const MusicEntityRepository library(*m_db);
+	const auto rec = library.recording(m_isrc);
+	std::string heading = rec ? rec->name() : "Recording not found";
+	if (rec && !rec->recording().version.empty())
+		heading += " (" + rec->recording().version + ")";
 	this->tabBar->getTabs().front()->name = heading;
 
-	m_pages.front()->source->setTrackRows(
-		m_db->getTracksForRecording(m_isrc), [](const Database::TrackRow &t) {
-			return std::vector<std::string>{
-				t.releaseName.empty() ? "(no release)" : t.releaseName,
-				t.number > 0 ? std::to_string(t.number) : "", t.artists,
-				t.saved ? "Yes" : ""};
-		});
+	m_pages.front()->source->setEntities(library.tracksForRecording(m_isrc));
 }
 
 void RecordingDetailView::onActivate(Page &page, int row) {

@@ -30,8 +30,6 @@ protected:
     bool onDropRefs(const std::vector<std::string>& refs, int position) override;
 
 private:
-    MusicEntityRow rowFor(int index, const std::string& ref) const;
-
     std::string m_uri;
 };
 

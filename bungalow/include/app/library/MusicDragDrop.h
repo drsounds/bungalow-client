@@ -30,6 +30,21 @@ public:
     static void setHoverCallback(std::function<void()> callback) {
         state().onHoverDwell = std::move(callback);
     }
+    // The dragging table holds the mouse capture, so other panes (the sidebar)
+    // never get mouse events; the table forwards them through these instead.
+    using PointerCallback = std::function<void(int x, int y)>;
+    static void setPointerCallbacks(PointerCallback move, PointerCallback end) {
+        state().onMove = std::move(move);
+        state().onEnd = std::move(end);
+    }
+    static void dispatchMove(int x, int y) {
+        const auto callback = state().onMove;
+        if (callback) callback(x, y);
+    }
+    static void dispatchEnd(int x, int y) {
+        const auto callback = state().onEnd;
+        if (callback) callback(x, y);
+    }
     static void setHoverTarget(const std::string& uri) {
         State& value = state();
         if (value.hoverUri == uri) return;
@@ -68,6 +83,8 @@ private:
         std::chrono::steady_clock::time_point hoverStarted;
         bool hoverNavigated = false;
         std::function<void()> onHoverDwell;
+        PointerCallback onMove;
+        PointerCallback onEnd;
     };
 
     static State& state() {

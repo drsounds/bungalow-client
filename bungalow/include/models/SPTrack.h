@@ -13,19 +13,20 @@ class SPRelease;
 
 /// Maps the `tracks` table
 /// (id INTEGER PK AUTOINCREMENT, recording_id FK → recordings,
-///  release_id FK → releases).
+///  release_id FK → releases, number INTEGER).
 class SPTrack : public SPModel {
 public:
     int64_t     id          = 0;
     std::string recordingId;
-    std::string releaseId;
+    std::string releaseId;       // empty ↔ NULL (a track without a release)
+    int         number      = 0; // position on the release, 0 = unnumbered
 
     SPRecording* recording = nullptr; // non-owning; populated by caller
     SPRelease*   release   = nullptr; // non-owning; populated by caller
 
     SPTrack() = default;
     SPTrack(std::string recordingId, std::string releaseId);
-    SPTrack(int64_t id, std::string recordingId, std::string releaseId);
+    SPTrack(int64_t id, std::string recordingId, std::string releaseId, int number = 0);
 
     bool isPersisted() const override { return id > 0; }
     bool save(SPDBConnection& conn) override;

@@ -4,13 +4,16 @@
 #include "Database.h"
 #include "PlatformUi.h"
 #include "app/library/MusicEditActions.h"
+#include "app/library/MusicEntityRepository.h"
 
 namespace space {
 namespace views {
 
 ReleaseDetailView::ReleaseDetailView(SPElement *parent, Database *db) :
 	MusicBrowseView(parent, db) {
-	addPage("tracks", "Tracks", "", {"#", "Name", "Version", "Artists", "Saved"});
+	addPage("tracks", "Tracks", "",
+			{MusicColumn::Number, MusicColumn::Name, MusicColumn::Version, MusicColumn::Artists,
+			 MusicColumn::Saved});
 	this->tabBar->addToolButton("add", "+");
 	this->tabBar->addToolButton("edit", "Edit");
 	this->tabBar->addToolButton("delete", "Delete");
@@ -27,18 +30,14 @@ void ReleaseDetailView::navigate(const std::string &uri) {
 }
 
 void ReleaseDetailView::reload() {
-	Database::ReleaseRecord release = m_db->getRelease(m_upc);
-	std::string heading = release.upc.empty() ? "Release not found" : release.name;
-	if (!release.releaseDate.empty())
-		heading += " (" + release.releaseDate.substr(0, 4) + ")";
+	const MusicEntityRepository library(*m_db);
+	const auto release = library.release(m_upc);
+	std::string heading = release ? release->name() : "Release not found";
+	if (release && !release->release().releaseDate.empty())
+		heading += " (" + release->release().releaseDate.substr(0, 4) + ")";
 	this->tabBar->getTabs().front()->name = heading;
 
-	m_pages.front()->source->setTrackRows(
-		m_db->getTracksForRelease(m_upc), [](const Database::TrackRow &t) {
-			return std::vector<std::string>{
-				t.number > 0 ? std::to_string(t.number) : "", t.name,
-				t.version, t.artists, t.saved ? "Yes" : ""};
-		});
+	m_pages.front()->source->setEntities(library.tracksForRelease(m_upc));
 }
 
 void ReleaseDetailView::onActivate(Page &page, int row) {

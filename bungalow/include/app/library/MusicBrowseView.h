@@ -25,7 +25,8 @@ namespace space {
          * MusicEntityDataSource. The base wires the table events and hands
          * subclasses the page and row: double-click → onActivate, right-click →
          * onContextMenu, tab-bar tool button → onToolButton. Subclasses fill the
-         * pages in reload(), which runs on every navigate() and after refresh().
+         * pages with entities from a MusicEntityRepository in reload(), which
+         * runs on every navigate() and after refresh().
          * Dialogs and menus go through platform::, so the views work on every
          * UI backend.
          */
@@ -46,7 +47,7 @@ namespace space {
 
             /** Add a tab with its table. Pages are shown in the order added. */
             Page& addPage(const std::string& id, const std::string& title,
-                          const std::string& uri, std::vector<std::string> columns);
+                          const std::string& uri, std::vector<MusicColumn> columns);
 
             /** Point every tab at @p uri + "#<page id>" (for per-entity detail views). */
             void setTabBaseUri(const std::string& uri);
@@ -122,9 +123,6 @@ namespace space {
 
         /** The key of a "bungalow:library:<kind>:<key>" URI, or "" if it doesn't match. */
         std::string libraryKey(const std::string& kind, const std::string& uri);
-
-        /** An identifier for display: generated "local:" keys show as "". */
-        std::string displayId(const std::string& key);
 
     } // namespace views
 } // namespace space

@@ -7,17 +7,27 @@
 SPTrack::SPTrack(std::string recordingId, std::string releaseId)
     : recordingId(std::move(recordingId)), releaseId(std::move(releaseId)) {}
 
-SPTrack::SPTrack(int64_t id, std::string recordingId, std::string releaseId)
-    : id(id), recordingId(std::move(recordingId)), releaseId(std::move(releaseId)) {}
+SPTrack::SPTrack(int64_t id, std::string recordingId, std::string releaseId, int number)
+    : id(id), recordingId(std::move(recordingId)), releaseId(std::move(releaseId)),
+      number(number) {}
+
+// A track without a release stores NULL, which the foreign key allows.
+static void bindReleaseId(sqlite3_stmt* stmt, int index, const std::string& releaseId) {
+    if (releaseId.empty())
+        sqlite3_bind_null(stmt, index);
+    else
+        sqlite3_bind_text(stmt, index, releaseId.c_str(), -1, SQLITE_TRANSIENT);
+}
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 bool SPTrack::save(SPDBConnection& conn) {
     if (!isPersisted()) {
         sqlite3_stmt* stmt = conn.prepare(
-            "INSERT INTO tracks (recording_id, release_id) VALUES (?, ?)");
+            "INSERT INTO tracks (recording_id, release_id, number) VALUES (?, ?, ?)");
         sqlite3_bind_text(stmt, 1, recordingId.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_text(stmt, 2, releaseId.c_str(),   -1, SQLITE_TRANSIENT);
+        bindReleaseId(stmt, 2, releaseId);
+        sqlite3_bind_int(stmt, 3, number);
         int rc = sqlite3_step(stmt);
         sqlite3_finalize(stmt);
         if (rc == SQLITE_DONE)
@@ -25,10 +35,11 @@ bool SPTrack::save(SPDBConnection& conn) {
         return rc == SQLITE_DONE;
     } else {
         sqlite3_stmt* stmt = conn.prepare(
-            "UPDATE tracks SET recording_id = ?, release_id = ? WHERE id = ?");
+            "UPDATE tracks SET recording_id = ?, release_id = ?, number = ? WHERE id = ?");
         sqlite3_bind_text(stmt, 1, recordingId.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_text(stmt, 2, releaseId.c_str(),   -1, SQLITE_TRANSIENT);
-        sqlite3_bind_int64(stmt, 3, id);
+        bindReleaseId(stmt, 2, releaseId);
+        sqlite3_bind_int(stmt, 3, number);
+        sqlite3_bind_int64(stmt, 4, id);
         int rc = sqlite3_step(stmt);
         sqlite3_finalize(stmt);
         return rc == SQLITE_DONE;
@@ -50,14 +61,15 @@ SPTrack SPTrack::fromStatement(sqlite3_stmt* stmt) {
         const char* t = reinterpret_cast<const char*>(sqlite3_column_text(stmt, col));
         return t ? t : "";
     };
-    return SPTrack(sqlite3_column_int64(stmt, 0), text(1), text(2));
+    return SPTrack(sqlite3_column_int64(stmt, 0), text(1), text(2),
+                   sqlite3_column_int(stmt, 3));
 }
 
 // ── Queries ───────────────────────────────────────────────────────────────────
 
 std::optional<SPTrack> SPTrack::find(SPDBConnection& conn, int64_t id) {
     sqlite3_stmt* stmt = conn.prepare(
-        "SELECT id, recording_id, release_id FROM tracks WHERE id = ?");
+        "SELECT id, recording_id, release_id, number FROM tracks WHERE id = ?");
     sqlite3_bind_int64(stmt, 1, id);
     std::optional<SPTrack> result;
     if (sqlite3_step(stmt) == SQLITE_ROW)
@@ -68,7 +80,7 @@ std::optional<SPTrack> SPTrack::find(SPDBConnection& conn, int64_t id) {
 
 std::vector<SPTrack> SPTrack::findAll(SPDBConnection& conn) {
     sqlite3_stmt* stmt = conn.prepare(
-        "SELECT id, recording_id, release_id FROM tracks");
+        "SELECT id, recording_id, release_id, number FROM tracks");
     std::vector<SPTrack> result;
     while (sqlite3_step(stmt) == SQLITE_ROW)
         result.push_back(fromStatement(stmt));
@@ -80,7 +92,7 @@ std::vector<SPTrack> SPTrack::findByRecording(SPDBConnection& conn,
                                                const std::string& recordingId)
 {
     sqlite3_stmt* stmt = conn.prepare(
-        "SELECT id, recording_id, release_id FROM tracks WHERE recording_id = ?");
+        "SELECT id, recording_id, release_id, number FROM tracks WHERE recording_id = ?");
     sqlite3_bind_text(stmt, 1, recordingId.c_str(), -1, SQLITE_TRANSIENT);
     std::vector<SPTrack> result;
     while (sqlite3_step(stmt) == SQLITE_ROW)
@@ -93,7 +105,7 @@ std::vector<SPTrack> SPTrack::findByRelease(SPDBConnection& conn,
                                              const std::string& releaseId)
 {
     sqlite3_stmt* stmt = conn.prepare(
-        "SELECT id, recording_id, release_id FROM tracks WHERE release_id = ?");
+        "SELECT id, recording_id, release_id, number FROM tracks WHERE release_id = ?");
     sqlite3_bind_text(stmt, 1, releaseId.c_str(), -1, SQLITE_TRANSIENT);
     std::vector<SPTrack> result;
     while (sqlite3_step(stmt) == SQLITE_ROW)

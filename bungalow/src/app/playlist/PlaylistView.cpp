@@ -1,5 +1,6 @@
 #include "app/playlist/PlaylistView.h"
 
+#include "app/library/MusicEntityRepository.h"
 #include "playlist/Upsl.h"
 #include "playlist/RootlistManager.h"
 
@@ -42,10 +43,75 @@ std::map<std::string, std::string> nameRefFields(const std::string& ref) {
     return fields;
 }
 
+// One content ref of a playlist, at its position. A ref the library can
+// resolve to a track plays through it; any other ref is listed by name only.
+class PlaylistItemEntity final : public MusicEntity {
+public:
+    PlaylistItemEntity(int position, std::string ref, std::string name, std::string artists,
+                       std::shared_ptr<const TrackEntity> track)
+        : m_position(position), m_ref(std::move(ref)), m_name(std::move(name)),
+          m_artists(std::move(artists)), m_track(std::move(track)) {}
+
+    std::string id() const override { return m_ref; }
+    std::string name() const override { return m_name; }
+    std::string uri() const override { return m_ref; }
+    std::string playUri() const override { return m_track ? m_track->playUri() : ""; }
+    std::string artistNames() const override { return m_artists; }
+    int64_t     trackId() const override { return m_track ? m_track->trackId() : 0; }
+
+    std::string text(MusicColumn column) const override {
+        // "#" is the item's place in the playlist, not on its release.
+        if (column == MusicColumn::Number) return std::to_string(m_position + 1);
+        return MusicEntity::text(column);
+    }
+
+private:
+    int                                m_position = 0;
+    std::string                        m_ref;
+    std::string                        m_name;
+    std::string                        m_artists;
+    std::shared_ptr<const TrackEntity> m_track;
+};
+
+std::shared_ptr<const MusicEntity> itemFor(const MusicEntityRepository& library,
+                                           int position, const std::string& ref) {
+    std::string name = ref;
+    std::string artists;
+    std::shared_ptr<const TrackEntity> track;
+
+    const std::string isrc = isrcOf(ref);
+    if (!isrc.empty()) {
+        const auto tracks = library.tracksForRecording(isrc);
+        if (!tracks.empty()) {
+            track = tracks.front();
+            name = track->name();
+            artists = track->artistNames();
+        } else {
+            name = isrc;
+        }
+    } else if (ref.rfind("musik:upc:", 0) == 0) {
+        if (const auto release = library.release(ref.substr(std::string("musik:upc:").size())))
+            name = release->name();
+    } else if (ref.rfind("musik:isni:", 0) == 0) {
+        if (const auto artist = library.artist(ref.substr(std::string("musik:isni:").size())))
+            name = artist->name();
+    } else if (const auto fields = nameRefFields(ref); !fields.empty()) {
+        const auto field = [&fields](const char* key) {
+            const auto found = fields.find(key);
+            return found == fields.end() ? std::string() : found->second;
+        };
+        name = field("name");
+        if (!field("version").empty()) name += " (" + field("version") + ")";
+        artists = field("artist");
+    }
+    return std::make_shared<PlaylistItemEntity>(position, ref, std::move(name), std::move(artists),
+                                                std::move(track));
+}
+
 } // namespace
 
 PlaylistView::PlaylistView(SPElement* parent, Database* db) : MusicBrowseView(parent, db) {
-    addPage("tracks", "Playlist", "", {"#", "Name", "Artists"});
+    addPage("tracks", "Playlist", "", {MusicColumn::Number, MusicColumn::Name, MusicColumn::Artists});
 }
 
 bool PlaylistView::acceptsUri(const std::string& uri) {
@@ -60,7 +126,7 @@ void PlaylistView::navigate(const std::string& uri) {
 
 void PlaylistView::reload() {
     std::string heading = "Playlist not found";
-    std::vector<MusicEntityRow> rows;
+    std::vector<std::shared_ptr<const MusicEntity>> items;
     if (const auto upsl = playlist::Upsl::parse(m_uri)) {
         // The user's own playlists are in the database; anything else is shared.
         const std::string localName = m_db->getPlaylistName(upsl->playlistId);
@@ -75,52 +141,13 @@ void PlaylistView::reload() {
             if (auto* app = BungalowApp::current())
                 app->showError("Could not load this playlist.");
         }
+        const MusicEntityRepository library(*m_db);
         for (size_t i = 0; i < refs.size(); ++i)
-            rows.push_back(rowFor(static_cast<int>(i), refs[i]));
+            items.push_back(itemFor(library, static_cast<int>(i), refs[i]));
     }
     this->tabBar->getTabs().front()->name = heading;
-    m_pages.front()->source->setRows(std::move(rows));
+    m_pages.front()->source->setEntities(items);
     this->tabBar->invalidate();
-}
-
-MusicEntityRow PlaylistView::rowFor(int index, const std::string& ref) const {
-    MusicEntityRow row;
-    row.key = ref;
-    row.title = ref;
-    row.contentRef = ref;
-    row.playable = false;
-    const std::string number = std::to_string(index + 1);
-
-    const std::string isrc = isrcOf(ref);
-    if (!isrc.empty()) {
-        const auto tracks = m_db->getTracksForRecording(isrc);
-        if (!tracks.empty()) {
-            const Database::TrackRow& track = tracks.front();
-            row.title = track.name;
-            row.artist = track.artists;
-            row.trackId = track.id;
-            row.playUri = track.playUri;
-            row.playable = !track.playUri.empty();
-        } else {
-            row.title = isrc;
-        }
-    } else if (ref.rfind("musik:upc:", 0) == 0) {
-        const auto release = m_db->getRelease(ref.substr(std::string("musik:upc:").size()));
-        if (!release.upc.empty()) row.title = release.name;
-    } else if (ref.rfind("musik:isni:", 0) == 0) {
-        const auto artist = m_db->getArtist(ref.substr(std::string("musik:isni:").size()));
-        if (!artist.isni.empty()) row.title = artist.name;
-    } else if (const auto fields = nameRefFields(ref); !fields.empty()) {
-        const auto field = [&fields](const char* key) {
-            const auto found = fields.find(key);
-            return found == fields.end() ? std::string() : found->second;
-        };
-        row.title = field("name");
-        if (!field("version").empty()) row.title += " (" + field("version") + ")";
-        row.artist = field("artist");
-    }
-    row.cells = {number, row.title, row.artist};
-    return row;
 }
 
 void PlaylistView::onActivate(Page& page, int row) {

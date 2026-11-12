@@ -1,9 +1,7 @@
 #pragma once
 
-#include "Database.h"
-#include "PlayQueueEntry.h"
-#include "SPTableDataSource.h"
-#include "service/AvailabilityResolver.h"
+#include "app/library/MusicEntity.h"
+#include "datasource/MediaEntityDataSource.h"
 
 #include <memory>
 #include <string>
@@ -11,91 +9,49 @@
 
 namespace space {
 
-/** One display row of a music browse table, plus the keys its actions need. */
-struct MusicEntityRow {
-    std::vector<std::string> cells;   // parallel to the data source's columns
-    std::string              key;     // ISNI / ISRC / UPC of the row's entity
-    std::string              contentRef; // Portable URI to store in a playlist
-    std::string              title;   // display title for the play queue
-    int                      trackId = 0;
-    std::string              playUri; // empty when the row has nothing to play
-    std::string              artist;  // display artist for the play queue
-    bool                     playable = true;
-    // Track rows only:
-    std::string              isrc;       // the track's recording, for cross-service resolution
-    std::string              releaseKey; // UPC of the track's release, "" if none
-    int                      number = 0;
-    bool                     saved  = false;
-};
-
 /**
  * MusicEntityDataSource
  *
- * A fixed-column table data source whose rows are filled by the owning view
- * (artists, recordings, releases, tracks). Views rebuild the rows from
- * Database queries on navigate() and after every mutation.
+ * The table behind the library and playlist views: a list of music entities
+ * (artists, recordings, releases, tracks) shown through a chosen set of
+ * columns. Each cell is asked of the row's entity, which answers from its
+ * ORM models. Views refill the rows from a MusicEntityRepository on
+ * navigate() and after every mutation.
  */
-class MusicEntityDataSource : public SPTableDataSource {
+class MusicEntityDataSource : public MediaEntityDataSource {
 public:
-    explicit MusicEntityDataSource(std::vector<std::string> columns);
+    using Row = std::shared_ptr<const MusicEntity>;
+
+    explicit MusicEntityDataSource(std::vector<MusicColumn> columns);
     ~MusicEntityDataSource() override = default;
 
-    void setRows(std::vector<MusicEntityRow> rows) { m_rows = std::move(rows); }
+    /** Replace the rows. Accepts a list of any kind of music entity. */
+    template <typename EntityT>
+    void setEntities(const std::vector<std::shared_ptr<const EntityT>>& entities) {
+        m_rows.assign(entities.begin(), entities.end());
+    }
 
     /** The row at @p index, or nullptr when out of range. */
-    const MusicEntityRow* rowAt(int index) const;
+    Row rowAt(int index) const;
 
-    /** Rows for a list of tracks: the columns are chosen by @p cells. */
-    template <typename CellsFn>
-    void setTrackRows(const std::vector<Database::TrackRow>& tracks, CellsFn cells) {
-        std::vector<MusicEntityRow> rows;
-        rows.reserve(tracks.size());
-        for (const auto& t : tracks) {
-            MusicEntityRow r;
-            r.cells    = cells(t);
-            r.key      = t.isrc;
-            r.contentRef = "musik:isrc:" + t.isrc;
-            r.title    = t.name;
-            r.trackId  = t.id;
-            r.playUri  = t.playUri;
-            r.artist   = t.artists;
-            r.playable = !t.playUri.empty();
-            r.isrc       = t.isrc;
-            r.releaseKey = t.upc;
-            r.number     = t.number;
-            r.saved      = t.saved;
-            rows.push_back(std::move(r));
-        }
-        setRows(std::move(rows));
+    /** The row at @p index as an @p EntityT, or nullptr when it is another kind. */
+    template <typename EntityT>
+    std::shared_ptr<const EntityT> rowAs(int index) const {
+        return std::dynamic_pointer_cast<const EntityT>(rowAt(index));
     }
 
-    /** One play-queue entry per row, in display order. */
-    std::vector<PlayQueueEntry> buildQueueEntries() const;
-
-    /**
-     * Ask @p resolver about track rows without a local file, so the ones
-     * another service can play aren't greyed out. Until it answers they are.
-     */
-    void setAvailability(std::weak_ptr<service::AvailabilityResolver> resolver) {
-        m_availability = std::move(resolver);
-    }
+    // ── MediaEntityDataSource interface ───────────────────────────────────────
+    int nodeCount() const override { return static_cast<int>(m_rows.size()); }
+    std::shared_ptr<const MediaEntity> mediaAt(int row) const override { return rowAt(row); }
 
     // ── SPTableDataSource interface ───────────────────────────────────────────
     int         getColumnCount()                    override { return static_cast<int>(m_columns.size()); }
-    int         getRowCount()                       override { return static_cast<int>(m_rows.size()); }
     std::string getTextForColumn(int column)        override;
     std::string getTextForCell(int column, int row) override;
-    std::string getRowUri(int index)                override;
-    int         getTrackIdForRow(int row)           override;
-    bool        isRowPlayable(int row)              override;
 
 private:
-    /** A track row without a local file that another service can play. */
-    bool playableElsewhere(const MusicEntityRow& row) const;
-
-    std::vector<std::string>    m_columns;
-    std::vector<MusicEntityRow> m_rows;
-    std::weak_ptr<service::AvailabilityResolver> m_availability;
+    std::vector<MusicColumn> m_columns;
+    std::vector<Row>         m_rows;
 };
 
 } // namespace space

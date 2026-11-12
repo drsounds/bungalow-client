@@ -4,6 +4,7 @@
 #include "Database.h"
 #include "PlatformUi.h"
 #include "app/library/MusicEditActions.h"
+#include "app/library/MusicEntityRepository.h"
 
 namespace space {
 namespace views {
@@ -11,7 +12,8 @@ namespace views {
 ReleasesLibraryView::ReleasesLibraryView(SPElement *parent, Database *db) :
 	MusicBrowseView(parent, db) {
 	addPage("releases", "Releases", "bungalow:library:releases",
-			{"Name", "Artists", "Date", "Tracks", "UPC"});
+			{MusicColumn::Name, MusicColumn::Artists, MusicColumn::Date, MusicColumn::TrackCount,
+			 MusicColumn::Upc});
 	this->tabBar->addToolButton("add", "+");
 }
 
@@ -20,42 +22,32 @@ bool ReleasesLibraryView::acceptsUri(const std::string &uri) {
 }
 
 void ReleasesLibraryView::reload() {
-	std::vector<MusicEntityRow> rows;
-	for (const auto &rel : m_db->getReleaseSummaries()) {
-		MusicEntityRow r;
-		r.key = rel.release.upc;
-		r.contentRef = "musik:upc:" + rel.release.upc;
-		r.title = rel.release.name;
-		r.artist = rel.artists;
-		r.cells = {rel.release.name, rel.artists, rel.release.releaseDate,
-				   std::to_string(rel.trackCount), displayId(rel.release.upc)};
-		rows.push_back(std::move(r));
-	}
-	m_pages.front()->source->setRows(std::move(rows));
+	m_pages.front()->source->setEntities(MusicEntityRepository(*m_db).releases());
 }
 
 void ReleasesLibraryView::onActivate(Page &page, int row) {
-	open(libraryUri("release", page.source->rowAt(row)->key));
+	open(libraryUri("release", page.source->rowAt(row)->id()));
 }
 
 void ReleasesLibraryView::onContextMenu(Page &page, int row) {
-	const MusicEntityRow rel = *page.source->rowAt(row);
+	// Holding the entity keeps it alive when refresh() replaces the rows.
+	const auto rel = page.source->rowAt(row);
 	enum { ID_OPEN = 10600, ID_EDIT, ID_DELETE };
 	switch (platform::showPopupMenu({{ID_OPEN, "Open"},
 					   {ID_EDIT, "Edit..."},
 					   {0, ""},
 					   {ID_DELETE, "Delete Release"}})) {
 	case ID_OPEN:
-		open(libraryUri("release", rel.key));
+		open(libraryUri("release", rel->id()));
 		break;
 	case ID_EDIT:
-		if (!edit::release(*m_db, rel.key).empty())
+		if (!edit::release(*m_db, rel->id()).empty())
 			refresh();
 		break;
 	case ID_DELETE:
-		if (platform::showConfirmDialog("Confirm Delete", "Delete the release \"" + rel.title +
+		if (platform::showConfirmDialog("Confirm Delete", "Delete the release \"" + rel->name() +
 					"\"? Its recordings stay in the library without a release.")) {
-			m_db->deleteRelease(rel.key);
+			m_db->deleteRelease(rel->id());
 			refresh();
 		}
 		break;
