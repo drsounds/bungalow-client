@@ -21,5 +21,10 @@ DownloadManager* downloadManager() {
     return app ? app->getDownloadManager() : nullptr;
 }
 
+service::ServiceManager* serviceManager() {
+    auto* app = BungalowApp::current();
+    return app ? &app->getServiceManager() : nullptr;
+}
+
 } // namespace app
 } // namespace space

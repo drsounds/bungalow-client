@@ -6,6 +6,8 @@ class Database;
 class DownloadManager;
 
 namespace space {
+namespace service { class ServiceManager; }
+
 namespace app {
 
 /// Services of the running BungalowApp that built-in features construct
@@ -13,6 +15,7 @@ namespace app {
 Database* database();
 sqlite3* databaseHandle();
 DownloadManager* downloadManager();
+service::ServiceManager* serviceManager();
 
 } // namespace app
 } // namespace space

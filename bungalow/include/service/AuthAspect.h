@@ -1,30 +1,43 @@
 #pragma once
 
+#include "models/SPSession.h"
+
 #include <functional>
 #include <string>
 
 namespace space {
 namespace service {
 
-/// Authentication capability. Implemented, next to Service, by back-ends that
-/// need a signed-in account (streaming services, stores). Back-ends that need
-/// no sign-in, such as local playback, simply don't implement it, so UI finds
-/// the ones that do with ServiceManager::getServices<AuthAspect>().
+/// Authentication contract. Every Service derives from it, with empty
+/// defaults, so a back-end that needs no sign-in (local playback) is simply
+/// always signed out, and one that does overrides these. UI finds the
+/// back-ends with an account via ServiceManager::getServices<AuthAspect>()
+/// and checks isLoggedIn().
 class AuthAspect {
 public:
     virtual ~AuthAspect() = default;
 
-    virtual bool isAuthenticated() const = 0;
+    /// Presents whatever sign-in UI the back-end needs. Asynchronous: called
+    /// on the UI thread, it returns at once and exactly one of the callbacks
+    /// runs later, on the UI thread, when the attempt finishes. Prefer
+    /// ServiceManager::login(), which also records the session with the
+    /// AccountManager.
+    virtual void login(std::function<void(const SPSession& session)> /*onSuccess*/,
+                       std::function<void(const std::string& error)> /*onError*/) {}
 
-    /// Presents whatever sign-in UI the back-end needs. Called on the UI
-    /// thread; exactly one of the callbacks runs when the attempt finishes.
-    virtual void login(std::function<void()> onSuccess,
-                       std::function<void(const std::string& error)> onError) = 0;
+    virtual void logout() {}
 
-    virtual void logout() = 0;
+    /// True for back-ends that have accounts at all; the accounts view lists
+    /// only these. Override together with login().
+    virtual bool supportsLogin() const { return false; }
+
+    virtual bool isLoggedIn() const { return false; }
+
+    /// The current session, or an invalid (default) SPSession when signed out.
+    virtual SPSession getSession() const { return {}; }
 
     /// Display name of the signed-in account, or empty when signed out.
-    virtual std::string getAccountName() const = 0;
+    virtual std::string getAccountName() const { return getSession().user.name; }
 };
 
 } // namespace service

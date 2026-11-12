@@ -144,6 +144,10 @@ else()
     endif()
 endif()
 
+if(WIN32)
+    list(APPEND PLATFORM_LIBRARIES crypt32) # DPAPI, for the encrypted session data
+endif()
+
 if(BUNGALOW_ENABLE_CEF)
     if(NOT BUNGALOW_UI_BACKEND STREQUAL "wtl")
         message(FATAL_ERROR "BUNGALOW_ENABLE_CEF currently requires BUNGALOW_UI_BACKEND=wtl")
@@ -352,15 +356,21 @@ if(BUILD_TESTING)
         add_executable(bungalow-service-test
             bungalow/tests/ServiceTest.cpp
             bungalow/src/Database.cpp
+            bungalow/src/models/SPSession.cpp
+            bungalow/src/service/AccountManager.cpp
             bungalow/src/service/AvailabilityResolver.cpp
             bungalow/src/service/BackgroundWorker.cpp
             bungalow/src/service/MediaService.cpp
             bungalow/src/service/MusicService.cpp
             bungalow/src/service/PlaybackCoordinator.cpp
             bungalow/src/service/ResolutionStore.cpp
-            bungalow/src/service/ServiceManager.cpp)
+            bungalow/src/service/ServiceManager.cpp
+            bungalow/src/service/SessionCipher.cpp)
         target_include_directories(bungalow-service-test PRIVATE bungalow/include)
-        target_link_libraries(bungalow-service-test PRIVATE SQLite3::SQLite3)
+        target_link_libraries(bungalow-service-test PRIVATE SQLite3::SQLite3 nlohmann_json::nlohmann_json)
+        if(WIN32)
+            target_link_libraries(bungalow-service-test PRIVATE crypt32)
+        endif()
         add_test(NAME bungalow-service-test COMMAND bungalow-service-test)
     endif()
 

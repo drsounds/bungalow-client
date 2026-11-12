@@ -1,8 +1,10 @@
 #pragma once
 
 #include "aspect/BaseAspectManager.h"
+#include "service/AccountManager.h"
 #include "service/Service.h"
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -17,8 +19,9 @@ namespace service {
 ///     AuthAspect* auth = services.getService<AuthAspect>();
 ///
 /// T may be Service itself, a concrete class or any capability interface,
-/// including ones that don't derive from Service (AuthAspect): a Service is
-/// offered for every interface it implements.
+/// including ones that don't derive from Service: a Service is offered for
+/// every interface it implements. Every Service is an AuthAspect, so filter
+/// on isLoggedIn()/login() rather than on the type.
 class ServiceManager : public aspect::BaseAspectManager<Service> {
 public:
     ServiceManager() = default;
@@ -49,6 +52,20 @@ public:
     /// Stops, destroys and unregisters every Service.
     void shutdownAll();
 
+    /// Signs in to the Service with that id. Asynchronous: returns at once,
+    /// then exactly one callback runs on the UI thread. On success the session
+    /// is recorded with accounts() before onSuccess runs. An unknown id, a
+    /// Service without sign-in or an invalid session report through onError.
+    void login(const std::string& serviceId,
+               std::function<void(const SPSession& session)> onSuccess,
+               std::function<void(const std::string& error)> onError);
+    /// Signs out of the Service and forgets its account.
+    void logout(const std::string& serviceId);
+
+    /// The sessions of the signed-in accounts (bungalow:accounts).
+    AccountManager& accounts() { return *m_accounts; }
+    const AccountManager& accounts() const { return *m_accounts; }
+
     /// The first Service exposing capability T, or nullptr.
     template <class T>
     T* getService() const {
@@ -65,6 +82,10 @@ public:
             if (T* t = dynamic_cast<T*>(s)) result.push_back(t);
         return result;
     }
+
+private:
+    // Shared, so a sign-in finishing after the manager is gone stays safe.
+    std::shared_ptr<AccountManager> m_accounts = std::make_shared<AccountManager>();
 };
 
 } // namespace service

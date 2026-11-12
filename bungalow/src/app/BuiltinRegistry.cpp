@@ -1,5 +1,6 @@
 #include "app/BuiltinRegistry.h"
 
+#include "app/accounts/AccountsFeature.h"
 #include "app/database/DatabaseFeature.h"
 #include "app/downloads/DownloadsFeature.h"
 #include "app/library/LibraryConcept.h"
@@ -20,6 +21,7 @@ void registerBuiltins(feature::FeatureManager& features, concepts::ConceptManage
     features.registerAspect(std::make_unique<SettingsFeature>());
     concepts.registerAspect(std::make_unique<LibraryConcept>());
     features.registerAspect(std::make_unique<DownloadsFeature>());
+    features.registerAspect(std::make_unique<AccountsFeature>());
     features.registerAspect(std::make_unique<DatabaseFeature>());
     concepts.registerAspect(std::make_unique<WebConcept>());
     concepts.registerAspect(std::make_unique<SearchConcept>());

@@ -12,6 +12,9 @@
 #include "service/PlaybackCoordinator.h"
 #include "service/ResolutionStore.h"
 #include "service/ServiceManager.h"
+#include "service/SessionCipher.h"
+
+#include <nlohmann/json.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -90,16 +93,35 @@ private:
 };
 
 /// Streams and needs a sign-in: the AuthAspect cross-cast case.
-class FakeAuthService : public FakeMusicService, public AuthAspect {
+class FakeAuthService : public FakeMusicService {
 public:
     using FakeMusicService::FakeMusicService;
-    bool isAuthenticated() const override { return signedIn; }
-    void login(std::function<void()> ok, std::function<void(const std::string&)>) override {
-        signedIn = true;
-        ok();
+    bool supportsLogin() const override { return true; }
+    bool isLoggedIn() const override { return signedIn; }
+    /// Asynchronous like a real back-end: the result arrives from pending().
+    void login(std::function<void(const SPSession&)> ok,
+               std::function<void(const std::string&)> err) override {
+        pending = [this, ok, err] {
+            if (fail) {
+                err("denied");
+                return;
+            }
+            signedIn = true;
+            ok(getSession());
+        };
     }
     void logout() override { signedIn = false; }
-    std::string getAccountName() const override { return signedIn ? "me" : ""; }
+    SPSession getSession() const override {
+        if (!signedIn) return {};
+        SPSession session(SPUser{"u1", "me"}, getId());
+        session.setData({{"token", "secret"}});
+        return session;
+    }
+    bool signedIn = false;
+    bool fail = false;
+    std::function<void()> pending;
+};
+    }
     bool signedIn = false;
 };
 
@@ -157,6 +179,36 @@ PlaybackCoordinator::Result play(PlaybackCoordinator& coordinator, const PlayReq
     return out;
 }
 
+/// Reversible, obviously-not-clear-text stand-in so the test runs anywhere.
+class XorCipher : public SessionCipher {
+public:
+    bool encrypt(const std::string& in, std::string& out) override { out = xor_(in); return true; }
+    bool decrypt(const std::string& in, std::string& out) override { out = xor_(in); return true; }
+private:
+    static std::string xor_(std::string s) { for (char& c : s) c ^= 0x5a; return s; }
+};
+
+void testSession() {
+    SessionCipher::setInstance(std::make_shared<XorCipher>());
+    SPSession session(SPUser{"u1", "me"}, "svc");
+    check(session.isValid() && session.serviceId() == "svc", "session is tied to its user and service");
+    check(!session.hasData(), "no data yet");
+    check(session.setData({{"token", "secret"}}), "data is stored");
+    check(session.encryptedData().find("secret") == std::string::npos, "stored data is not clear text");
+    bool ok = false;
+    nlohmann::json data = session.data(&ok);
+    check(ok && data["token"] == "secret", "data decrypts back to the JSON");
+
+    SPSession restored(SPUser{"u1", "me"}, "svc");
+    restored.setEncryptedData(session.encryptedData());
+    check(restored.data()["token"] == "secret", "an encrypted blob restores a session");
+
+    SessionCipher::setInstance(nullptr);
+    check(!session.setData({{"a", 1}}), "without a cipher no data is kept");
+    session.data(&ok);
+    check(!ok, "without a cipher data cannot be read");
+}
+
 void testServiceManager() {
     std::vector<std::string> events;
     g_log = &events;
@@ -168,8 +220,33 @@ void testServiceManager() {
 
         check(manager.getServices<MusicService>().size() == 3, "every streamer is a MusicService");
         check(manager.getServices<MediaService>().size() == 3, "a MusicService is a MediaService");
-        check(manager.getService<AuthAspect>() == static_cast<AuthAspect*>(remote),
-              "AuthAspect is found though it isn't a Service");
+        check(manager.getServices<AuthAspect>().size() == 3, "every Service is an AuthAspect");
+        check(!local->supportsLogin() && !local->isLoggedIn() && !local->getSession().isValid(),
+              "a service without auth stays signed out");
+
+        // Sign-in is asynchronous and lands in the AccountManager.
+        std::string loginResult;
+        manager.login("remote", [&](const SPSession& s) { loginResult = "ok:" + s.user().name; },
+                      [&](const std::string& e) { loginResult = "err:" + e; });
+        check(loginResult.empty() && !remote->isLoggedIn() && !manager.accounts().isSignedIn("remote"),
+              "login returns before the sign-in finishes");
+        remote->pending();
+        check(loginResult == "ok:me" && manager.accounts().isSignedIn("remote") &&
+                  remote->getAccountName() == "me",
+              "a successful login records the session");
+        check(manager.accounts().all().size() == 1, "one account stored");
+
+        manager.logout("remote");
+        check(!remote->isLoggedIn() && !manager.accounts().isSignedIn("remote"),
+              "logout forgets the account");
+
+        remote->fail = true;
+        manager.login("remote", nullptr, [&](const std::string& e) { loginResult = "err:" + e; });
+        remote->pending();
+        check(loginResult == "err:denied" && !manager.accounts().isSignedIn("remote"),
+              "a failed login stores nothing");
+        manager.login("nope", nullptr, [&](const std::string& e) { loginResult = e; });
+        check(loginResult.rfind("Unknown service", 0) == 0, "unknown service reports an error");
         auto catalogues = manager.getServices<MusicCatalogueService>();
         check(catalogues.size() == 1 && dynamic_cast<Service*>(catalogues[0]) == both,
               "a service with two capabilities has one Service base");
@@ -498,6 +575,7 @@ void testBackgroundWorker() {
 
 int main() {
     testServiceManager();
+    testSession();
     testCoordinator();
     testBackgroundResolution();
     testResolutionStore();
