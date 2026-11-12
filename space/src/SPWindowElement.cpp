@@ -40,6 +40,16 @@ namespace space
         SPNavigateEventArgs *args = new SPNavigateEventArgs(uri);
         this->dispatchEvent("navigate", args, this);
     }
+    int SPWindowElement::notify(const string &event, SPObject *sender, SPEventArgs *data) {
+        if (event != "mousemove")
+            return SPElement::notify(event, sender, data);
+        // Elements under the pointer claim the link they show there; when
+        // none did, the pointer has left the link that was hovered.
+        SPElement::beginLinkHoverPass();
+        const int result = SPElement::notify(event, sender, data);
+        SPElement::endLinkHoverPass();
+        return result;
+    }
     void SPWindowElement::pack() {
 
         auto gc = this->createGraphics();

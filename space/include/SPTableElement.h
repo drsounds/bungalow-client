@@ -2,8 +2,10 @@
 #define TABLEVIEWELEMENT_H
 #include "SPElement.h"
 #include "SPDragDrop.h"
+#include "SPTableCell.h"
 #include <chrono>
 #include <functional>
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -21,6 +23,10 @@ class SPTableColumnHeader;
  * rows, as the URIs the data source gives for them (getDragUris). The table
  * is also a drop target once setDropHandler() says which drags it takes; it
  * then shows the insertion line and hands the drop over with its row index.
+ *
+ * Links: a cell the data source gives markup for (getMarkupForCell) is drawn
+ * as rich text. Its links show a hand cursor and an underline under the
+ * pointer, and a click on one navigates to it instead of selecting the row.
  */
 class SPTableElement : public SPElement, public SPDropTarget
 {
@@ -70,7 +76,23 @@ class SPTableElement : public SPElement, public SPDropTarget
         void dragLeave() override;
         bool drop(int x, int y, const SPDragData& data) override;
 
+        /// The link under a point in window coordinates, or "".
+        string linkAt(int x, int y) const;
+
+    protected:
+        void clearLinkHover() override;
+
     private:
+        // The cells drawn as rich text in the last paint, by (row, column).
+        using CellKey = std::pair<int, int>;
+        std::map<CellKey, SPTableCell> m_cells;
+        const SPTableCell *cellAt(int x, int y, CellKey *key = nullptr) const;
+        int m_paintX = 0;        // window x of the first column (set during paint)
+        int m_columnWidth = 0;   // (set during paint)
+        CellKey m_hoverCell { -1, -1 };  // the cell whose link is under the pointer
+        string m_pressedLink;    // the link the left button went down on
+        CellKey m_pressedCell { -1, -1 };
+
         std::set<int> m_selectedRows;
         int m_anchorRow  = -1; // last directly-clicked or arrow-moved row
         int m_firstRowY  = 0;  // screen y of first data row (set during paint)

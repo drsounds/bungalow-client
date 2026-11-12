@@ -28,6 +28,8 @@
 #include "SPViewStackElement.h"
 #include "SPTabBarViewElement.h"
 #include "SPTextElement.h"
+#include "SPLinkElement.h"
+#include "SPRichText.h"
 #include "SPViewElement.h"
 #include "SPTemplate.h"
 
@@ -42,6 +44,88 @@ namespace space {
 	std::function<void(const std::string&)> SPElement::s_xulErrorHandler;
 	SPElement* SPElement::s_capturedElement = nullptr;
 	SPElement::SPCursorHint SPElement::s_cursorHint = SPElement::SPCursorHint::Arrow;
+	SPElement* SPElement::s_linkHoverElement = nullptr;
+	bool SPElement::s_linkHoverClaimed = false;
+
+	namespace {
+		// The tags a text body may contain; see SPRichText.
+		bool isInlineTag(const string &name) {
+			return name == "a" || name == "link" || name == "b" || name == "strong" ||
+				   name == "i" || name == "em" || name == "u" || name == "br" || name == "img";
+		}
+
+		bool isBlank(const string &text) {
+			return text.find_first_not_of(" \t\r\n") == string::npos;
+		}
+
+		// True when the body of an XUL element is a label with markup in it
+		// (<text>By <link uri="…">Queen</link></text>) and not child elements.
+		bool isRichContent(const SPXmlNode &node) {
+			bool text = false;
+			bool markup = false; // an inline tag other than a bare image
+			for (const auto &child : node.children) {
+				if (child.textNode) {
+					text = text || !isBlank(child.text);
+				} else if (!isInlineTag(child.name)) {
+					return false;
+				} else if (child.name != "img") {
+					markup = true;
+				}
+			}
+			if (text)
+				return std::any_of(node.children.begin(), node.children.end(),
+								   [](const SPXmlNode &child) { return !child.textNode; });
+			return markup && (node.name == "text" || node.name == "link" || node.name == "a");
+		}
+
+		// Writes an XUL body back as SPRichText markup. Whitespace collapses
+		// as in HTML, so a label can be laid out over several source lines.
+		void appendRichContent(const SPXmlNode &node, string &out) {
+			for (const auto &child : node.children) {
+				if (child.textNode) {
+					string collapsed;
+					bool space = false;
+					for (const char c : child.text) {
+						if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+							space = true;
+							continue;
+						}
+						if (space)
+							collapsed += ' ';
+						space = false;
+						collapsed += c;
+					}
+					if (space)
+						collapsed += ' ';
+					out += SPRichText::escape(collapsed);
+					continue;
+				}
+				if (!isInlineTag(child.name)) {
+					appendRichContent(child, out);
+					continue;
+				}
+				out += '<' + child.name;
+				for (const auto &attribute : child.attributes)
+					out += ' ' + attribute.first + "=\"" + SPRichText::escape(attribute.second) + '"';
+				if (child.name == "br" || child.name == "img") {
+					out += "/>";
+					continue;
+				}
+				out += '>';
+				appendRichContent(child, out);
+				out += "</" + child.name + '>';
+			}
+		}
+
+		string richContent(const SPXmlNode &node) {
+			string markup;
+			appendRichContent(node, markup);
+			const size_t first = markup.find_first_not_of(' ');
+			if (first == string::npos)
+				return string();
+			return markup.substr(first, markup.find_last_not_of(' ') - first + 1);
+		}
+	}
 
 	std::optional<SPColor> SPElement::getActiveColor()
 	{
@@ -109,6 +193,11 @@ namespace space {
 		if (event == "mousedown" || event == "mousemove" || event == "mouseup") {
 			auto *mouseArgs = dynamic_cast<SPMouseEventArgs *>(data);
 			if (mouseArgs != nullptr && this->handleScrollBarMouse(event, mouseArgs))
+				return 1;
+		}
+		if (event == "mousemove" || event == "click") {
+			auto *mouseArgs = dynamic_cast<SPMouseEventArgs *>(data);
+			if (mouseArgs != nullptr && this->handleRichTextMouse(event, mouseArgs))
 				return 1;
 		}
 		int ret = SPNode::notify(event, sender, data);
@@ -710,6 +799,105 @@ namespace space {
 	}
 
 	SPElement::~SPElement() {
+		if (s_linkHoverElement == this)
+			s_linkHoverElement = nullptr;
+	}
+
+	// ── Rich text and links ──────────────────────────────────────────────
+
+	void SPElement::setInnerHTML(const string &markup) {
+		if (!m_richText)
+			m_richText = std::make_shared<SPRichText>();
+		m_richText->setMarkup(markup);
+		// The plain text stays what other code measures and reads.
+		m_richPlain = m_richText->getPlainText();
+		this->setInnerText(m_richPlain);
+		m_hoverLinkUri.clear();
+		this->invalidate();
+	}
+
+	string SPElement::getInnerHTML() {
+		if (m_richText && m_richPlain == this->getInnerText())
+			return m_richText->getMarkup();
+		return SPRichText::escape(this->getInnerText());
+	}
+
+	SPRichText *SPElement::getRichText() {
+		// A setInnerText() since setInnerHTML() made the element plain again.
+		if (!m_richText || m_richText->empty() || m_richPlain != this->getInnerText())
+			return nullptr;
+		return m_richText.get();
+	}
+
+	SPColor SPElement::getLinkColor() {
+		const SPColor def = this->getColorScheme() == SP_COLOR_SCHEME_DARK
+			? SPColor(120, 175, 255, 255)
+			: SPColor(0, 90, 200, 255);
+		return this->SPNode::getColorAttribute("linkcolor", def);
+	}
+
+	void SPElement::activateLink(const string &uri) {
+		if (uri.empty())
+			return;
+		SPWindowElement *window = this->getType() == "window"
+			? static_cast<SPWindowElement *>(this)
+			: this->getWindowElement();
+		if (window != nullptr)
+			window->navigate(uri);
+	}
+
+	void SPElement::claimLinkHover(const string &uri) {
+		if (uri.empty())
+			return;
+		s_linkHoverClaimed = true;
+		setCursorHint(SPCursorHint::Hand);
+		if (s_linkHoverElement != this) {
+			SPElement *previous = s_linkHoverElement;
+			s_linkHoverElement = this;
+			if (previous != nullptr)
+				previous->clearLinkHover();
+		}
+		if (m_hoverLinkUri != uri) {
+			m_hoverLinkUri = uri;
+			this->invalidate();
+		}
+	}
+
+	void SPElement::clearLinkHover() {
+		if (m_hoverLinkUri.empty())
+			return;
+		m_hoverLinkUri.clear();
+		this->invalidate();
+	}
+
+	void SPElement::beginLinkHoverPass() {
+		s_linkHoverClaimed = false;
+	}
+
+	void SPElement::endLinkHoverPass() {
+		if (s_linkHoverClaimed || s_linkHoverElement == nullptr)
+			return;
+		SPElement *previous = s_linkHoverElement;
+		s_linkHoverElement = nullptr;
+		previous->clearLinkHover();
+	}
+
+	bool SPElement::handleRichTextMouse(const string &event, SPMouseEventArgs *e) {
+		SPRichText *rich = this->getRichText();
+		if (rich == nullptr || !rich->hasLinks())
+			return false;
+		const string uri = rich->uriAt(e->getX() - m_richTextOrigin.x, e->getY() - m_richTextOrigin.y);
+		if (uri.empty())
+			return false;
+		if (event == "mousemove") {
+			this->claimLinkHover(uri);
+			return false; // listeners still see the move
+		}
+		if (e->getButton() != 0)
+			return false;
+		this->setState(SP_STATE_NORMAL);
+		this->activateLink(uri); // may replace this element's content
+		return true;
 	}
 	int SPElement::getHeight() {
 		return this->m_height;
@@ -904,8 +1092,12 @@ namespace space {
 		SPColor color(255, 0, 0, 255);
 		string text = this->getInnerText();
 		// draw text
-		if (!text.empty())
-			c->drawString(text, SPFontStyle(fontFamily, fontSize, fontSize / 2, false, false), fgColor, x - scrollX, y - scrollY, this->getWidth(), this->getHeight());
+		const SPFontStyle textFont(fontFamily, fontSize, fontSize / 2, false, false);
+		if (SPRichText *rich = this->getRichText()) {
+			m_richTextOrigin = { x - scrollX, y - scrollY };
+			rich->paint(c, textFont, x - scrollX, y - scrollY, fgColor, this->getLinkColor(), m_hoverLinkUri);
+		} else if (!text.empty())
+			c->drawString(text, textFont, fgColor, x - scrollX, y - scrollY, this->getWidth(), this->getHeight());
 		// adjust for scroll
 	}
 
@@ -925,6 +1117,12 @@ namespace space {
 	sp_rectangle SPElement::getTextBounds() {
 		SPGraphicsContext *c = this->createGraphics();
 		string text = this->getInnerText();
+		if (SPRichText *rich = this->getRichText()) {
+			rich->layout(fontStyle, [c](const string &run, const SPFontStyle &font) {
+				return c->measureString(run, font);
+			});
+			return sp_rectangle { 0, 0, rich->getWidth(), rich->getHeight() };
+		}
 		if (text.empty()) {
 			return sp_rectangle { 0, 0, 0, 0 };
 		}
@@ -1299,7 +1497,13 @@ namespace space {
 				}
 			}
 		}
+		// A body of text with <link>, <b>, <br/> … in it is one label.
+		const bool rich = isRichContent(xmlNode);
+		if (rich)
+			elm->getSlotElement()->setInnerHTML(richContent(xmlNode));
 		for (const auto& child : xmlNode.children) {
+			if (rich)
+				break;
 			if (child.textNode) {
 				elm->getSlotElement()->setInnerText(child.text);
 			} else {
@@ -1331,6 +1535,8 @@ namespace space {
 		SPElement *elm = nullptr;
 		if (tagName == "text") {
 			elm = new SPTextElement(parent);
+		} else if (tagName == "link" || tagName == "a") {
+			elm = new SPLinkElement(parent);
 		} else if (tagName == "img") {
 			elm = new SPImageElement(parent);
 		} else if (tagName == "button") {

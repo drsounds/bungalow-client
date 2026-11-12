@@ -141,6 +141,11 @@ std::string showFolderDialog(const std::string& title, const std::string& initia
     return dlg.GetPath().ToStdString();
 }
 
+void openExternalUrl(const std::string& url) {
+    if (url.rfind("https://", 0) != 0 && url.rfind("http://", 0) != 0) return;
+    wxLaunchDefaultBrowser(wxString::FromUTF8(url));
+}
+
 std::string userDataDir() {
     wxFileName path;
     path.AssignDir(wxStandardPaths::Get().GetUserDataDir());

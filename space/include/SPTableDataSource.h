@@ -16,6 +16,11 @@ class SPTableDataSource
         virtual int getRowCount() { return 0; }
         virtual string getUriForCell (int column, int row) { return ""; }
         virtual string getTextForCell (int column, int row) { return ""; }
+        /// The cell as markup (see SPRichText), for cells with links, images
+        /// or formatting: e.g. one <link uri="…"> per artist.  "" for a cell
+        /// of plain text, which is the default.  Text from data must be
+        /// escaped; SPRichText::link() and escape() do that.
+        virtual string getMarkupForCell (int /*column*/, int /*row*/) { return ""; }
         virtual string getTextForColumn (int column) { return ""; }
         virtual string getRowUri(int index) { return ""; }
         virtual bool isRowActive(int index) { return false; }

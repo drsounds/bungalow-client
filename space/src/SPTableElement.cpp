@@ -71,6 +71,8 @@ namespace space {
             columnY = this->getParentElement()->getAbsoluteBounds().y + 1;
         }
         m_firstRowY = columnY + rowH;  // remember for hit-testing in mouseDown
+        m_paintX = x;
+        m_columnWidth = columnWidth;
         this->getSkin()->drawTableHeader(g, this, x, columnY, width, rowH);
         left = 0;
         for (int i = 0; i < dataSource->getColumnCount(); i++) {
@@ -150,13 +152,29 @@ namespace space {
                     if (filled > 0)
                         g->fillRectangle(barX, barY, filled, barH, SPColor(60, 120, 220, 220));
                 } else {
-                    string text = dataSource->getTextForCell(j, i);
                     left = x + (j * columnWidth) + padding;
-                    g->drawString(text, SPFontStyle("Tahoma", 13, 1, false, false), rowFg, left, rowY + 1, columnWidth, rowH);
+                    const SPFontStyle cellFont("Tahoma", 13, 1, false, false);
+                    const CellKey key(i, j);
+                    const string markup = dataSource->getMarkupForCell(j, i);
+                    if (markup.empty()) {
+                        if (!m_cells.empty()) m_cells.erase(key);
+                        string text = dataSource->getTextForCell(j, i);
+                        g->drawString(text, cellFont, rowFg, left, rowY + 1, columnWidth, rowH);
+                    } else {
+                        // Links keep the row's color, so selected, playing and
+                        // unplayable rows still read as such.
+                        SPTableCell &cell = m_cells[key];
+                        cell.setMarkup(markup);
+                        cell.paint(g, cellFont, { left, rowY + 1, columnWidth - padding, rowH - 1, 0 },
+                                   rowFg, rowFg, key == m_hoverCell ? m_hoverLinkUri : string());
+                    }
                 }
             }
             rowY += rowH;
         }
+        // Forget the cells of rows that are gone.
+        if (!m_cells.empty())
+            m_cells.erase(m_cells.lower_bound(CellKey(dataSource->getRowCount(), 0)), m_cells.end());
 
         if (m_dropIndex >= 0) {
             const int lineY = m_firstRowY + m_dropIndex * rowH;
@@ -179,10 +197,46 @@ namespace space {
         return row + ((offset % kRowH) >= kRowH / 2 ? 1 : 0);
     }
 
+    // ── Links ────────────────────────────────────────────────────────────────
+    const SPTableCell *SPTableElement::cellAt(int x, int y, CellKey *key) const {
+        if (m_cells.empty() || m_columnWidth <= 0 || x < m_paintX) return nullptr;
+        const int row = rowAtY(y);
+        if (row < 0) return nullptr;
+        const CellKey found(row, (x - m_paintX) / m_columnWidth);
+        const auto it = m_cells.find(found);
+        if (it == m_cells.end()) return nullptr;
+        if (key) *key = found;
+        return &it->second;
+    }
+
+    string SPTableElement::linkAt(int x, int y) const {
+        const SPTableCell *cell = cellAt(x, y);
+        return cell ? cell->uriAt(x, y) : string();
+    }
+
+    void SPTableElement::clearLinkHover() {
+        m_hoverCell = CellKey(-1, -1);
+        SPElement::clearLinkHover();
+    }
+
     // ── Mouse click → row selection + double-click / right-click detection ──────
     void SPTableElement::mouseDown(SPObject* sender, SPEventArgs* e) {
         auto *me = dynamic_cast<SPMouseEventArgs *>(e);
         if (!me || !dataSource) return;
+
+        // A left press on a link belongs to the link: it is followed when the
+        // button comes up on it again, and does not select or drag the row.
+        m_pressedLink.clear();
+        if (me->getButton() == 0) {
+            CellKey key;
+            const SPTableCell *cell = cellAt(me->getX(), me->getY(), &key);
+            const string link = cell ? cell->uriAt(me->getX(), me->getY()) : string();
+            if (!link.empty()) {
+                m_pressedLink = link;
+                m_pressedCell = key;
+                return;
+            }
+        }
 
         int relY   = me->getY() - m_firstRowY;
         int rowIdx = relY / kRowH;
@@ -245,14 +299,38 @@ namespace space {
     // ── Drag source ───────────────────────────────────────────────────────────
     void SPTableElement::mouseMove(SPObject* /*sender*/, SPEventArgs* e) {
         auto *me = dynamic_cast<SPMouseEventArgs *>(e);
-        if (!me || !m_pressed) return;
+        if (!me) return;
+        if (!m_pressed) {
+            CellKey key;
+            const SPTableCell *cell = cellAt(me->getX(), me->getY(), &key);
+            const string link = cell ? cell->uriAt(me->getX(), me->getY()) : string();
+            if (!link.empty()) {
+                if (key != m_hoverCell) {
+                    m_hoverCell = key;
+                    this->invalidate();
+                }
+                this->claimLinkHover(link);
+            }
+            return;
+        }
         if (std::abs(me->getX() - m_pressX) < kDragThreshold &&
             std::abs(me->getY() - m_pressY) < kDragThreshold)
             return;
         startDrag();
     }
 
-    void SPTableElement::mouseUp(SPObject* /*sender*/, SPEventArgs* /*e*/) {
+    void SPTableElement::mouseUp(SPObject* /*sender*/, SPEventArgs* e) {
+        if (!m_pressedLink.empty()) {
+            const string pressed = m_pressedLink;
+            m_pressedLink.clear();
+            auto *me = dynamic_cast<SPMouseEventArgs *>(e);
+            CellKey key;
+            const SPTableCell *cell = me ? cellAt(me->getX(), me->getY(), &key) : nullptr;
+            if (cell && me->getButton() == 0 && key == m_pressedCell &&
+                cell->uriAt(me->getX(), me->getY()) == pressed)
+                this->activateLink(pressed);   // may refill or hide the table
+            return;
+        }
         if (!m_pressed) return;
         m_pressed = false;
         if (s_capturedElement == this) releaseMouseCapture();

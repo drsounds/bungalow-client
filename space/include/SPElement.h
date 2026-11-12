@@ -12,6 +12,7 @@
 #include "SPNode.h"
 #include "SPFontStyle.h"
 #include <functional>
+#include <memory>
 #include <optional>
 #include <vector>
 #include <nlohmann/json.hpp>
@@ -43,6 +44,7 @@ namespace space {
     class SPImage;
     class SPFontStyle;
     class SPMouseEventArgs;
+    class SPRichText;
 
     /// What an element does with content taller than itself.
     enum class SPOverflow {
@@ -112,7 +114,53 @@ namespace space {
         bool handleScrollBarMouse(const string &event, SPMouseEventArgs *e);
         /// Called after the vertical scroll position changed.
         virtual void onScrolled() {}
+
+        // ── Rich text and links (see SPRichText) ─────────────────────────
+        /// The markup set with setInnerHTML(), while it is still the text.
+        std::shared_ptr<SPRichText> m_richText;
+        /// The inner text setInnerHTML() left; a later setInnerText() makes
+        /// the element plain again.
+        string m_richPlain;
+        /// Where the text was last painted, in window coordinates.
+        sp_position m_richTextOrigin { 0, 0 };
+        /// The link under the pointer, "" when there is none.
+        string m_hoverLinkUri;
+        /// The element whose link the pointer is over, and whether it said
+        /// so again during the mouse move being dispatched.
+        static SPElement* s_linkHoverElement;
+        static bool s_linkHoverClaimed;
+        /// The label to draw instead of the plain inner text, or nullptr.
+        virtual SPRichText *getRichText();
+        /// Called on a mouse move over a link of this element: shows the hand
+        /// cursor and marks the link as hovered until the pointer leaves it.
+        void claimLinkHover(const string &uri);
+        /// The pointer left this element's link.
+        virtual void clearLinkHover();
+        /// Follows a link of the element's own text on a click, and tracks
+        /// the one under the pointer. Returns true if the event was consumed.
+        bool handleRichTextMouse(const string &event, SPMouseEventArgs *e);
     public:
+        /// Sets the element's text as markup: links, bold, italic, underline,
+        /// line breaks and images; see SPRichText for the tags. Text that
+        /// comes from data must be escaped (SPRichText::escape). XUL sets
+        /// this by itself for a body that mixes text and those tags:
+        ///   <text>By <link uri="bungalow:artist:1">Queen</link></text>
+        void setInnerHTML(const string &markup);
+        /// The markup set with setInnerHTML(), or the inner text, escaped.
+        string getInnerHTML();
+        /// The color links are drawn in: the "linkcolor" attribute, or a
+        /// blue that suits the color scheme.
+        SPColor getLinkColor();
+        /// Follows a link: asks the window to navigate to uri. The
+        /// application decides what that means for the URI (a view, a site,
+        /// the system browser).
+        virtual void activateLink(const string &uri);
+        /// Bracket the dispatch of one mouse move, so that the hovered link
+        /// is forgotten once the pointer is over no link at all.
+        static void beginLinkHoverPass();
+        static void endLinkHoverPass();
+
+
         /// overflow="auto" | "hidden"; see SPOverflow.
         SPOverflow getOverflowY() const { return m_overflowY; }
         void setOverflowY(SPOverflow value) { m_overflowY = value; }
@@ -147,7 +195,7 @@ namespace space {
         /// pointer hovers (or drags) them so the OS cursor can be swapped,
         /// e.g. to a resize arrow over a splitter. Reset to Arrow before each
         /// mousemove dispatch.
-        enum class SPCursorHint { Arrow, ResizeHorizontal };
+        enum class SPCursorHint { Arrow, ResizeHorizontal, Hand };
         static SPCursorHint s_cursorHint;
         static void setCursorHint(SPCursorHint hint) { s_cursorHint = hint; }
         static SPCursorHint getCursorHint()          { return s_cursorHint; }
@@ -342,7 +390,9 @@ namespace space {
                              const string &data);
         virtual void onLoad();
         void loadXUL(const string &filename);
-        void loadSrc(const string & uri);
+        /// Called when the src attribute changes: renders the template for
+        /// the URI into the element. Images load their picture instead.
+        virtual void loadSrc(const string & uri);
         void onAttributeChanged(SPObject *sender, SPEventArgs *e);
 
         ~SPElement() override;

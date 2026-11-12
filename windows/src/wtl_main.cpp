@@ -324,9 +324,14 @@ public:
 			return;
 		app.mouseEvent("mousemove", point.x, point.y, 0, IsCommandDown());
 
-		const bool resizeCursor =
-			space::SPElement::getCursorHint() == space::SPElement::SPCursorHint::ResizeHorizontal;
-		::SetCursor(::LoadCursorW(nullptr, resizeCursor ? MAKEINTRESOURCEW(32644) : MAKEINTRESOURCEW(32512)));
+		// IDC_SIZEWE over a splitter, IDC_HAND over a link, IDC_ARROW otherwise.
+		LPCWSTR cursor = MAKEINTRESOURCEW(32512);
+		switch (space::SPElement::getCursorHint()) {
+		case space::SPElement::SPCursorHint::ResizeHorizontal: cursor = MAKEINTRESOURCEW(32644); break;
+		case space::SPElement::SPCursorHint::Hand:             cursor = MAKEINTRESOURCEW(32649); break;
+		default: break;
+		}
+		::SetCursor(::LoadCursorW(nullptr, cursor));
 	}
 
 	BOOL OnMouseWheel(UINT, short delta, CPoint point) {

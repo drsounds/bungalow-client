@@ -47,6 +47,10 @@ bool showConfirmDialog(const std::string& title, const std::string& message);
 // Shows a folder picker. Returns the chosen path, or "" if cancelled.
 std::string showFolderDialog(const std::string& title, const std::string& initialPath);
 
+// Opens an http(s) URL in the system's default browser. Anything else is
+// refused, so a link can never launch a local file or program.
+void openExternalUrl(const std::string& url);
+
 // Per-user application data directory (created if missing).
 std::string userDataDir();
 

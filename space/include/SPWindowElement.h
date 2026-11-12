@@ -23,6 +23,7 @@ namespace space {
 			return "window";
 		}
 		virtual void navigate(const string& uri);
+		int notify(const string &event, SPObject *sender, SPEventArgs *data) override;
 		void pack() override;
 	};
 };

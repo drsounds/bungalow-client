@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <ShlObj.h>
 #include <commdlg.h>
+#include <shellapi.h>
 
 #include <filesystem>
 #include <functional>
@@ -448,6 +449,11 @@ std::string showFolderDialog(const std::string& title, const std::string& initia
     dlg->Release();
     for (char& c : result) if (c == '\\') c = '/';
     return result;
+}
+
+void openExternalUrl(const std::string& url) {
+    if (url.rfind("https://", 0) != 0 && url.rfind("http://", 0) != 0) return;
+    ShellExecuteW(nullptr, L"open", widen(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
 std::string userDataDir() {

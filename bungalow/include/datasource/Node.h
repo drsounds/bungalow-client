@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace space {
 
@@ -33,9 +34,20 @@ public:
     virtual std::string uri() const = 0;
 };
 
+/**
+ * A name shown in a table cell that opens a page when clicked: one of a
+ * track's artists, or its release. An empty uri is shown as plain text.
+ */
+struct EntityLink {
+    std::string name;
+    std::string uri;
+};
+
 /** MediaEntity — an entity that may have something to play. */
 class MediaEntity : public Entity {
 public:
+    /** The credited artists one by one, each with the page it opens; see artistNames(). */
+    virtual std::vector<EntityLink> artistLinks() const { return {}; }
     /** The direct playback URI, "" when there is nothing local to play. */
     virtual std::string playUri() const { return ""; }
     /** False greys the row out. Entities that open a page rather than play stay enabled. */

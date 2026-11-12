@@ -18,6 +18,14 @@ class SPImageElement : public SPElement
         SPImageElement(SPElement *parent);
         virtual ~SPImageElement();
         void paint(int x, int y, SPGraphicsContext *g) override;
+        /// With a uri (or href) attribute the image is a link: a click
+        /// navigates to it.
+        int notify(const string &event, SPObject *sender, SPEventArgs *data) override;
+        /// The src attribute is the picture to show, not a template.
+        void loadSrc(const string &uri) override {
+            this->setSrc(uri);
+            this->invalidate();
+        }
         virtual string getType() override {
             return "img";
         }

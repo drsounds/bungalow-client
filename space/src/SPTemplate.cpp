@@ -94,14 +94,13 @@ int appendPrint(lua_State *state) {
 	return 0;
 }
 
-// escape(value): makes entity data safe to interpolate into XUL markup.
-int escapeXml(lua_State *state) {
-	if (lua_isnoneornil(state, 1)) {
-		lua_pushliteral(state, "");
-		return 1;
-	}
+// The Lua value at index as text with the XML special characters escaped,
+// "" for nil or a missing argument.
+std::string escapedArgument(lua_State *state, int index) {
+	if (lua_isnoneornil(state, index))
+		return std::string();
 	size_t size = 0;
-	const char *text = luaL_tolstring(state, 1, &size);
+	const char *text = luaL_tolstring(state, index, &size);
 	std::string escaped;
 	escaped.reserve(size);
 	for (size_t i = 0; i < size; ++i) {
@@ -114,7 +113,24 @@ int escapeXml(lua_State *state) {
 		default: escaped.push_back(text[i]);
 		}
 	}
+	lua_pop(state, 1); // the string luaL_tolstring pushed
+	return escaped;
+}
+
+// escape(value): makes entity data safe to interpolate into XUL markup.
+int escapeXml(lua_State *state) {
+	const std::string escaped = escapedArgument(state, 1);
 	lua_pushlstring(state, escaped.data(), escaped.size());
+	return 1;
+}
+
+// link(uri, text): <link uri="uri">text</link> with both escaped, for a
+// clickable link in a text body. text defaults to the URI.
+int linkXml(lua_State *state) {
+	const std::string uri = escapedArgument(state, 1);
+	const std::string text = lua_isnoneornil(state, 2) ? uri : escapedArgument(state, 2);
+	const std::string markup = "<link uri=\"" + uri + "\">" + text + "</link>";
+	lua_pushlstring(state, markup.data(), markup.size());
 	return 1;
 }
 
@@ -167,6 +183,8 @@ std::string SPTemplate::render(const std::string &source,
 	lua_setglobal(state.get(), "print");
 	lua_pushcfunction(state.get(), escapeXml);
 	lua_setglobal(state.get(), "escape");
+	lua_pushcfunction(state.get(), linkXml);
+	lua_setglobal(state.get(), "link");
 
 	lua_pushlstring(state.get(), method.data(), method.size());
 	lua_setglobal(state.get(), "method");
