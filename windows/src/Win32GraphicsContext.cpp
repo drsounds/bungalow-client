@@ -24,6 +24,9 @@ namespace Gdiplus
 #include <commctrl.h>
 #include <wingdi.h>
 
+#include <nanosvg/nanosvg.h>
+#include <nanosvg/nanosvgrast.h>
+
 #include "SPElement.h"
 #include "SPImage.h"
 #include "SPInputElement.h"
@@ -713,10 +716,52 @@ namespace space
             blit(*strip, rect.x, rect.y, rect.width, rect.height);
     }
 
+    namespace
+    {
+        // Rasterises an SVG to a 16x16 icon, matching what wxBitmapBundle::FromSVGFile does.
+        SPImage *loadSvgIcon(const string& path, int size)
+        {
+            NSVGimage *svg = nsvgParseFromFile(path.c_str(), "px", 96.0f);
+            if (!svg)
+                return nullptr;
+            if (svg->width <= 0 || svg->height <= 0)
+            {
+                nsvgDelete(svg);
+                return nullptr;
+            }
+            NSVGrasterizer *rasterizer = nsvgCreateRasterizer();
+            if (!rasterizer)
+            {
+                nsvgDelete(svg);
+                return nullptr;
+            }
+            const float scale = std::min(size / svg->width, size / svg->height);
+            const float offsetX = (size - svg->width * scale) / 2.0f;
+            const float offsetY = (size - svg->height * scale) / 2.0f;
+            std::vector<unsigned char> rgba(static_cast<size_t>(size) * size * 4, 0);
+            nsvgRasterize(rasterizer, svg, offsetX, offsetY, scale, rgba.data(), size, size, size * 4);
+            nsvgDeleteRasterizer(rasterizer);
+            nsvgDelete(svg);
+
+            SPImage *image = new SPImage(size, size);
+            for (int i = 0; i < size * size; ++i)
+            {
+                // nanosvg output is straight (non-premultiplied) RGBA, as SPImage expects.
+                image->pixels[i].r = rgba[i * 4];
+                image->pixels[i].g = rgba[i * 4 + 1];
+                image->pixels[i].b = rgba[i * 4 + 2];
+                image->pixels[i].a = rgba[i * 4 + 3];
+            }
+            return image;
+        }
+    }
+
     SPImage *Win32GraphicsContext::loadImage(const string& bitmap)
     {
         try
         {
+            if (bitmap.size() > 4 && _stricmp(bitmap.c_str() + bitmap.size() - 4, ".svg") == 0)
+                return loadSvgIcon(bitmap, 16);
             return new SPImage(bitmap);
         }
         catch (...)
