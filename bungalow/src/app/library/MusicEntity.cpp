@@ -15,6 +15,19 @@ std::string joinNames(const std::vector<SPArtist>& artists) {
     return names;
 }
 
+// The library's detail pages; see views::libraryUri().
+const char* const kArtistPage  = "bungalow:library:artist:";
+const char* const kReleasePage = "bungalow:library:release:";
+
+// One link per artist, to the artist's page, in credit order.
+std::vector<EntityLink> artistPageLinks(const std::vector<SPArtist>& artists) {
+    std::vector<EntityLink> links;
+    links.reserve(artists.size());
+    for (const auto& artist : artists)
+        links.push_back({artist.name, artist.isni.empty() ? std::string() : kArtistPage + artist.isni});
+    return links;
+}
+
 } // namespace
 
 namespace views {
@@ -55,6 +68,10 @@ std::string MusicEntity::text(MusicColumn column) const {
     }
 }
 
+std::vector<EntityLink> MusicEntity::links(MusicColumn column) const {
+    return column == MusicColumn::Artists ? artistLinks() : std::vector<EntityLink>();
+}
+
 // ── ArtistEntity ──────────────────────────────────────────────────────────────
 
 ArtistEntity::ArtistEntity(SPArtist artist, int recordingCount, int releaseCount)
@@ -80,6 +97,10 @@ std::string RecordingEntity::artistNames() const {
     return joinNames(m_artists);
 }
 
+std::vector<EntityLink> RecordingEntity::artistLinks() const {
+    return artistPageLinks(m_artists);
+}
+
 std::string RecordingEntity::text(MusicColumn column) const {
     switch (column) {
     case MusicColumn::Version: return m_recording.version;
@@ -95,6 +116,10 @@ ReleaseEntity::ReleaseEntity(SPRelease release, std::vector<SPArtist> artists, i
 
 std::string ReleaseEntity::artistNames() const {
     return joinNames(m_artists);
+}
+
+std::vector<EntityLink> ReleaseEntity::artistLinks() const {
+    return artistPageLinks(m_artists);
 }
 
 std::string ReleaseEntity::text(MusicColumn column) const {
@@ -118,6 +143,17 @@ TrackEntity::TrackEntity(SPTrack track, SPRecording recording, std::optional<SPR
 
 std::string TrackEntity::artistNames() const {
     return joinNames(m_artists);
+}
+
+std::vector<EntityLink> TrackEntity::artistLinks() const {
+    return artistPageLinks(m_artists);
+}
+
+std::vector<EntityLink> TrackEntity::links(MusicColumn column) const {
+    const bool releaseColumn = column == MusicColumn::Release || column == MusicColumn::Appearance;
+    if (releaseColumn && m_release && !m_release->name.empty() && !m_release->upc.empty())
+        return {{m_release->name, kReleasePage + m_release->upc}};
+    return MusicEntity::links(column);
 }
 
 std::string TrackEntity::text(MusicColumn column) const {

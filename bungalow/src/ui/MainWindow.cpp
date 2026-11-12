@@ -6,6 +6,7 @@
 #include "feature/FeatureManager.h"
 #include "search/SearchManager.h"
 #include "web/BookmarkManager.h"
+#include "web/SiteUri.h"
 #include "playlist/Upsl.h"
 
 #include "BungalowApp.h"
@@ -160,8 +161,38 @@ namespace ui {
 
     // ── Navigation ────────────────────────────────────────────────────────────
 
+    static bool isWebUrl(const string& uri) {
+        return uri.rfind("https://", 0) == 0 || uri.rfind("http://", 0) == 0;
+    }
+
+    void MainWindow::openWebUrl(const string& url) const
+    {
+        // The wtl backend only has a site browser when built with CEF; the
+        // wxWidgets one always has a web view.
+#if defined(BUNGALOW_WTL) && !defined(BUNGALOW_CEF)
+        const bool embedded = false;
+#else
+        const bool embedded = true;
+#endif
+        string siteUri;
+        if (embedded && url.rfind("https://", 0) == 0 && !views::ConfigView::getForceExternalLinks())
+            siteUri = web::SiteUri::toBungalowUri(url);
+        if (siteUri.empty()) {
+            platform::openExternalUrl(url);
+            return;
+        }
+        this->viewStack->navigate(siteUri);
+        showCurrentUri(siteUri);
+        m_sidebar->select(siteUri);
+    }
+
     void MainWindow::navigate(const string& uri) const
     {
+        // Web links, e.g. <a href="https://…"> in a label.
+        if (isWebUrl(uri)) {
+            openWebUrl(uri);
+            return;
+        }
         string normalized = normalizeScheme(uri);
         this->viewStack->navigate(normalized);
         showCurrentUri(normalized);

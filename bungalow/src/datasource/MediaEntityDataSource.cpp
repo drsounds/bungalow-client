@@ -1,6 +1,23 @@
 #include "datasource/MediaEntityDataSource.h"
 
+#include "SPRichText.h"
+
 namespace space {
+
+std::string entityLinksMarkup(const std::vector<EntityLink>& links) {
+    std::string markup;
+    bool clickable = false;
+    for (const auto& link : links) {
+        if (!markup.empty()) markup += ", ";
+        if (link.uri.empty()) {
+            markup += SPRichText::escape(link.name);
+        } else {
+            markup += SPRichText::link(link.uri, link.name);
+            clickable = true;
+        }
+    }
+    return clickable ? markup : std::string();
+}
 
 std::string MediaEntityDataSource::getRowUri(int index) {
     // The table compares this against the current playable to highlight the
@@ -43,6 +60,7 @@ std::vector<PlayQueueEntry> MediaEntityDataSource::buildQueueEntries() const {
         PlayQueueEntry e;
         e.displayTitle  = media->name();
         e.displayArtist = media->artistNames();
+        e.artistMarkup  = entityLinksMarkup(media->artistLinks());
         e.uri           = media->playUri();
         e.playable      = (media->isPlayable() && !e.uri.empty()) || playableElsewhere(*media);
         e.isrc          = media->isrc();

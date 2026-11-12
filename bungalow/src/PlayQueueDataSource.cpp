@@ -16,6 +16,12 @@ std::string PlayQueueDataSource::getTextForCell(int column, int row) {
     return column == 0 ? e.displayTitle : e.displayArtist;
 }
 
+// The artists are links to their pages when the queue was built from entities.
+std::string PlayQueueDataSource::getMarkupForCell(int column, int row) {
+    if (column != 1 || row < 0 || row >= static_cast<int>(m_entries.size())) return "";
+    return m_entries[row].artistMarkup;
+}
+
 bool PlayQueueDataSource::isRowPlayable(int row) {
     if (row < 0 || row >= static_cast<int>(m_entries.size())) return false;
     return m_entries[row].playable;

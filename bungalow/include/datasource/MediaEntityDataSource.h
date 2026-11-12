@@ -10,6 +10,12 @@
 namespace space {
 
 /**
+ * @p links as table cell markup (see SPRichText): the names joined by ", ",
+ * each one a link to its page. "" when there is nothing to click.
+ */
+std::string entityLinksMarkup(const std::vector<EntityLink>& links);
+
+/**
  * MediaEntityDataSource — a table of entities that may be played. It answers
  * the table's playback questions (which row is playing, which are greyed
  * out) and turns its rows into a play queue.

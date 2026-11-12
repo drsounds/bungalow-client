@@ -1,5 +1,7 @@
 #include "LibraryDataSource.h"
 
+#include "SPRichText.h"
+
 #include <unordered_map>
 
 namespace space {
@@ -18,7 +20,14 @@ static const char* kQuery = R"(
         t.id                                         AS track_id,
         CASE WHEN EXISTS (
             SELECT 1 FROM playable_tracks pt WHERE pt.track_id = t.id
-        ) THEN 1 ELSE 0 END                          AS is_playable
+        ) THEN 1 ELSE 0 END                          AS is_playable,
+        COALESCE((
+            SELECT GROUP_CONCAT(a2.isni || char(31) || a2.name, char(30))
+            FROM recording_artists ra2
+            JOIN artists a2 ON a2.isni = ra2.artist_id
+            WHERE ra2.recording_id = rec.isrc
+        ), '')                                       AS artist_links,
+        COALESCE(rel.upc, '')                        AS release_upc
     FROM saves s
     JOIN tracks             t   ON t.id            = s.track_id
     JOIN recordings         rec ON rec.isrc         = t.recording_id
@@ -63,6 +72,15 @@ std::string LibraryDataSource::getTextForCell(int column, int row) {
     }
 }
 
+std::string LibraryDataSource::getMarkupForCell(int column, int row) {
+    if (row < 0 || row >= static_cast<int>(m_rows.size())) return "";
+    switch (column) {
+        case 1: return m_rows[row].artistsMarkup;
+        case 2: return m_rows[row].releaseMarkup;
+        default: return "";
+    }
+}
+
 int LibraryDataSource::getTrackIdForRow(int row) {
     if (row < 0 || row >= static_cast<int>(m_rows.size())) return 0;
     return m_rows[row].trackId;
@@ -96,6 +114,24 @@ void LibraryDataSource::load(sqlite3* db) {
         r.releaseName = col(2);
         r.trackId     = sqlite3_column_int(stmt, 3);
         r.playable    = sqlite3_column_int(stmt, 4) != 0;
+
+        // artist_links is "isni<US>name" per artist, separated by <RS>.
+        const std::string artistLinks = col(5);
+        for (size_t start = 0; start < artistLinks.size();) {
+            size_t end = artistLinks.find('\x1e', start);
+            if (end == std::string::npos) end = artistLinks.size();
+            const std::string item = artistLinks.substr(start, end - start);
+            const size_t split = item.find('\x1f');
+            if (split != std::string::npos && split > 0) {
+                if (!r.artistsMarkup.empty()) r.artistsMarkup += ", ";
+                r.artistsMarkup += SPRichText::link(
+                    "bungalow:library:artist:" + item.substr(0, split), item.substr(split + 1));
+            }
+            start = end + 1;
+        }
+        const std::string upc = col(6);
+        if (!upc.empty() && !r.releaseName.empty())
+            r.releaseMarkup = SPRichText::link("bungalow:library:release:" + upc, r.releaseName);
         m_rows.push_back(std::move(r));
     }
 

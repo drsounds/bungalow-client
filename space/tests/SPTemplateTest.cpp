@@ -66,5 +66,15 @@ int main() {
 		std::cerr << "escape() did not produce safe XUL: " << entity << '\n';
 		return 1;
 	}
+
+	const std::string linked = space::SPTemplate::render(
+		"<text>By ${link(model.uri, model.name)} ${link(model.uri)}</text>", "GET",
+		"bungalow:artist:1", "", nlohmann::json::object(),
+		{{"uri", "bungalow:artist:\"1\""}, {"name", "Simon & <Garfunkel>"}});
+	if (linked != "<text>By <link uri=\"bungalow:artist:&quot;1&quot;\">Simon &amp; &lt;Garfunkel&gt;</link> "
+				  "<link uri=\"bungalow:artist:&quot;1&quot;\">bungalow:artist:&quot;1&quot;</link></text>") {
+		std::cerr << "link() did not produce a safe link: " << linked << '\n';
+		return 1;
+	}
 	return 0;
 }

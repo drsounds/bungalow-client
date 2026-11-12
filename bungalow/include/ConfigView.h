@@ -35,6 +35,9 @@ public:
     /// The user's @user@instance handle that new playlists are federated
     /// under (RFC-0001): the "federatedHandle" setting, or a local default.
     static string getFederatedHandle();
+    /// The "forceExternalLinks" setting: web links open in the system
+    /// browser even when they could be shown in a site view.
+    static bool getForceExternalLinks();
     void loadSettings();
     void saveSettings();
 
@@ -46,6 +49,7 @@ public:
     int onBrowseMusicClicked(SPObject* sender, SPEventArgs* e);
     int onDeveloperModeClicked(SPObject* sender, SPEventArgs* e);
     int onFullWidthAddressBarClicked(SPObject* sender, SPEventArgs* e);
+    int onForceExternalLinksClicked(SPObject* sender, SPEventArgs* e);
 
     // Aero header-style callbacks
     int onAeroHeaderSolidClicked(SPObject* sender, SPEventArgs* e);
@@ -68,6 +72,7 @@ private:
     SPButtonElement* m_developerModeButton    = nullptr;
     SPDropdownElement* m_skinDropdown         = nullptr;
     SPButtonElement* m_fullWidthAddressBarButton = nullptr;
+    SPButtonElement* m_forceExternalLinksButton = nullptr;
 
     // Aero header style buttons
     SPButtonElement* m_aeroHeaderSolidBtn        = nullptr;
@@ -91,6 +96,7 @@ private:
     bool   m_pendingDeveloperMode      = false;
     string m_pendingSkinType           = "modern";
     bool   m_pendingFullWidthAddressBar = true;
+    bool   m_pendingForceExternalLinks = false;
 
     // Aero-specific pending values
     float           m_pendingAeroHue         = 200.0f;
@@ -104,6 +110,7 @@ private:
     void updateGlossyButton();
     void updateDeveloperModeButton();
     void updateFullWidthAddressBarButton();
+    void updateForceExternalLinksButton();
     void updateAeroHeaderStyleButtons();
     void updateAeroSectionVisibility();
     void syncSliderContext();

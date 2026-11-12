@@ -294,6 +294,12 @@ if(BUILD_TESTING)
     target_link_libraries(bungalow-uri-store-test PRIVATE nlohmann_json::nlohmann_json)
     add_test(NAME bungalow-uri-store-test COMMAND bungalow-uri-store-test)
 
+    add_executable(bungalow-rich-text-test
+        space/tests/SPRichTextTest.cpp
+        space/src/SPRichText.cpp)
+    target_include_directories(bungalow-rich-text-test PRIVATE space/include)
+    add_test(NAME bungalow-rich-text-test COMMAND bungalow-rich-text-test)
+
     add_executable(bungalow-string-test space/tests/SPStringTest.cpp)
     target_include_directories(bungalow-string-test PRIVATE space/include)
     add_test(NAME bungalow-string-test COMMAND bungalow-string-test)

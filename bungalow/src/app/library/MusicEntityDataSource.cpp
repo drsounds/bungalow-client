@@ -21,4 +21,10 @@ std::string MusicEntityDataSource::getTextForCell(int column, int row) {
     return entity->text(m_columns[column]);
 }
 
+std::string MusicEntityDataSource::getMarkupForCell(int column, int row) {
+    const Row entity = rowAt(row);
+    if (!entity || column < 0 || column >= static_cast<int>(m_columns.size())) return "";
+    return entityLinksMarkup(entity->links(m_columns[column]));
+}
+
 } // namespace space

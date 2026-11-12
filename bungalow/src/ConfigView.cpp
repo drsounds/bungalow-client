@@ -240,6 +240,16 @@ ConfigView::ConfigView(SPElement *parent) : SPViewElement(parent) {
         this, m_fullWidthAddressBarButton
     );
 
+    // ── Links section ──────────────────────────────────────────────────────
+    makeLabel(this, "Web Links", 20);
+
+    m_forceExternalLinksButton = makeButton(this, "Open in System Browser: Off", 220, 28);
+    m_forceExternalLinksButton->addEventListener(
+        "click",
+        reinterpret_cast<SPCallback>(&ConfigView::onForceExternalLinksClicked),
+        this, m_forceExternalLinksButton
+    );
+
     // ── Developer section ──────────────────────────────────────────────────
     makeLabel(this, "Developer", 20);
 
@@ -352,6 +362,20 @@ string ConfigView::getFederatedHandle() {
     return playlist::Upsl::defaultHandle();
 }
 
+bool ConfigView::getForceExternalLinks() {
+    std::ifstream file(getSettingsPath());
+    if (file.is_open()) {
+        std::ostringstream ss;
+        ss << file.rdbuf();
+        try {
+            nlohmann::json obj = nlohmann::json::parse(ss.str());
+            if (obj.contains("forceExternalLinks") && obj.at("forceExternalLinks").is_boolean())
+                return obj.at("forceExternalLinks").get<bool>();
+        } catch (...) {}
+    }
+    return false;
+}
+
 // ── Button state helpers ──────────────────────────────────────────────────────
 
 void ConfigView::updateModeButtons() {
@@ -422,6 +446,8 @@ void ConfigView::loadSettings() {
                 m_pendingSkinType = obj.at("skinType").get<string>();
             if (obj.contains("fullWidthAddressBar"))
                 m_pendingFullWidthAddressBar = obj.at("fullWidthAddressBar").get<bool>();
+            if (obj.contains("forceExternalLinks"))
+                m_pendingForceExternalLinks = obj.at("forceExternalLinks").get<bool>();
             if (obj.contains("downloadsFolder") && m_downloadsFolderInput)
                 m_downloadsFolderInput->setValue(
                     obj.at("downloadsFolder").get<string>());
@@ -463,6 +489,7 @@ void ConfigView::loadSettings() {
         m_skinDropdown->setSelectedValue(m_pendingSkinType);
     updateDeveloperModeButton();
     updateFullWidthAddressBarButton();
+    updateForceExternalLinksButton();
     updateAeroHeaderStyleButtons();
     updateAeroSectionVisibility();
 
@@ -498,6 +525,7 @@ void ConfigView::saveSettings() {
     obj["developerMode"]        = m_pendingDeveloperMode;
     obj["skinType"]             = m_pendingSkinType;
     obj["fullWidthAddressBar"]  = m_pendingFullWidthAddressBar;
+    obj["forceExternalLinks"]   = m_pendingForceExternalLinks;
     obj["aeroHue"]              = static_cast<double>(m_pendingAeroHue);
     obj["aeroSaturation"]       = static_cast<double>(m_pendingAeroSaturation);
     obj["aeroLightness"]        = static_cast<double>(m_pendingAeroLightness);
@@ -613,6 +641,18 @@ int ConfigView::onDeveloperModeClicked(SPObject* /*sender*/, SPEventArgs* /*e*/)
 void ConfigView::updateFullWidthAddressBarButton() {
     applyToggleButton(m_fullWidthAddressBarButton, m_pendingFullWidthAddressBar,
                       "Full Width: On", "Full Width: Off");
+}
+
+void ConfigView::updateForceExternalLinksButton() {
+    applyToggleButton(m_forceExternalLinksButton, m_pendingForceExternalLinks,
+                      "Open in System Browser: On", "Open in System Browser: Off");
+}
+
+int ConfigView::onForceExternalLinksClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {
+    m_pendingForceExternalLinks = !m_pendingForceExternalLinks;
+    updateForceExternalLinksButton();
+    this->invalidate();
+    return 0;
 }
 
 int ConfigView::onFullWidthAddressBarClicked(SPObject* /*sender*/, SPEventArgs* /*e*/) {

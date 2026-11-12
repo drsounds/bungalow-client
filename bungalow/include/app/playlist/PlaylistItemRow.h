@@ -32,6 +32,8 @@ public:
 
     std::string playUri() const override;
     std::string artistNames() const override;
+    std::vector<EntityLink> artistLinks() const override;
+    std::vector<EntityLink> links(MusicColumn column) const override;
     int64_t     trackId() const override;
     std::string isrc() const override;
     /** "#" is the place in the playlist; other columns are the entity's. */

@@ -18,6 +18,16 @@ std::string PlaylistItemRow::artistNames() const {
     return m_media ? m_media->artistNames() : "";
 }
 
+std::vector<EntityLink> PlaylistItemRow::artistLinks() const {
+    return m_media ? m_media->artistLinks() : std::vector<EntityLink>();
+}
+
+std::vector<EntityLink> PlaylistItemRow::links(MusicColumn column) const {
+    if (column == MusicColumn::Artists) return artistLinks();
+    if (column == MusicColumn::Number || column == MusicColumn::Name) return {};
+    return m_music ? m_music->links(column) : std::vector<EntityLink>();
+}
+
 int64_t PlaylistItemRow::trackId() const {
     return m_media ? m_media->trackId() : 0;
 }

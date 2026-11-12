@@ -48,8 +48,9 @@ These tags are available in view markup and templates (`SPElement::createElement
 | `<section>` | `SPSectionElement` | a titled block |
 | `<vbox>` / `<hbox>` | `SPVBoxElement` / `SPHBoxElement` | column / row layout |
 | `<splitter>` | `SPSplitterElement` | a draggable divider |
-| `<text>` | `SPTextElement` | text, from the element body |
-| `<img>` | `SPImageElement` | an image |
+| `<text>` | `SPTextElement` | text, from the element body; may hold [links and formatting](#rich-text-and-links) |
+| `<link>` / `<a>` | `SPLinkElement` | text that navigates to its `uri` (or `href`) when clicked |
+| `<img>` | `SPImageElement` | an image, from `src`; with a `uri` it is a link |
 | `<button>` | `SPButtonElement` | `onclick` posts back the named action |
 | `<input>` | `SPInputElement` | a named field is sent with postbacks |
 | `<checkbox>` | `SPCheckBoxElement` | a check box |
@@ -59,6 +60,50 @@ Shell-level elements such as `<appheader>`, `<appfooter>`, `<tabbar>`,
 tables (`SPTableViewElement` with `SPTableDataSource`), dropdowns, a seek bar,
 the now-playing bar, a colour chooser and the Aero colour slider, which views
 create in code.
+
+## Rich text and links
+
+A text body, a table cell and any label set with `setInnerHTML()` can use a
+small subset of HTML (`SPRichText`):
+
+| Markup | Meaning |
+|--------|---------|
+| `<link uri="…">text</link>`, `<a href="…">text</a>` | a link; a click navigates to the URI |
+| `<b>`, `<strong>`, `<i>`, `<em>`, `<u>` | bold, italic, underlined |
+| `<br />` | a line break (lines do not wrap by themselves) |
+| `<img src="…" uri="…" width="…" height="…" />` | an image in the line; `uri` makes it a link |
+| `&amp;` `&lt;` `&gt;` `&quot;` `&apos;` `&nbsp;` `&#N;` | entities |
+
+```xml
+<text>By <link uri="bungalow:artist:1">Queen</link> on <i>A Night at the Opera</i></text>
+```
+
+In XUL, a body that mixes text with these tags becomes one label, and
+whitespace collapses as in HTML. A `<link>` or `<a>` that stands on its own
+between other elements is an element of its own.
+
+A click on a link asks the window to navigate (`SPElement::activateLink`). In
+the client, `MainWindow::navigate` sends a `bungalow:` URI to the view stack
+and an `http(s)` URL to a site view, or to the system browser when there is no
+embedded browser, the URL is not `https`, or **Settings → Web Links → Open in
+System Browser** (`forceExternalLinks`) is on. Links take the `linkcolor`
+attribute, show a hand cursor and are underlined under the pointer.
+
+In code:
+
+```cpp
+label->setInnerHTML("By " + SPRichText::link("bungalow:artist:1", artistName));
+```
+
+Plain `setInnerText()` never reads markup. Data that goes into markup must be
+escaped, with `SPRichText::escape()` / `link()` in C++ or `escape()` / `link()`
+in a [template](./templates.md#functions), or a name such as `<b>` would be
+read as a tag.
+
+**Tables** draw a cell as rich text when the data source returns markup from
+`getMarkupForCell(column, row)`. The music tables do this for the Artists and
+Release columns, so each artist and the release open their library page. A
+click on a link does not select or play the row.
 
 ## Common attributes
 

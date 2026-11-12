@@ -13,6 +13,8 @@ struct LibraryRow {
     std::string name;        // recording name
     std::string artists;     // comma-joined recording artist names
     std::string releaseName; // release name
+    std::string artistsMarkup; // the artists as links to their pages (SPRichText markup), "" without any
+    std::string releaseMarkup; // the release as a link to its page, "" without one
     int         trackId  = 0;
     bool        playable = false; // true if at least one playable_tracks entry exists
 };
@@ -34,6 +36,7 @@ public:
     int         getColumnCount()                    override { return 3; }
     int         getRowCount()                       override;
     std::string getTextForCell(int column, int row) override;
+    std::string getMarkupForCell(int column, int row) override;
     std::string getTextForColumn(int column)        override;
     int         getTrackIdForRow(int row)           override;
     bool        isRowPlayable(int row)              override;

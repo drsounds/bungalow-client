@@ -48,6 +48,8 @@ public:
     int         getColumnCount()                    override { return static_cast<int>(m_columns.size()); }
     std::string getTextForColumn(int column)        override;
     std::string getTextForCell(int column, int row) override;
+    /** Artists and releases are links to their pages; see MusicEntity::links(). */
+    std::string getMarkupForCell(int column, int row) override;
 
 private:
     std::vector<MusicColumn> m_columns;

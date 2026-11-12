@@ -103,6 +103,10 @@ namespace space {
             // Mirrors the current URI into the address bar, or into the search
             // field when the address bar is hidden.
             void showCurrentUri(const string& uri) const;
+            // Shows an http(s) page: in a site view, or in the system browser
+            // when there is no embedded browser, the page is not https or
+            // the "forceExternalLinks" setting is on.
+            void openWebUrl(const string& url) const;
     };
     } // namespace ui
 }

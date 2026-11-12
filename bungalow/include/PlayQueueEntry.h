@@ -8,6 +8,8 @@
 struct PlayQueueEntry {
     std::string displayTitle;    // track name (e.g. "Bohemian Rhapsody")
     std::string displayArtist;   // primary artist name (e.g. "Queen")
+    std::string artistMarkup;    // displayArtist as SPRichText markup with a link per artist;
+                                 // "" when their pages are unknown and displayArtist is shown
     std::string coverArtPath;    // optional cover art (empty for bulk-built queues)
     std::string uri;             // direct playback URI, e.g. the local file (may be empty)
     bool        playable = true; // false → greyed out, skipped by next/prev

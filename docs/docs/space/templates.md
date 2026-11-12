@@ -56,6 +56,21 @@ std::string xul = space::SPTemplate::render(
     source, "GET", "bungalow:start", "", data, model, /*modelGlobals*/ false);
 ```
 
+## Functions
+
+| Function | Result |
+|----------|--------|
+| `escape(value)` | `value` with `& < > " '` as entities, so data cannot be read as markup |
+| `link(uri, text)` | `<link uri="uri">text</link>` with both escaped; `text` defaults to the URI |
+
+Text bodies can hold links and simple formatting; see
+[Rich text](./elements-and-xul.md#rich-text-and-links):
+
+```xml
+<text>By ${link("bungalow:artist:" .. model.entity.isni, model.entity.name)}</text>
+<text>Read more on <a href="https://example.com">the <b>site</b></a>.</text>
+```
+
 ## Rendering a URI: the `src` attribute
 
 Setting an element's `src` to a `bungalow:` URI renders the template for that

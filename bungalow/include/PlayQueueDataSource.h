@@ -23,6 +23,7 @@ public:
     int         getColumnCount()                    override { return 2; }
     int         getRowCount()                       override;
     std::string getTextForCell(int column, int row) override;
+    std::string getMarkupForCell(int column, int row) override;
     std::string getTextForColumn(int column)        override;
     bool        isRowPlayable(int row)              override;
     bool        isRowActive(int index)              override;

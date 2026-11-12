@@ -42,6 +42,12 @@ class MusicEntity : public MediaEntity {
 public:
     /** The cell text for @p column, "" for columns this entity doesn't have. */
     virtual std::string text(MusicColumn column) const;
+    /**
+     * The cell as names that can be clicked: every artist of the Artists
+     * column, the release of the Release columns. Empty for a column that
+     * is plain text; otherwise the names, joined by ", ", are text().
+     */
+    virtual std::vector<EntityLink> links(MusicColumn column) const;
 };
 
 /** An artist, with how much of the library credits them. */
@@ -78,6 +84,7 @@ public:
     std::string uri() const override { return "musik:isrc:" + m_recording.isrc; }
     std::string playUri() const override { return m_playUri; }
     std::string artistNames() const override;
+    std::vector<EntityLink> artistLinks() const override;
     int64_t     trackId() const override { return m_trackId; }
     std::string text(MusicColumn column) const override;
 
@@ -101,6 +108,7 @@ public:
     std::string uri() const override { return "musik:upc:" + m_release.upc; }
     bool        isPlayable() const override { return true; } // not greyed out: rows open the release page
     std::string artistNames() const override;
+    std::vector<EntityLink> artistLinks() const override;
     std::string text(MusicColumn column) const override;
 
 private:
@@ -131,9 +139,11 @@ public:
     std::string uri() const override { return "musik:isrc:" + m_recording.isrc; }
     std::string playUri() const override { return m_playUri; }
     std::string artistNames() const override;
+    std::vector<EntityLink> artistLinks() const override;
     int64_t     trackId() const override { return m_track.id; }
     std::string isrc() const override { return m_recording.isrc; }
     std::string text(MusicColumn column) const override;
+    std::vector<EntityLink> links(MusicColumn column) const override;
 
 private:
     SPTrack                  m_track;
