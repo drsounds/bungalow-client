@@ -142,6 +142,7 @@ public:
 	MESSAGE_HANDLER(WM_SYSCOMMAND, OnSysCommand)
 	MESSAGE_HANDLER(WM_SETTINGCHANGE, OnSettingChange)
 	MESSAGE_HANDLER(WM_MOUSELEAVE, OnMouseLeave)
+	MESSAGE_HANDLER(WM_SETCURSOR, OnSetCursor)
 	MSG_WM_LBUTTONDOWN(OnLeftButtonDown)
 	MSG_WM_LBUTTONUP(OnLeftButtonUp)
 	MSG_WM_RBUTTONDOWN(OnRightButtonDown)
@@ -324,7 +325,11 @@ public:
 			return;
 		app.mouseEvent("mousemove", point.x, point.y, 0, IsCommandDown());
 
-		// IDC_SIZEWE over a splitter, IDC_HAND over a link, IDC_ARROW otherwise.
+		ApplyCursorHint();
+	}
+
+	// IDC_SIZEWE over a splitter, IDC_HAND over a link, IDC_ARROW otherwise.
+	static void ApplyCursorHint() {
 		LPCWSTR cursor = MAKEINTRESOURCEW(32512);
 		switch (space::SPElement::getCursorHint()) {
 		case space::SPElement::SPCursorHint::ResizeHorizontal: cursor = MAKEINTRESOURCEW(32644); break;
@@ -332,6 +337,18 @@ public:
 		default: break;
 		}
 		::SetCursor(::LoadCursorW(nullptr, cursor));
+	}
+
+	// Windows asks for the cursor again on every button press and release; answer
+	// with the last hint, so a link keeps its hand until the pointer moves away.
+	LRESULT OnSetCursor(UINT, WPARAM, LPARAM lParam, BOOL &handled) {
+		if (LOWORD(lParam) != HTCLIENT || pressedItem != CaptionItem::None ||
+			space::SPElement::getCursorHint() == space::SPElement::SPCursorHint::Arrow) {
+			handled = FALSE;
+			return 0;
+		}
+		ApplyCursorHint();
+		return TRUE;
 	}
 
 	BOOL OnMouseWheel(UINT, short delta, CPoint point) {

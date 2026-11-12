@@ -234,6 +234,9 @@ namespace space {
             if (!link.empty()) {
                 m_pressedLink = link;
                 m_pressedCell = key;
+                // Keep the hand while the button is down, even off the link.
+                setMouseCapture(this);
+                this->claimLinkHover(link);
                 return;
             }
         }
@@ -300,6 +303,10 @@ namespace space {
     void SPTableElement::mouseMove(SPObject* /*sender*/, SPEventArgs* e) {
         auto *me = dynamic_cast<SPMouseEventArgs *>(e);
         if (!me) return;
+        if (!m_pressedLink.empty()) {
+            this->claimLinkHover(m_pressedLink);
+            return;
+        }
         if (!m_pressed) {
             CellKey key;
             const SPTableCell *cell = cellAt(me->getX(), me->getY(), &key);
@@ -323,6 +330,7 @@ namespace space {
         if (!m_pressedLink.empty()) {
             const string pressed = m_pressedLink;
             m_pressedLink.clear();
+            if (s_capturedElement == this) releaseMouseCapture();
             auto *me = dynamic_cast<SPMouseEventArgs *>(e);
             CellKey key;
             const SPTableCell *cell = me ? cellAt(me->getX(), me->getY(), &key) : nullptr;
