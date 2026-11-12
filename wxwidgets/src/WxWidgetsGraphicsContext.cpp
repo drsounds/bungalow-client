@@ -6,11 +6,13 @@
 #include <wx/wfstream.h>
 #include <wx/stdpaths.h>
 #include <wx/filename.h>
+#include <wx/dnd.h>
 
 #include <filesystem>
 #include <functional>
 #include <utility>
 
+#include "SPDragDrop.h"
 #include "SPImage.h"
 #include "SPInputEventArgs.h"
 #include "SPElement.h"
@@ -509,6 +511,21 @@ namespace space
                 if (!visible && found->second->HasFocus() && m_window)
                     m_window->SetFocus();
                 found->second->Show(visible);
+            }
+
+            // Other applications receive the URIs as text, one per line. The
+            // space widget's own drop target reads them from SPDragDrop instead.
+            bool WxWidgetsGraphicsContext::startDrag(const SPDragData& data, SPElement *) {
+                wxWindow *window = m_widget ? static_cast<wxWindow *>(m_widget) : m_window;
+                if (!window) return false;
+                wxString text;
+                for (const auto& uri : data.uris) {
+                    if (!text.empty()) text += "\n";
+                    text += wxString::FromUTF8(uri.c_str());
+                }
+                wxTextDataObject object(text);
+                wxDropSource source(object, window);
+                return source.DoDragDrop(wxDrag_CopyOnly) == wxDragCopy;
             }
 
             void WxWidgetsGraphicsContext::setControlAttribute(SPElement *elm, const string& attrName, const string& value) {

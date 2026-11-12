@@ -26,6 +26,7 @@ namespace space
         void setControlAttribute(SPElement *element, const string& name, const string& value) override;
         void setControlVisible(SPElement *element, bool visible) override;
         void focusControl(SPElement *element) override;
+        bool startDrag(const SPDragData& data, SPElement *source) override;
         void request(const string& method, const string& url, const string& data, RequestCallback callback) override;
         void drawImagePart(SPImage *image, int x, int y, int width, int height, int x1, int y1, int x2, int y2) override;
         void drawSkinImage(const string& resourceId, int x, int y, int width, int height) override;

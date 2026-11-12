@@ -65,6 +65,7 @@ namespace space
         void setControlAttribute(SPElement *, const string&, const string&) override;
         void setControlVisible(SPElement* elm, bool visible) override;
         void focusControl(SPElement* elm) override;
+        bool startDrag(const SPDragData& data, SPElement *source) override;
         void drawImagePart(SPImage *image, int x, int y, int width, int height, int x1, int y1, int x2, int y2) override;
         virtual void drawSkinImage(string resourceId, int x, int y, int w, int h);
         void setClip(const sp_rectangle& rect) override;

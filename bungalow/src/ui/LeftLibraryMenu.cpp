@@ -2,11 +2,9 @@
 
 #include "SPTreeItem.h"
 #include "SPTreeViewElement.h"
-#include "SPMouseEventArgs.h"
 #include "SPUri.h"
 #include "BungalowApp.h"
 #include "Database.h"
-#include "app/library/MusicDragDrop.h"
 #include "playlist/RootlistManager.h"
 
 #include <limits>
@@ -15,16 +13,11 @@ namespace space {
 namespace ui {
 
 LeftLibraryMenu::LeftLibraryMenu(SPTreeViewElement* tree) : m_tree(tree) {
-    views::MusicDragDrop::setHoverCallback([this] { onDragHoverDwell(); });
-    views::MusicDragDrop::setPointerCallbacks(
-        [this](int x, int y) { handleDragMove(x, y); },
-        [this](int x, int y) { handleDragEnd(x, y); });
+    SPDragDrop::registerTarget(m_tree, this);
 }
 
 LeftLibraryMenu::~LeftLibraryMenu() {
-    views::MusicDragDrop::setHoverCallback({});
-    views::MusicDragDrop::setPointerCallbacks({}, {});
-    views::MusicDragDrop::clear();
+    SPDragDrop::unregisterTarget(this);
 }
 
 SPTreeItem* LeftLibraryMenu::createItem(const navigation::SidebarNode& node) {
@@ -44,8 +37,7 @@ SPTreeItem* LeftLibraryMenu::createItem(const navigation::SidebarNode& node) {
 
 void LeftLibraryMenu::setNodes(const std::vector<navigation::SidebarNode>& nodes) {
     if (!m_tree) return;
-    views::MusicDragDrop::clearHoverTarget();
-    m_dropTarget = nullptr;
+    m_dropTarget = nullptr; // the items are about to be replaced
 
     // Group by section; an empty label collects top-level items that are not
     // in any section.
@@ -80,104 +72,59 @@ void LeftLibraryMenu::setNodes(const std::vector<navigation::SidebarNode>& nodes
     select(m_selectedUri);
 }
 
-void LeftLibraryMenu::clearDropTarget() {
+// ── Drop target ───────────────────────────────────────────────────────────────
+
+SPTreeItem* LeftLibraryMenu::playlistItemAt(int y) const {
+    SPTreeItem* item = m_tree ? m_tree->itemAtAbsoluteY(y) : nullptr;
+    if (!item || !item->isDraggable() || !item->getUri()) return nullptr;
+    return playlist::RootlistManager::playlistId(item->getUri()->getUri()).empty() ? nullptr : item;
+}
+
+void LeftLibraryMenu::setDropTarget(SPTreeItem* item) {
+    if (item == m_dropTarget) return;
+    if (m_dropTarget) m_dropTarget->setDropTarget(false);
+    m_dropTarget = item;
     if (m_dropTarget) {
-        m_dropTarget->setDropTarget(false);
-        m_dropTarget = nullptr;
-        m_tree->invalidate();
+        m_dropTarget->setDropTarget(true);
+        m_hoverStarted = std::chrono::steady_clock::now();
+        m_hoverOpened = false;
     }
-    views::MusicDragDrop::clearHoverTarget();
+    if (m_tree) m_tree->invalidate();
 }
 
-void LeftLibraryMenu::onDragHoverDwell() {
-    if (!m_dropTarget || !m_tree) return;
-    m_dropTarget->setDropTarget(false);
-    auto* eventArgs = new TreeViewEventArgs();
-    eventArgs->setItem(m_dropTarget);
-    m_tree->invalidate();
-    m_tree->notify("itemdraghovered", m_tree, eventArgs);
+bool LeftLibraryMenu::dragOver(int /*x*/, int y, const SPDragData& /*data*/) {
+    setDropTarget(playlistItemAt(y));
+    if (!m_dropTarget) return false;
+
+    // Resting on a playlist opens it. The item stays the drop target.
+    if (!m_hoverOpened && std::chrono::steady_clock::now() - m_hoverStarted >= kHoverOpenDelay) {
+        m_hoverOpened = true;
+        TreeViewEventArgs eventArgs;
+        eventArgs.setItem(m_dropTarget);
+        m_tree->notify("itemdraghovered", m_tree, &eventArgs);
+    }
+    return m_dropTarget != nullptr;
 }
 
-int LeftLibraryMenu::onDragMove(SPObject* /*sender*/, SPEventArgs* eventArgs) {
-    auto* args = dynamic_cast<SPMouseEventArgs*>(eventArgs);
-    if (!args) {
-        clearDropTarget();
-        return 0;
-    }
-    handleDragMove(args->getX(), args->getY());
-    return 0;
+void LeftLibraryMenu::dragLeave() {
+    setDropTarget(nullptr);
 }
 
-int LeftLibraryMenu::onDragEnd(SPObject* /*sender*/, SPEventArgs* eventArgs) {
-    auto* args = dynamic_cast<SPMouseEventArgs*>(eventArgs);
-    if (!args) {
-        clearDropTarget();
-        return 0;
-    }
-    handleDragEnd(args->getX(), args->getY());
-    return 0;
-}
+bool LeftLibraryMenu::drop(int /*x*/, int y, const SPDragData& data) {
+    SPTreeItem* item = playlistItemAt(y);
+    setDropTarget(nullptr);
+    if (!item) return false;
+    // Copied: adding to the playlist may rebuild the sidebar's items.
+    const std::string uri = item->getUri()->getUri();
 
-void LeftLibraryMenu::handleDragMove(int x, int y) {
-    if (!views::MusicDragDrop::active()) {
-        clearDropTarget();
-        return;
+    auto* app = BungalowApp::current();
+    Database* db = app ? app->getDatabase() : nullptr;
+    if (!db || !playlist::RootlistManager::insertContentRefs(
+            *db, uri, data.uris, std::numeric_limits<int>::max())) {
+        if (app) app->showError("Could not add items to this playlist.");
+        return false;
     }
-    if (views::MusicDragDrop::released()) {
-        clearDropTarget();
-        views::MusicDragDrop::clear();
-        return;
-    }
-    if (m_dropTarget && !m_dropTarget->isDropTarget() &&
-        views::MusicDragDrop::hoverUri().empty())
-        clearDropTarget();
-
-    views::MusicDragDrop::checkHoverDwell();
-
-    SPTreeItem* hovered = overTree(x, y) ? m_tree->itemAtAbsoluteY(y) : nullptr;
-    const std::string uri = hovered && hovered->getUri()
-        ? hovered->getUri()->getUri()
-        : std::string();
-    if (!hovered || !hovered->isDraggable() || playlist::RootlistManager::playlistId(uri).empty())
-        hovered = nullptr;
-    if (hovered != m_dropTarget) {
-        clearDropTarget();
-        m_dropTarget = hovered;
-        if (m_dropTarget) {
-            m_dropTarget->setDropTarget(true);
-            views::MusicDragDrop::setHoverTarget(uri);
-        }
-        m_tree->invalidate();
-    }
-}
-
-bool LeftLibraryMenu::overTree(int x, int y) const {
-    if (!m_tree) return false;
-    const auto b = m_tree->getAbsoluteBounds();
-    return x >= b.x && x < b.x + b.width && y >= b.y && y < b.y + b.height;
-}
-
-void LeftLibraryMenu::handleDragEnd(int x, int y) {
-    if (!views::MusicDragDrop::active()) {
-        clearDropTarget();
-        return;
-    }
-    SPTreeItem* item = overTree(x, y) ? m_tree->itemAtAbsoluteY(y) : nullptr;
-    const std::string uri = item && item->getUri()
-        ? item->getUri()->getUri()
-        : std::string();
-    const std::string id = playlist::RootlistManager::playlistId(uri);
-    clearDropTarget();
-    if (!id.empty() && item && item->isDraggable()) {
-        auto* app = BungalowApp::current();
-        Database* db = app ? app->getDatabase() : nullptr;
-        if (!db || !playlist::RootlistManager::insertContentRefs(
-                *db, uri, views::MusicDragDrop::refs(),
-                std::numeric_limits<int>::max())) {
-            if (app) app->showError("Could not add items to this playlist.");
-        }
-    }
-    views::MusicDragDrop::clear();
+    return true;
 }
 
 void LeftLibraryMenu::select(const std::string& uri) {

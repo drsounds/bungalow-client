@@ -7,6 +7,7 @@
 #include "SPTextElement.h"
 #include "SPWindowElement.h"
 #include "Space.h"
+#include "Win32DragDrop.h"
 #include "Win32GraphicsContext.h"
 #ifdef BUNGALOW_WTL
 #include "BungalowApp.h"
@@ -50,12 +51,18 @@ namespace space
         mainElement->setHeight(32);
         windowElement->appendChild(mainElement);
 #endif
+        win32::registerDropTarget(window);
         resize();
         return true;
     }
 
     NativeApplication::NativeApplication() = default;
-    NativeApplication::~NativeApplication() = default;
+
+    NativeApplication::~NativeApplication()
+    {
+        if (windowHandle)
+            win32::revokeDropTarget(windowHandle);
+    }
 
     void NativeApplication::resize()
     {

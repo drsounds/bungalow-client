@@ -23,6 +23,7 @@ namespace space {
 	class slice;
 	class SPSkin;
 	class Space;
+	struct SPDragData;
 	class SPGraphicsContext {
 	protected:
 		SPFontStyle *fontStyle{};
@@ -43,6 +44,11 @@ namespace space {
 		virtual void setControlVisible(SPElement *, bool) {}
 		/// Gives the native control of an input element keyboard focus and selects its text.
 		virtual void focusControl(SPElement *) {}
+		/// Runs an OS drag of data out of source, and returns when it has ended:
+		/// true when it was dropped on a target that took it. While the drag is
+		/// over the window the backend reports the pointer to SPDragDrop.
+		/// Elements start drags with SPDragDrop::start(), not directly.
+		virtual bool startDrag(const SPDragData&, SPElement *) { return false; }
 		virtual void drawImagePart(SPImage *image, int x, int y, int width, int height, int x1, int y1, int x2, int y2) {}
 		virtual void drawSkinImage(const string& resourceId, int x, int y, int w, int h) {}
 		virtual void restoreOrigo() {}

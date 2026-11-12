@@ -8,6 +8,59 @@
 #include "SPWindowElement.h"
 #include "WxWidgetsGraphicsContext.h"
 #include "Space.h"
+#include "SPDragDrop.h"
+
+#include <wx/dnd.h>
+#include <wx/timer.h>
+
+namespace {
+
+// Drops for the space widget. It takes only the drags the widget itself
+// started (SPDragDrop::start), and reports the pointer back to SPDragDrop,
+// which finds the element under it.
+class SpaceDropTarget : public wxDropTarget, private wxTimer {
+public:
+    SpaceDropTarget() : wxDropTarget(new wxTextDataObject()) {}
+
+    wxDragResult OnEnter(wxCoord x, wxCoord y, wxDragResult def) override {
+        // The toolkit need not report a pointer that is at rest. Targets act
+        // on a hover (the sidebar opens a playlist), so repeat the last report.
+        Start(100);
+        return OnDragOver(x, y, def);
+    }
+
+    wxDragResult OnDragOver(wxCoord x, wxCoord y, wxDragResult) override {
+        m_x = x;
+        m_y = y;
+        return space::SPDragDrop::over(x, y) ? wxDragCopy : wxDragNone;
+    }
+
+    void OnLeave() override {
+        Stop();
+        space::SPDragDrop::leave();
+    }
+
+    bool OnDrop(wxCoord, wxCoord) override {
+        Stop();
+        if (space::SPDragDrop::active()) return true;
+        space::SPDragDrop::leave();
+        return false;
+    }
+
+    wxDragResult OnData(wxCoord x, wxCoord y, wxDragResult) override {
+        return space::SPDragDrop::drop(x, y) ? wxDragCopy : wxDragNone;
+    }
+
+private:
+    void Notify() override {
+        if (space::SPDragDrop::active()) space::SPDragDrop::over(m_x, m_y);
+    }
+
+    wxCoord m_x = 0;
+    wxCoord m_y = 0;
+};
+
+} // namespace
 
 
 BEGIN_EVENT_TABLE(SpaceWidget, wxControl)
@@ -66,6 +119,7 @@ bool SpaceWidget::Create(wxWindow *parent,
     Bind(wxEVT_MOUSEWHEEL, &SpaceWidget::OnMouseWheel, this);
     Bind(wxEVT_COMMAND_LEFT_CLICK, &SpaceWidget::OnLeftClick, this);
     Bind(wxEVT_KEY_DOWN, &SpaceWidget::OnKeyDown, this);
+    SetDropTarget(new SpaceDropTarget());
     return FALSE;
 }
 

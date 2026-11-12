@@ -1,7 +1,9 @@
 #ifndef TABLEVIEWELEMENT_H
 #define TABLEVIEWELEMENT_H
 #include "SPElement.h"
+#include "SPDragDrop.h"
 #include <chrono>
+#include <functional>
 #include <set>
 #include <string>
 #include <vector>
@@ -12,9 +14,26 @@ namespace space {
 class SPTableDataSource;
 class SPTableRow;
 class SPTableColumnHeader;
-class SPTableElement : public SPElement
+/**
+ * A table of rows from a data source.
+ *
+ * Drag and drop: pressing a row and moving the pointer drags the selected
+ * rows, as the URIs the data source gives for them (getDragUris). The table
+ * is also a drop target once setDropHandler() says which drags it takes; it
+ * then shows the insertion line and hands the drop over with its row index.
+ */
+class SPTableElement : public SPElement, public SPDropTarget
 {
     public:
+        /// Whether the table takes a drag.
+        using DropFilter  = std::function<bool(const SPDragData&)>;
+        /// Takes a drop in front of row index; returns whether it was taken.
+        using DropHandler = std::function<bool(const SPDragData&, int index)>;
+        void setDropHandler(DropFilter accepts, DropHandler drop) {
+            m_dropFilter  = std::move(accepts);
+            m_dropHandler = std::move(drop);
+        }
+
         SPTableDataSource *dataSource;
         /** When true, zebra stripes continue past the last data row to fill
          *  the parent view's remaining height (iTunes-style empty-area fill). */
@@ -27,7 +46,11 @@ class SPTableElement : public SPElement
         }
         int rowAtY(int absoluteY) const;
         int dropIndexAtY(int absoluteY) const;
-        void setDropIndex(int index) { m_dropIndex = index; invalidate(); }
+        void setDropIndex(int index) {
+            if (m_dropIndex == index) return;
+            m_dropIndex = index;
+            invalidate();
+        }
 
         SPTableElement();
         SPTableElement(SPElement *parent, SPTableDataSource *dataSource);
@@ -38,7 +61,14 @@ class SPTableElement : public SPElement
         virtual void paint(int x, int y, SPGraphicsContext *g) override;
         virtual void scroll(int scrollX, int scrollY, int x, int y) override;
         virtual void mouseDown(SPObject* sender, SPEventArgs* e) override;
+        void mouseMove(SPObject* sender, SPEventArgs* e);
+        void mouseUp(SPObject* sender, SPEventArgs* e);
         virtual void processEvent(const SPEvent& event);
+
+        // SPDropTarget
+        bool dragOver(int x, int y, const SPDragData& data) override;
+        void dragLeave() override;
+        bool drop(int x, int y, const SPDragData& data) override;
 
     private:
         std::set<int> m_selectedRows;
@@ -46,6 +76,17 @@ class SPTableElement : public SPElement
         int m_firstRowY  = 0;  // screen y of first data row (set during paint)
         int m_dropIndex = -1;
         static const int kRowH = 18;
+
+        // A left press on a selected row, which becomes a drag once the
+        // pointer has moved far enough.
+        bool m_pressed = false;
+        int  m_pressX  = 0;
+        int  m_pressY  = 0;
+        static constexpr int kDragThreshold = 4;
+        void startDrag();
+
+        DropFilter  m_dropFilter;
+        DropHandler m_dropHandler;
 
         // Double-click detection
         using ClockType = std::chrono::steady_clock;

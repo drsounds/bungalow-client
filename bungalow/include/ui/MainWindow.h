@@ -68,8 +68,6 @@ namespace space {
             int onNavItemRenamed(SPObject* sender, SPEventArgs* e);
             int onNavItemMoved(SPObject* sender, SPEventArgs* e);
             int onNavItemDragHovered(SPObject* sender, SPEventArgs* e);
-            int onSidebarDragMove(SPObject* sender, SPEventArgs* e);
-            int onSidebarDragEnd(SPObject* sender, SPEventArgs* e);
             MainWindow();
             void onLoad(SPNode *sender, SPEventArgs *args);
             virtual SPElement* createElement(const string&, SPElement*) override;

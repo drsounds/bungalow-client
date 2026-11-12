@@ -1,9 +1,7 @@
 #include "app/library/MusicBrowseView.h"
 
-#include "app/library/MusicDragDrop.h"
 #include "app/library/MusicEditActions.h"
 
-#include "SPMouseEventArgs.h"
 #include "SPPlaybackEventArgs.h"
 #include "SPSectionElement.h"
 #include "SPTabBarElement.h"
@@ -14,8 +12,6 @@
 #include "Database.h"
 #include "PlatformUi.h"
 #include "PlayContext.h"
-
-#include <cstdlib>
 
 namespace space {
 namespace views {
@@ -79,15 +75,9 @@ MusicBrowseView::Page& MusicBrowseView::addPage(const std::string& id,
 		"rowrightclicked",
 		reinterpret_cast<SPCallback>(&MusicBrowseView::onRowRightClicked), this,
 		page->table);
-	page->table->addEventListener(
-		"mousedown", reinterpret_cast<SPCallback>(&MusicBrowseView::onTableMouseDown),
-		this, page->table);
-	page->table->addEventListener(
-		"mousemove", reinterpret_cast<SPCallback>(&MusicBrowseView::onTableMouseMove),
-		this, page->table);
-	page->table->addEventListener(
-		"mouseup", reinterpret_cast<SPCallback>(&MusicBrowseView::onTableMouseUp),
-		this, page->table);
+	page->table->setDropHandler(
+		[this](const SPDragData&) { return acceptsDrop(); },
+		[this](const SPDragData& data, int index) { return onDropRefs(data.uris, index); });
 
 	this->tabStack->appendChild(section);
 	this->tabBar->addTab(id, title, uri);
@@ -145,93 +135,6 @@ MusicBrowseView::Page* MusicBrowseView::pageFor(SPObject* sender) {
 		if (static_cast<SPObject*>(page->table) == sender)
 			return page.get();
 	return nullptr;
-}
-
-MusicBrowseView::Page* MusicBrowseView::pageAt(int x, int y) {
-	for (auto& page : m_pages) {
-		bool visible = true;
-		for (SPElement* element = page->table; element; element = element->getParentElement()) {
-			if (!element->isVisible()) {
-				visible = false;
-				break;
-			}
-		}
-		if (!visible) continue;
-		const auto bounds = page->table->getAbsoluteBounds();
-		if (x >= bounds.x && x < bounds.x + bounds.width &&
-			y >= bounds.y && y < bounds.y + bounds.height)
-			return page.get();
-	}
-	return nullptr;
-}
-
-int MusicBrowseView::onTableMouseDown(SPObject* /*sender*/, SPEventArgs* eventArgs) {
-	auto* args = dynamic_cast<SPMouseEventArgs*>(eventArgs);
-	Page* page = args ? pageAt(args->getX(), args->getY()) : nullptr;
-	if (!args || !page || args->getButton() != 0) return 0;
-	MusicDragDrop::clear();
-	const int row = page->table->rowAtY(args->getY());
-	if (!page->source->rowAt(row)) return 0;
-	m_dragPage = page;
-	m_dragStartX = args->getX();
-	m_dragStartY = args->getY();
-	SPElement::setMouseCapture(page->table);
-	return 0;
-}
-
-int MusicBrowseView::onTableMouseMove(SPObject* sender, SPEventArgs* eventArgs) {
-	auto* args = dynamic_cast<SPMouseEventArgs*>(eventArgs);
-	Page* page = args ? (m_dragPage ? m_dragPage : pageAt(args->getX(), args->getY())) : nullptr;
-	if (!args || !page) return 0;
-	MusicDragDrop::checkHoverDwell();
-
-	if (MusicDragDrop::released()) {
-		MusicDragDrop::clear();
-		m_dragPage = nullptr;
-	}
-
-	if (m_dragPage == page && !MusicDragDrop::active()) {
-		if (std::abs(args->getX() - m_dragStartX) < 4 &&
-			std::abs(args->getY() - m_dragStartY) < 4)
-			return 0;
-
-		std::vector<std::string> refs = page->source->urisForRows(page->table->getSelectedRows());
-		if (!refs.empty())
-			MusicDragDrop::begin(std::move(refs), page->table);
-	}
-
-	if (MusicDragDrop::active() && acceptsDrop())
-		page->table->setDropIndex(page->table->dropIndexAtY(args->getY()));
-	else
-		page->table->setDropIndex(-1);
-	if (MusicDragDrop::active())
-		MusicDragDrop::dispatchMove(args->getX(), args->getY());
-	return 0;
-}
-
-int MusicBrowseView::onTableMouseUp(SPObject* sender, SPEventArgs* eventArgs) {
-	auto* args = dynamic_cast<SPMouseEventArgs*>(eventArgs);
-	Page* page = args ? (m_dragPage ? m_dragPage : pageAt(args->getX(), args->getY())) : nullptr;
-	if (!args || !page) return 0;
-
-	page->table->setDropIndex(-1);
-	if (m_dragPage == page) {
-		SPElement::releaseMouseCapture();
-		if (MusicDragDrop::active()) {
-			MusicDragDrop::markReleased();
-			MusicDragDrop::dispatchEnd(args->getX(), args->getY());
-		}
-		m_dragPage = nullptr;
-	}
-
-	const auto bounds = page->table->getAbsoluteBounds();
-	const bool inside = args->getX() >= bounds.x && args->getX() < bounds.x + bounds.width &&
-		args->getY() >= bounds.y && args->getY() < bounds.y + bounds.height;
-	if (MusicDragDrop::active() && inside && acceptsDrop()) {
-		if (onDropRefs(MusicDragDrop::refs(), page->table->dropIndexAtY(args->getY())))
-			MusicDragDrop::clear();
-	}
-	return 0;
 }
 
 int MusicBrowseView::onRowDblClicked(SPObject* sender, SPEventArgs* args) {

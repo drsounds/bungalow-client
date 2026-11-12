@@ -10,6 +10,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
+#include <utility>
 
 namespace space {
     SPTableElement::SPTableElement()
@@ -25,10 +27,14 @@ namespace space {
         //ctor
         this->dataSource = dataSource;
         this->addEventListener("mousedown", SPCallback(&SPTableElement::mouseDown), this, this);
+        this->addEventListener("mousemove", SPCallback(&SPTableElement::mouseMove), this, this);
+        this->addEventListener("mouseup", SPCallback(&SPTableElement::mouseUp), this, this);
+        SPDragDrop::registerTarget(this, this);
     }
     SPTableElement::~SPTableElement()
     {
-        //dtor
+        SPDragDrop::unregisterTarget(this);
+        if (m_pressed && s_capturedElement == this) releaseMouseCapture();
     }
     string SPTableElement::getType() {
         return "table";
@@ -225,6 +231,67 @@ namespace space {
         }
         m_anchorRow = rowIdx;
         this->invalidate();
+
+        // A press on a selected row may turn into a drag. Capture the mouse so
+        // the release is seen even when it happens outside the table.
+        if (m_selectedRows.count(rowIdx)) {
+            m_pressed = true;
+            m_pressX  = me->getX();
+            m_pressY  = me->getY();
+            setMouseCapture(this);
+        }
+    }
+
+    // ── Drag source ───────────────────────────────────────────────────────────
+    void SPTableElement::mouseMove(SPObject* /*sender*/, SPEventArgs* e) {
+        auto *me = dynamic_cast<SPMouseEventArgs *>(e);
+        if (!me || !m_pressed) return;
+        if (std::abs(me->getX() - m_pressX) < kDragThreshold &&
+            std::abs(me->getY() - m_pressY) < kDragThreshold)
+            return;
+        startDrag();
+    }
+
+    void SPTableElement::mouseUp(SPObject* /*sender*/, SPEventArgs* /*e*/) {
+        if (!m_pressed) return;
+        m_pressed = false;
+        if (s_capturedElement == this) releaseMouseCapture();
+    }
+
+    void SPTableElement::startDrag() {
+        m_pressed = false;
+        if (s_capturedElement == this) releaseMouseCapture();
+        if (!dataSource) return;
+
+        SPDragData data;
+        data.uris = dataSource->getDragUris(getSelectedRows());
+        if (data.uris.empty()) return;
+
+        // The OS runs the drag and takes the button release with it, so the
+        // pressed state the mouse-down left on the way here is undone by hand.
+        SPDragDrop::start(this, std::move(data));
+        for (SPElement* element = this; element; element = element->getParentElement())
+            element->setState(SP_STATE_NORMAL);
+    }
+
+    // ── Drop target ───────────────────────────────────────────────────────────
+    bool SPTableElement::dragOver(int /*x*/, int y, const SPDragData& data) {
+        if (!m_dropFilter || !m_dropHandler || !m_dropFilter(data)) {
+            setDropIndex(-1);
+            return false;
+        }
+        setDropIndex(dropIndexAtY(y));
+        return true;
+    }
+
+    void SPTableElement::dragLeave() {
+        setDropIndex(-1);
+    }
+
+    bool SPTableElement::drop(int /*x*/, int y, const SPDragData& data) {
+        setDropIndex(-1);
+        if (!m_dropFilter || !m_dropHandler || !m_dropFilter(data)) return false;
+        return m_dropHandler(data, dropIndexAtY(y));
     }
 
     // ── Keyboard navigation ───────────────────────────────────────────────────

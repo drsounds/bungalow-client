@@ -27,6 +27,8 @@ namespace space {
          * onContextMenu, tab-bar tool button → onToolButton. Subclasses fill the
          * pages with entities from a MusicEntityRepository in reload(), which
          * runs on every navigate() and after refresh().
+         * Rows are dragged out by the table itself; a view that takes drops
+         * says so with acceptsDrop() and gets them in onDropRefs().
          * Dialogs and menus go through platform::, so the views work on every
          * UI backend.
          */
@@ -57,7 +59,9 @@ namespace space {
             virtual void onActivate(Page& page, int row) {}
             virtual void onContextMenu(Page& page, int row) {}
             virtual void onToolButton(const std::string& id) {}
+            /** Whether dragged entities can be dropped into the view's tables. */
             virtual bool acceptsDrop() const { return false; }
+            /** Entities, as their URIs, were dropped in front of row @p position. */
             virtual bool onDropRefs(const std::vector<std::string>& refs, int position) {
                 (void)refs;
                 (void)position;
@@ -100,16 +104,9 @@ namespace space {
 
         private:
             Page* pageFor(SPObject* sender);
-            Page* pageAt(int x, int y);
-            int onTableMouseDown(SPObject* sender, SPEventArgs* args);
-            int onTableMouseMove(SPObject* sender, SPEventArgs* args);
-            int onTableMouseUp(SPObject* sender, SPEventArgs* args);
             int onRowDblClicked(SPObject* sender, SPEventArgs* args);
             int onRowRightClicked(SPObject* sender, SPEventArgs* args);
             int onToolButtonClicked(SPObject* sender, SPEventArgs* args);
-            Page* m_dragPage = nullptr;
-            int m_dragStartX = 0;
-            int m_dragStartY = 0;
             // Repaints the tables when track availability arrives.
             service::AvailabilityResolver::Subscription m_availabilityChanged;
         };

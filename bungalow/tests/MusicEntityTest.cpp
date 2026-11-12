@@ -3,6 +3,7 @@
 
 #include "Database.h"
 #include "app/library/MusicEntityRepository.h"
+#include "app/playlist/PlaylistItemRow.h"
 #include "models/SPDBConnection.h"
 #include "models/SPPlayable.h"
 #include "models/SPPlayableTrack.h"
@@ -14,6 +15,8 @@
 
 using space::MusicColumn;
 using space::MusicEntityRepository;
+using space::app::PlaylistItemRow;
+using space::app::UnresolvedEntity;
 
 namespace {
 
@@ -188,6 +191,25 @@ int main() {
         expect(loose.size() == 1 && loose[0]->track().recording == &loose[0]->recording() ? "wired" : "loose",
                "wired", "track model points at its recording");
         expect(loose.size() == 1 ? loose[0]->uri() : "", "musik:isrc:isrc-3", "track uri");
+
+        // ── Playlist items wrap any kind of entity ───────────────────────────
+        if (loose.size() == 1) {
+            const PlaylistItemRow item(4, loose[0]);
+            expect(item.uri(), "musik:isrc:isrc-3", "a playlist item is stored as its entity's uri");
+            expect(item.text(MusicColumn::Number), "5", "a playlist item is numbered by its position");
+            expect(item.text(MusicColumn::Name), "Believe", "a playlist item is named by its entity");
+            expect(item.text(MusicColumn::Artists), "Cher", "a playlist item shows its entity's artists");
+            expect(item.playUri(), "file:///believe.mp3", "a playlist item plays its entity");
+            expect(item.isPlayable() ? "enabled" : "greyed", "enabled", "a playable playlist item");
+        }
+        const PlaylistItemRow releaseItem(0, library.release("upc-b"));
+        expect(releaseItem.uri(), "musik:upc:upc-b", "a release in a playlist");
+        expect(releaseItem.text(MusicColumn::Name), "alpha Songs", "a release in a playlist is named");
+        expect(releaseItem.isPlayable() ? "enabled" : "greyed", "greyed", "a release in a playlist does not play");
+        const PlaylistItemRow unknown(1, std::make_shared<UnresolvedEntity>("other:thing:1", "Thing"));
+        expect(unknown.uri(), "other:thing:1", "an unresolved playlist item keeps its uri");
+        expect(unknown.text(MusicColumn::Name), "Thing", "an unresolved playlist item is named");
+        expect(unknown.text(MusicColumn::Version), "", "an unresolved playlist item has no music columns");
     }
     std::filesystem::remove(path);
 

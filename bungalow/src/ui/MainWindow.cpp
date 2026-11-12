@@ -144,14 +144,6 @@ namespace ui {
         return 0;
     }
 
-    int MainWindow::onSidebarDragMove(SPObject* sender, SPEventArgs* e) {
-        return m_sidebar ? m_sidebar->onDragMove(sender, e) : 0;
-    }
-
-    int MainWindow::onSidebarDragEnd(SPObject* sender, SPEventArgs* e) {
-        return m_sidebar ? m_sidebar->onDragEnd(sender, e) : 0;
-    }
-
     // ── Bookmark toggled (fired from SiteView / AppView) ─────────────────────
     // The web concept follows BookmarkEvents to refresh the sidebar and fetch
     // favicons.
@@ -273,8 +265,6 @@ namespace ui {
         treeView->addEventListener("itemrenamed",     SPCallback(&MainWindow::onNavItemRenamed),      this, treeView);
         treeView->addEventListener("itemmoved",       SPCallback(&MainWindow::onNavItemMoved),        this, treeView);
         treeView->addEventListener("itemdraghovered", SPCallback(&MainWindow::onNavItemDragHovered), this, treeView);
-        treeView->addEventListener("mousemove", SPCallback(&MainWindow::onSidebarDragMove), this, treeView);
-        treeView->addEventListener("mouseup", SPCallback(&MainWindow::onSidebarDragEnd), this, treeView);
         treeView->setFlex(1);
         m_sidebar = std::make_unique<LeftLibraryMenu>(treeView);
 

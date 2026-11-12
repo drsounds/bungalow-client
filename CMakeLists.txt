@@ -103,6 +103,7 @@ else()
     file(GLOB BACKEND_HEADERS CONFIGURE_DEPENDS "windows/include/*.h")
     set(BACKEND_SOURCES
         windows/src/NativeApplication.cpp
+        windows/src/Win32DragDrop.cpp
         windows/src/Win32GraphicsContext.cpp)
     if(BUNGALOW_UI_BACKEND STREQUAL "wtl")
         find_path(WTL_INCLUDE_DIR atlapp.h DOC "Directory containing the WTL headers")
@@ -240,6 +241,7 @@ if(BUNGALOW_ENABLE_SWIMMING AND BUNGALOW_BUILD_SWIMMING_VIEWER)
         add_executable(swimming-viewer
             windows/swimming/main.cpp
             windows/src/SwimmingScheduler.cpp
+            windows/src/Win32DragDrop.cpp
             windows/src/Win32GraphicsContext.cpp)
         target_include_directories(swimming-viewer PRIVATE windows/include)
         target_compile_definitions(swimming-viewer PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0601)
@@ -332,6 +334,7 @@ if(BUILD_TESTING)
             bungalow/src/Database.cpp
             bungalow/src/app/library/MusicEntity.cpp
             bungalow/src/app/library/MusicEntityRepository.cpp
+            bungalow/src/app/playlist/PlaylistItemRow.cpp
             ${BUNGALOW_MODEL_SOURCES})
         target_include_directories(bungalow-music-entity-test PRIVATE bungalow/include)
         target_link_libraries(bungalow-music-entity-test PRIVATE SQLite3::SQLite3)

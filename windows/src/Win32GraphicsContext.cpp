@@ -13,6 +13,7 @@ namespace Gdiplus
 #include <gdiplus.h>
 
 #include "Win32GraphicsContext.h"
+#include "Win32DragDrop.h"
 
 #include <algorithm>
 #include <limits>
@@ -185,6 +186,11 @@ namespace space
     {
         static GdiplusSession session;
         cacheDc = CreateCompatibleDC(nullptr);
+    }
+
+    bool Win32GraphicsContext::startDrag(const SPDragData& data, SPElement *)
+    {
+        return win32::doDragDrop(data);
     }
 
     Win32GraphicsContext::~Win32GraphicsContext()

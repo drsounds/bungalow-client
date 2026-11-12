@@ -36,6 +36,10 @@ class SPTableDataSource
         /// is associated with it).  The table uses a muted color for such rows.
         virtual bool isRowPlayable(int /*row*/) { return true; }
 
+        /// The URIs to drag for the given rows, in that order.  Empty when the
+        /// rows cannot be dragged, which is the default.
+        virtual vector<string> getDragUris(const vector<int>& /*rows*/) { return vector<string>(); }
+
         virtual vector<int> getSelectedIndexes() { return vector<int>(); }
         virtual bool isIndexSelected (int index) { return false; }
         virtual void addIndexesToSelection(int index) {}

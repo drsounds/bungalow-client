@@ -1,7 +1,9 @@
 #pragma once
 
+#include "SPDragDrop.h"
 #include "navigation/SidebarNode.h"
 
+#include <chrono>
 #include <map>
 #include <string>
 #include <vector>
@@ -16,10 +18,14 @@ namespace ui {
 
 /// The sidebar: shows SidebarNodes in a tree view and keeps the item of the
 /// current URI selected.
-class LeftLibraryMenu {
+///
+/// It is the drop target of the tree: entities dragged onto one of the user's
+/// playlists are added to it, and resting on the playlist for a moment opens
+/// it ("itemdraghovered"), so the drop can go to a place in its list instead.
+class LeftLibraryMenu : public SPDropTarget {
 public:
     explicit LeftLibraryMenu(SPTreeViewElement* tree);
-    ~LeftLibraryMenu();
+    ~LeftLibraryMenu() override;
 
     /// Replaces the tree's items. Top-level nodes without a URI become section
     /// headers (or a blank gap, for spacer sections) followed by their
@@ -42,12 +48,11 @@ public:
     void rename(SPTreeItem* item, const std::string& text);
     void move(SPTreeItem* item, int index);
     void remove(SPTreeItem* item);
-    int onDragMove(SPObject* sender, SPEventArgs* args);
-    int onDragEnd(SPObject* sender, SPEventArgs* args);
-    bool overTree(int x, int y) const;
-    void handleDragMove(int x, int y);
-    void handleDragEnd(int x, int y);
-    void onDragHoverDwell();
+
+    // SPDropTarget
+    bool dragOver(int x, int y, const SPDragData& data) override;
+    void dragLeave() override;
+    bool drop(int x, int y, const SPDragData& data) override;
 
     SPTreeViewElement* getTreeView() const { return m_tree; }
 
@@ -58,7 +63,9 @@ private:
         navigation::SidebarNode::RemoveHandler onRemove;
     };
 
-    void clearDropTarget();
+    /// The playlist item at window y that a drag can be dropped on, or nullptr.
+    SPTreeItem* playlistItemAt(int y) const;
+    void setDropTarget(SPTreeItem* item);
     SPTreeItem* createItem(const navigation::SidebarNode& node);
     const Handlers* handlersFor(SPTreeItem* item) const;
 
@@ -66,7 +73,12 @@ private:
     std::string m_selectedUri;
     // Handlers of the nodes shown by the current items.
     std::map<SPTreeItem*, Handlers> m_handlers;
+    // The playlist item a drag is over, since when, and whether resting on
+    // it has opened it already.
     SPTreeItem* m_dropTarget = nullptr;
+    std::chrono::steady_clock::time_point m_hoverStarted;
+    bool m_hoverOpened = false;
+    static constexpr std::chrono::milliseconds kHoverOpenDelay{700};
 };
 
 } // namespace ui

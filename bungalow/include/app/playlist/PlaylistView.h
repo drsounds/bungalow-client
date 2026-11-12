@@ -12,8 +12,8 @@ namespace app {
 /// A federated playlist, musik:federated:user:<handle>:playlist:<uuid>[:<body>]
 /// (RFC-0001). A link with an embedded body shows the playlist it carries;
 /// a hosted link shows the user's own playlist with that id from the
-/// database. Content refs are listed as tracks, playable when an ISRC is in
-/// the library.
+/// database. Each stored URI is listed as a PlaylistItemRow around the entity
+/// it refers to; rows are playable when that entity is.
 class PlaylistView : public views::MusicBrowseView {
 public:
     PlaylistView(SPElement* parent, Database* db);
