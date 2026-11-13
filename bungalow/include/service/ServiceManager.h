@@ -47,6 +47,9 @@ public:
 
     /// onStart() on every Service, in registration order.
     void startAll();
+    /// Whether startAll() ran (and stopAll() has not since): whoever registers
+    /// a Service afterwards calls its onStart() itself.
+    bool isStarted() const { return m_started; }
     /// onStop() on every Service, in registration order.
     void stopAll();
     /// Stops, destroys and unregisters every Service.
@@ -84,6 +87,7 @@ public:
     }
 
 private:
+    bool m_started = false;
     // Shared, so a sign-in finishing after the manager is gone stays safe.
     std::shared_ptr<AccountManager> m_accounts = std::make_shared<AccountManager>();
 };

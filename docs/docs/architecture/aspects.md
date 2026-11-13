@@ -85,13 +85,13 @@ Headers: `bungalow/include/service/`.
 | `MediaService` | load a URI it `acceptsUri()`, play / pause / stop / seek, playback listeners |
 | `MusicService` | a `MediaService` that also looks tracks up by ISRC or title and artist, without loading them |
 | `MusicCatalogueService` | search and browse a catalogue (artists, releases, recordings) |
-| `AuthAspect` | sign in and out; not a `Service` itself, a back-end implements it next to one |
+| `AuthAspect` | sign in and out. Every `Service` derives from it with empty defaults; one with accounts overrides `supportsLogin()`, `login()`, `logout()`, `isLoggedIn()` and `getSession()` |
 
 Callers never name a vendor. They ask the `ServiceManager` for a capability:
 
 ```cpp
 for (MusicService* ms : services.getServices<MusicService>()) { … }
-AuthAspect* auth = services.getService<AuthAspect>();
+services.login("some.service", onSuccess, onError);   // asynchronous; the session lands in services.accounts()
 ```
 
 Both use `dynamic_cast`, so a Service is offered for every interface it

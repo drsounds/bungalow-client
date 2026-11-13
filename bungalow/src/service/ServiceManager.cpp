@@ -48,10 +48,12 @@ void ServiceManager::logout(const std::string& serviceId) {
 }
 
 void ServiceManager::startAll() {
+    m_started = true;
     for (Service* s : all()) s->onStart();
 }
 
 void ServiceManager::stopAll() {
+    m_started = false;
     for (Service* s : all()) s->onStop();
 }
 

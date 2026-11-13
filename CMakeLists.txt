@@ -67,7 +67,7 @@ file(GLOB BUNGALOW_HEADERS CONFIGURE_DEPENDS "bungalow/include/*.h")
 # The client architecture, one directory per package: aspect, feature,
 # concept, search, navigation, playlist, service, ui and web, plus the
 # built-in contributions in app, the ORM models and the table data sources.
-set(BUNGALOW_PACKAGES aspect app concept datasource feature models navigation playlist search service ui web)
+set(BUNGALOW_PACKAGES aspect app concept datasource feature models navigation playlist plugin search service ui web)
 set(BUNGALOW_PACKAGE_SOURCES)
 set(BUNGALOW_PACKAGE_HEADERS)
 foreach(package IN LISTS BUNGALOW_PACKAGES)
@@ -147,6 +147,7 @@ endif()
 if(WIN32)
     list(APPEND PLATFORM_LIBRARIES crypt32) # DPAPI, for the encrypted session data
 endif()
+list(APPEND PLATFORM_LIBRARIES ${CMAKE_DL_LIBS}) # plugin libraries (dlopen)
 
 if(BUNGALOW_ENABLE_CEF)
     if(NOT BUNGALOW_UI_BACKEND STREQUAL "wtl")
@@ -372,6 +373,37 @@ if(BUILD_TESTING)
             target_link_libraries(bungalow-service-test PRIVATE crypt32)
         endif()
         add_test(NAME bungalow-service-test COMMAND bungalow-service-test)
+
+        # The sample plugin: a reference for plugin authors, built exactly as
+        # an external one (it sees only bungalow/include/plugin), and loaded
+        # from its own folder by the plugin test.
+        add_library(bungalow-sample-plugin MODULE bungalow/examples/plugin/SamplePlugin.cpp)
+        target_include_directories(bungalow-sample-plugin PRIVATE bungalow/include)
+        set_target_properties(bungalow-sample-plugin PROPERTIES
+            PREFIX ""
+            CXX_VISIBILITY_PRESET hidden
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/test-plugins"
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/test-plugins")
+
+        add_executable(bungalow-plugin-test
+            bungalow/tests/PluginTest.cpp
+            bungalow/src/models/SPSession.cpp
+            bungalow/src/plugin/ComServiceAdapter.cpp
+            bungalow/src/plugin/PluginManager.cpp
+            bungalow/src/service/AccountManager.cpp
+            bungalow/src/service/MediaService.cpp
+            bungalow/src/service/MusicService.cpp
+            bungalow/src/service/ServiceManager.cpp
+            bungalow/src/service/SessionCipher.cpp)
+        target_include_directories(bungalow-plugin-test PRIVATE bungalow/include)
+        target_compile_definitions(bungalow-plugin-test PRIVATE
+            BUNGALOW_TEST_PLUGIN_DIR="$<TARGET_FILE_DIR:bungalow-sample-plugin>")
+        target_link_libraries(bungalow-plugin-test PRIVATE nlohmann_json::nlohmann_json ${CMAKE_DL_LIBS})
+        if(WIN32)
+            target_link_libraries(bungalow-plugin-test PRIVATE crypt32)
+        endif()
+        add_dependencies(bungalow-plugin-test bungalow-sample-plugin)
+        add_test(NAME bungalow-plugin-test COMMAND bungalow-plugin-test)
     endif()
 
     if(BUNGALOW_ENABLE_SWIMMING)

@@ -138,6 +138,12 @@ bool BungalowApp::OnInit(){
     const space::service::Executor ui = [this](std::function<void()> task) {
         CallAfter(std::move(task)); // thread-safe
     };
+    // Plugins: libraries beside the application and ones the user installed.
+    // Their services join the built-in ones and are started right away.
+    m_plugins = std::make_unique<space::plugin::PluginManager>(m_services, ui);
+    m_plugins->loadDirectory(std::filesystem::path(std::filesystem::path(std::string(wxGetCwd().ToUTF8()))) / "Apps", space::plugin::PluginSource::AppDir);
+    m_plugins->loadDirectory(std::filesystem::path(space::platform::homeDir()) / "Bungalow",
+                             space::plugin::PluginSource::External);
     m_resolutionStore = std::make_unique<space::service::ResolutionStore>(m_database->handle());
     m_coordinator = std::make_unique<PlaybackCoordinator>(m_services, m_resolutionStore.get());
     m_coordinator->setExecutors(m_worker->executor(), ui);
@@ -270,6 +276,8 @@ int BungalowApp::OnExit() {
     m_coordinator.reset();
     m_availability.reset();
     m_worker.reset();
+    // Unregisters the plugins' services and unloads their libraries.
+    m_plugins.reset();
     m_services.shutdownAll();
     m_resolutionStore.reset();
     m_queueEntries.clear();

@@ -12,6 +12,7 @@
 #include "service/PlaybackCoordinator.h"
 #include "service/ResolutionStore.h"
 #include "service/ServiceManager.h"
+#include "plugin/PluginManager.h"
 
 #include <memory>
 #include <string>
@@ -45,6 +46,9 @@ protected:
     std::shared_ptr<space::service::AvailabilityResolver> m_availability;
     // Where service lookups run, one at a time.
     std::unique_ptr<space::service::BackgroundWorker>    m_worker;
+    // Externally loaded plugins (<app>/Apps, ~/Bungalow) and the services they
+    // registered. Declared after m_services, so it is destroyed before it.
+    std::unique_ptr<space::plugin::PluginManager>        m_plugins;
 
     bool m_developerMode = false;
 
@@ -89,6 +93,8 @@ public:
 
     // Installed services; select them by capability with getServices<T>().
     space::service::ServiceManager& getServiceManager() { return m_services; }
+    // Null before the services are set up.
+    space::plugin::PluginManager* getPluginManager() { return m_plugins.get(); }
     // Null before initialize().
     space::service::PlaybackCoordinator* getPlaybackCoordinator() { return m_coordinator.get(); }
     // The service that is playing (or last played), or null.

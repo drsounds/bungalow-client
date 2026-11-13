@@ -22,6 +22,7 @@ const sidebars = {
         'architecture/navigation',
         'architecture/search',
         'architecture/playback',
+        'architecture/plugins',
         'architecture/data',
       ],
     },

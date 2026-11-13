@@ -121,9 +121,6 @@ public:
     bool fail = false;
     std::function<void()> pending;
 };
-    }
-    bool signedIn = false;
-};
 
 /// Streams *and* browses a catalogue: both capabilities share one Service base.
 class FakeCatalogueStreamer : public FakeMusicService, public MusicCatalogueService {

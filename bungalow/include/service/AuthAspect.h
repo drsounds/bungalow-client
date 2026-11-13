@@ -37,7 +37,7 @@ public:
     virtual SPSession getSession() const { return {}; }
 
     /// Display name of the signed-in account, or empty when signed out.
-    virtual std::string getAccountName() const { return getSession().user.name; }
+    virtual std::string getAccountName() const { return getSession().user().name; }
 };
 
 } // namespace service
