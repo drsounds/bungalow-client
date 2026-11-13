@@ -14,6 +14,11 @@ if(BUNGALOW_ENABLE_SWIMMING)
     list(APPEND VCPKG_MANIFEST_FEATURES "swimming")
 endif()
 
+option(BUNGALOW_ENABLE_PYTHON "Embed Python (pybind11) so plugins can also be written in Python" ON)
+if(BUNGALOW_ENABLE_PYTHON)
+    list(APPEND VCPKG_MANIFEST_FEATURES "python")
+endif()
+
 project(BungalowNative LANGUAGES C CXX)
 include(CTest)
 
@@ -42,6 +47,11 @@ find_package(EXPAT 2.2.8 REQUIRED)
 if(BUNGALOW_UI_BACKEND STREQUAL "wxwidgets")
     # net provides wxWebRequest, which WxWidgetsGraphicsContext::request uses.
     find_package(wxWidgets REQUIRED COMPONENTS core base xml net webview)
+endif()
+
+if(BUNGALOW_ENABLE_PYTHON)
+    find_package(Python3 COMPONENTS Development REQUIRED)
+    find_package(pybind11 CONFIG REQUIRED)
 endif()
 
 if(BUNGALOW_ENABLE_SWIMMING)
@@ -232,6 +242,30 @@ if(BUNGALOW_ENABLE_SWIMMING)
     target_link_libraries(bungalow-client PRIVATE swimming-space)
 endif()
 
+# Python plugins: the interpreter is linked in, its standard library is copied
+# next to the executable as python/Lib (where PythonHost looks for it).
+if(BUNGALOW_ENABLE_PYTHON)
+    set(BUNGALOW_PYTHON_STDLIB "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/tools/python3/Lib")
+    if(NOT EXISTS "${BUNGALOW_PYTHON_STDLIB}")
+        # Outside Windows vcpkg keeps it in lib/python3.x.
+        file(GLOB BUNGALOW_PYTHON_STDLIB "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib/python3.*")
+    endif()
+    if(NOT BUNGALOW_PYTHON_STDLIB OR NOT EXISTS "${BUNGALOW_PYTHON_STDLIB}")
+        message(FATAL_ERROR "The Python standard library was not found under ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+    endif()
+    add_custom_command(OUTPUT "${CMAKE_BINARY_DIR}/python/stdlib.stamp"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${BUNGALOW_PYTHON_STDLIB}" "${CMAKE_BINARY_DIR}/python/Lib"
+        COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_BINARY_DIR}/python/stdlib.stamp"
+        COMMENT "Copying the Python standard library")
+    add_custom_target(bungalow-python-stdlib ALL DEPENDS "${CMAKE_BINARY_DIR}/python/stdlib.stamp")
+
+    target_compile_definitions(bungalow-client PRIVATE BUNGALOW_PYTHON)
+    target_link_libraries(bungalow-client PRIVATE pybind11::embed)
+    add_dependencies(bungalow-client bungalow-python-stdlib)
+    install(DIRECTORY "${BUNGALOW_PYTHON_STDLIB}/" DESTINATION python/Lib
+        PATTERN "__pycache__" EXCLUDE PATTERN "test" EXCLUDE)
+endif()
+
 install(TARGETS bungalow-client RUNTIME DESTINATION .)
 
 # The swimming viewer: one swimming app in a Space window of the UI backend,
@@ -404,6 +438,33 @@ if(BUILD_TESTING)
         endif()
         add_dependencies(bungalow-plugin-test bungalow-sample-plugin)
         add_test(NAME bungalow-plugin-test COMMAND bungalow-plugin-test)
+
+        if(BUNGALOW_ENABLE_PYTHON)
+            # Loads bungalow/examples/plugin/sample_plugin.py through the embedded interpreter.
+            add_executable(bungalow-python-plugin-test
+                bungalow/tests/PythonPluginTest.cpp
+                bungalow/src/models/SPSession.cpp
+                bungalow/src/plugin/ComServiceAdapter.cpp
+                bungalow/src/plugin/PluginManager.cpp
+                bungalow/src/plugin/PythonHost.cpp
+                bungalow/src/service/AccountManager.cpp
+                bungalow/src/service/MediaService.cpp
+                bungalow/src/service/MusicService.cpp
+                bungalow/src/service/ServiceManager.cpp
+                bungalow/src/service/SessionCipher.cpp)
+            target_include_directories(bungalow-python-plugin-test PRIVATE bungalow/include)
+            target_compile_definitions(bungalow-python-plugin-test PRIVATE
+                BUNGALOW_PYTHON
+                BUNGALOW_TEST_PYTHON_HOME="${CMAKE_BINARY_DIR}/python"
+                BUNGALOW_TEST_PYTHON_PLUGIN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/bungalow/examples/plugin")
+            target_link_libraries(bungalow-python-plugin-test PRIVATE
+                nlohmann_json::nlohmann_json pybind11::embed ${CMAKE_DL_LIBS})
+            if(WIN32)
+                target_link_libraries(bungalow-python-plugin-test PRIVATE crypt32)
+            endif()
+            add_dependencies(bungalow-python-plugin-test bungalow-python-stdlib)
+            add_test(NAME bungalow-python-plugin-test COMMAND bungalow-python-plugin-test)
+        endif()
     endif()
 
     if(BUNGALOW_ENABLE_SWIMMING)

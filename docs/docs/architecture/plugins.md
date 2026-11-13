@@ -5,7 +5,7 @@ sidebar_position: 7
 
 # Plugins
 
-A plugin is a shared library that adds **Services** to the client: a streaming
+A plugin is a shared library, or a Python file, that adds **Services** to the client: a streaming
 back-end, a store, anything with a sign-in or playback. It talks to the client
 only through COM interfaces, so it can be built with any compiler and shipped
 separately from the application.
@@ -87,6 +87,68 @@ builds it as `bungalow-sample-plugin` and loads it.
 Put the library in `<app>/Apps` or `~/Bungalow`. Libraries directly inside
 those folders are loaded at startup; ones that do not export
 `BungalowCreateApplication` are skipped.
+
+## Writing a plugin in Python
+
+The lightweight alternative: a plugin can be one `.py` file. Bungalow embeds a
+Python interpreter (pybind11; `BUNGALOW_ENABLE_PYTHON`, on by default), so
+nothing has to be compiled or installed.
+
+```python
+import bungalow
+
+ID, NAME, VERSION = "com.acme.stream", "Acme", "1.0.0"   # optional
+
+class Acme(bungalow.Service):
+    id, name = "acme.stream", "Acme Stream"
+
+    def login(self, done):                       # has accounts
+        done.success(bungalow.Session("u1", "Me", {"token": "…"}))
+
+    def lookup(self, isrc):                      # plays music
+        return bungalow.Track("acme:track:1", "Song", "Artist")
+
+    def accepts_uri(self, uri): return uri.startswith("acme:")
+    def load_uri(self, uri): self.playback.state(bungalow.LOADING)
+    def play(self): self.playback.state(bungalow.PLAYING)
+
+def activate(context):
+    context.register_service(Acme())
+```
+
+A plugin is a `.py` file or a package folder (with an `__init__.py`, so it can
+ship helper modules) directly inside `<app>/Apps` or `~/Bungalow`. Names
+starting with `_` or `.` are skipped. `bungalow/examples/plugin/sample_plugin.py`
+is a complete one.
+
+| Module level | |
+|--------------|---|
+| `activate(context)` | required; call `context.register_service(service)`. `context.id` is the plugin id |
+| `deactivate()` | optional |
+| `ID`, `NAME`, `VERSION` | optional; the id defaults to `py.<file name>` |
+
+`bungalow.Service` has a default for every method. What a subclass overrides
+decides what the service can do:
+
+| Override | The service… |
+|----------|--------------|
+| `login(done)`; optionally `logout()`, `is_logged_in()`, `session()` | has accounts. Call `done.success(bungalow.Session(user_id, user_name, data))` or `done.error(message)`, at once or later, from any thread. `data` is anything `json.dumps` takes and is encrypted by the host |
+| `load_uri(uri)`, `accepts_uri(uri)`, `play()`, `pause()`, `stop()`, `seek(ms)`, `position_ms()`, `duration_ms()` | plays media. Report through `self.playback`: `state(bungalow.PLAYING)`, `position(ms, duration_ms)`, `track(title, artist, album)`, `error(message)`, `completed()` |
+| `lookup(isrc)`, `lookup_by_title_artist(title, artist)` (with `load_uri`) | resolves music. Return a `bungalow.Track(uri, title, artist)`, just a URI, or `None` |
+| `on_create()`, `on_start()`, `on_stop()`, `on_destroy()` | follows the service lifecycle |
+
+Class attributes `id` (required), `name` and `icon` identify it.
+
+Under the hood `PythonHost` wraps the module as a `com::IApplication` and each
+service as a `com::IService`, so Python plugins go through the same
+`PluginManager` and adapters as C++ ones. An exception raised by a plugin is
+written to stderr and treated as a failed call; it never reaches the host.
+
+The interpreter is isolated: it ignores environment variables and any Python
+installed on the machine, and sees only the standard library shipped in
+`<app>/python/Lib` (plus `Lib/site-packages` there, for pure-Python packages).
+Compiled extension modules (`.pyd`) cannot be loaded, because Python is linked
+statically.
 
 ## Threading
 

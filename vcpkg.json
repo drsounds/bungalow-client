@@ -28,6 +28,13 @@
 				"yoga"
 			]
 		},
+		"python": {
+			"description": "Embedded Python and pybind11, so plugins can also be written in Python (BUNGALOW_ENABLE_PYTHON)",
+			"dependencies": [
+				"python3",
+				"pybind11"
+			]
+		},
 		"cef": {
 			"description": "Chromium Embedded Framework for local HTML5 app bundles (BUNGALOW_ENABLE_CEF)",
 			"dependencies": [

@@ -159,6 +159,14 @@ space::ui::MainWindow* BungalowApp::initialize(space::Space* spaceInstance, spac
     m_plugins->loadDirectory(std::filesystem::path(resourcesDir) / "Apps", space::plugin::PluginSource::AppDir);
     m_plugins->loadDirectory(std::filesystem::path(space::platform::homeDir()) / "Bungalow",
                              space::plugin::PluginSource::External);
+    // The same folders may hold plugins written in Python (*.py, packages).
+    m_python = space::plugin::PythonHost::create(exeDir / "python");
+    if (m_python) {
+        m_python->loadDirectory(std::filesystem::path(resourcesDir) / "Apps", *m_plugins,
+                                space::plugin::PluginSource::AppDir);
+        m_python->loadDirectory(std::filesystem::path(space::platform::homeDir()) / "Bungalow", *m_plugins,
+                                space::plugin::PluginSource::External);
+    }
     m_resolutionStore = std::make_unique<space::service::ResolutionStore>(m_database->handle());
     m_coordinator = std::make_unique<PlaybackCoordinator>(m_services, m_resolutionStore.get());
     m_coordinator->setExecutors(m_worker->executor(), ui);
@@ -263,6 +271,7 @@ void BungalowApp::shutdown() {
     m_worker.reset();
     // Unregisters the plugins' services and unloads their libraries.
     m_plugins.reset();
+    m_python.reset();
     m_services.shutdownAll();
     m_resolutionStore.reset();
     m_queueEntries.clear();

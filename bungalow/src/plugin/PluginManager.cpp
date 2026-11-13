@@ -148,8 +148,9 @@ bool PluginManager::loadLibrary(const fs::path& file, PluginSource source, std::
     return true;
 }
 
-bool PluginManager::addApplication(ComPtr<IApplication> application, std::string* error) {
-    return add(std::move(application), PluginSource::Builtin, {}, nullptr, error);
+bool PluginManager::addApplication(ComPtr<IApplication> application, std::string* error, PluginSource source,
+                                   const fs::path& path) {
+    return add(std::move(application), source, path, nullptr, error);
 }
 
 bool PluginManager::add(ComPtr<IApplication> application, PluginSource source, const fs::path& path,

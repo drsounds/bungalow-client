@@ -17,6 +17,7 @@
 #include "service/ResolutionStore.h"
 #include "service/ServiceManager.h"
 #include "plugin/PluginManager.h"
+#include "plugin/PythonHost.h"
 
 #include <memory>
 #include <string>
@@ -52,6 +53,9 @@ protected:
     std::shared_ptr<space::service::AvailabilityResolver> m_availability;
     /// Where service lookups run, one at a time.
     std::unique_ptr<space::service::BackgroundWorker>    m_worker;
+    // The embedded interpreter for plugins written in Python; null when this
+    // build has none. Declared before m_plugins: it must outlive their objects.
+    std::unique_ptr<space::plugin::PythonHost>           m_python;
     // Externally loaded plugins (<app>/Apps, ~/Bungalow) and the services they
     // registered. Declared after m_services, so it is destroyed before it.
     std::unique_ptr<space::plugin::PluginManager>        m_plugins;

@@ -26,7 +26,7 @@ struct PluginInfo {
     std::string              name;
     std::string              version;
     PluginSource             source = PluginSource::Builtin;
-    std::filesystem::path    path;       ///< The library; empty for Builtin.
+    std::filesystem::path    path;       ///< The library or Python file; empty for Builtin.
     bool                     active = false;
     std::vector<std::string> serviceIds; ///< Services it registered while active.
 };
@@ -58,8 +58,11 @@ public:
     /// version or its id is already loaded.
     bool loadLibrary(const std::filesystem::path& file, PluginSource source, std::string* error = nullptr);
 
-    /// Adds a plugin that is already in the process and activates it.
-    bool addApplication(com::ComPtr<com::IApplication> application, std::string* error = nullptr);
+    /// Adds a plugin that is already in the process and activates it. `source`
+    /// and `path` say where it came from when it is not the host's own (a
+    /// Python plugin, see PythonHost).
+    bool addApplication(com::ComPtr<com::IApplication> application, std::string* error = nullptr,
+                        PluginSource source = PluginSource::Builtin, const std::filesystem::path& path = {});
 
     /// Activates or deactivates a loaded plugin. Deactivating unregisters its
     /// services and forgets their accounts; the library stays loaded. Returns
