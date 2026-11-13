@@ -50,6 +50,12 @@ class SPTableElement : public SPElement, public SPDropTarget
         vector<int> getSelectedRows() const {
             return vector<int>(m_selectedRows.begin(), m_selectedRows.end());
         }
+        /** Replaces the selection; the last row becomes the keyboard anchor. */
+        void setSelectedRows(const vector<int>& rows) {
+            m_selectedRows = std::set<int>(rows.begin(), rows.end());
+            m_anchorRow = rows.empty() ? -1 : rows.back();
+            invalidate();
+        }
         int rowAtY(int absoluteY) const;
         int dropIndexAtY(int absoluteY) const;
         void setDropIndex(int index) {

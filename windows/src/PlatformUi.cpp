@@ -12,6 +12,7 @@
 #include "AudioImporter.h"
 #include "BungalowApp.h"
 #include "Database.h"
+#include "app/library/MusicEditActions.h"
 
 namespace space {
 namespace platform {
@@ -325,9 +326,8 @@ bool showAddTrackDialog(sqlite3* db, int trackId) {
     HWND owner = GetActiveWindow();
 
     if (trackId > 0) {
-        MessageBoxW(owner, L"Editing track metadata is not available in the Windows build yet.",
-                    L"Edit Track", MB_OK | MB_ICONINFORMATION);
-        return false;
+        Database* database = appDatabase();
+        return database && views::edit::track(*database, trackId);
     }
 
     wchar_t file[MAX_PATH * 4] = L"";

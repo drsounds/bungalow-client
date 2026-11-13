@@ -77,7 +77,18 @@ MusicBrowseView::Page& MusicBrowseView::addPage(const std::string& id,
 		page->table);
 	page->table->setDropHandler(
 		[this](const SPDragData&) { return acceptsDrop(); },
-		[this](const SPDragData& data, int index) { return onDropRefs(data.uris, index); });
+		[this, table = page->table](const SPDragData& data, int index) {
+			// Dragged within the same table: move the rows instead of adding copies.
+			if (data.source == table) {
+				std::vector<int> newRows;
+				if (!onMoveRows(table->getSelectedRows(), index, newRows))
+					return false;
+				refresh();
+				table->setSelectedRows(newRows);  // selection follows the moved rows
+				return true;
+			}
+			return onDropRefs(data.uris, index);
+		});
 
 	this->tabStack->appendChild(section);
 	this->tabBar->addTab(id, title, uri);

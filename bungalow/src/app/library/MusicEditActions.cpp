@@ -185,6 +185,96 @@ bool addTrackToRelease(Database& db, const std::string& upc) {
     return true;
 }
 
+namespace {
+
+// The UPC of the release named @p name (any case), or "".
+std::string releaseByName(Database& db, const std::string& name) {
+    for (const auto& r : db.getAllReleases())
+        if (lower(r.name) == lower(name)) return r.upc;
+    return "";
+}
+
+} // namespace
+
+bool track(Database& db, int trackId) {
+    const Database::TrackDetails d = db.getTrackDetails(trackId);
+    if (d.id < 0 || d.recording.isrc.empty()) return false;
+
+    std::vector<platform::FormField> fields = {
+        { "Name",          d.recording.name,    "",                                     true,  false },
+        { "Version",       d.recording.version, "e.g. Radio Edit, Live",                false, false },
+        { "Artists",       joinArtistNames(d.recordingArtists), kArtistsHint,           false, false },
+        { "Release",       d.release.name,      "existing or new name; empty = none",   false, false },
+        { "Release date",  d.release.releaseDate, "YYYY-MM-DD, YYYY-MM or YYYY",        false, false },
+        { "Release artists", joinArtistNames(d.releaseArtists), kArtistsHint,           false, false },
+    };
+    if (!platform::showFormDialog("Edit Track", fields)) return false;
+
+    db.upsertRecording(d.recording.isrc, fields[0].value, fields[1].value);
+    db.setRecordingArtists(d.recording.isrc, resolveArtistNames(db, fields[2].value));
+
+    const std::string releaseName = fields[3].value;
+    if (releaseName.empty()) {
+        db.setTrackRelease(trackId, "");
+        return true;
+    }
+
+    std::string upc = releaseByName(db, releaseName);
+    const bool created = upc.empty();
+    if (created) upc = Database::generateLocalId();
+    // Credits and date describe the release this track was on; for a different
+    // existing release they would overwrite it, so they only apply otherwise.
+    if (created || upc == d.release.upc) {
+        db.upsertRelease(upc, releaseName, fields[4].value);
+        db.setReleaseArtists(upc, resolveArtistNames(db, fields[5].value));
+    }
+    if (upc != d.release.upc) db.setTrackRelease(trackId, upc);
+    return true;
+}
+
+std::string playlistEntry(Database& db) {
+    const int type = platform::showChoiceDialog(
+        "Add to Playlist", "What kind of entry?", { "Track", "Release", "Artist" });
+    if (type < 0) return "";
+
+    if (type == 1) {
+        const std::string upc = release(db);
+        return upc.empty() ? "" : "musik:upc:" + upc;
+    }
+    if (type == 2) {
+        const std::string isni = artist(db);
+        return isni.empty() ? "" : "musik:isni:" + isni;
+    }
+
+    std::vector<platform::FormField> fields = {
+        { "Name",     "", "",                               true,  false },
+        { "Version",  "", "e.g. Radio Edit, Live",          false, false },
+        { "Artists",  "", kArtistsHint,                     false, false },
+        { "Release",  "", "optional; existing or new name", false, false },
+        { "ISRC",     "", kIdentifierHint,                  false, false },
+    };
+    if (!platform::showFormDialog("New Track", fields)) return "";
+
+    const std::string isrc = newKey(fields[4].value, !db.getRecording(fields[4].value).isrc.empty(), "recording");
+    if (isrc.empty()) return "";
+
+    const auto credits = resolveArtistNames(db, fields[2].value);
+    db.upsertRecording(isrc, fields[0].value, fields[1].value);
+    db.setRecordingArtists(isrc, credits);
+
+    std::string upc;
+    if (!fields[3].value.empty()) {
+        upc = releaseByName(db, fields[3].value);
+        if (upc.empty()) {
+            upc = Database::generateLocalId();
+            db.upsertRelease(upc, fields[3].value, "");
+            db.setReleaseArtists(upc, credits);
+        }
+    }
+    if (db.upsertTrack(isrc, upc) < 0) return "";
+    return "musik:isrc:" + isrc;
+}
+
 bool trackNumber(Database& db, int trackId, int current) {
     std::vector<platform::FormField> fields = {
         { "Track number", std::to_string(current), "0 = unnumbered", true, false },

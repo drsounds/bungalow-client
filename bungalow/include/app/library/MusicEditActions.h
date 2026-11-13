@@ -34,6 +34,18 @@ namespace space::views::edit {
      */
     bool addTrackToRelease(Database& db, const std::string& upc);
 
+    /**
+     * Edit a track's recording (name, version, artists) and its release (an
+     * existing one by name, a new one, or none). @return true when saved.
+     */
+    bool track(Database& db, int trackId);
+
+    /**
+     * Ask what kind of entry to add to a playlist (track, release or artist),
+     * create it in the library, and @return its content ref, or "" when cancelled.
+     */
+    std::string playlistEntry(Database& db);
+
     /** Ask for a track's position on its release. @return true when changed. */
     bool trackNumber(Database& db, int trackId, int current);
 

@@ -242,6 +242,8 @@ public:
     bool getPlaylistRefs(const std::string& id, std::vector<std::string>& refs);
     /** Insert @p refs at @p position (clamped to the playlist). */
     bool insertPlaylistRefs(const std::string& id, const std::vector<std::string>& refs, int position);
+    /** Replaces the playlist's entries with @p ordered. */
+    bool setPlaylistRefs(const std::string& id, const std::vector<std::string>& ordered);
 
     // ── Music metadata CRUD ───────────────────────────────────────────────────
 

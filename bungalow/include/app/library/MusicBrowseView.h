@@ -67,6 +67,14 @@ namespace space {
                 (void)position;
                 return false;
             }
+            /** Rows of this view's own table were dragged to in front of row @p position (a reorder). */
+            virtual bool onMoveRows(const std::vector<int>& rows, int position,
+                                    std::vector<int>& newRows) {
+                (void)rows;
+                (void)position;
+                (void)newRows;
+                return false;
+            }
 
             /**
              * reload() then repaint every table. Availability is asked again,

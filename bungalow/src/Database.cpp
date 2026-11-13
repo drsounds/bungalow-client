@@ -673,6 +673,13 @@ bool Database::insertPlaylistRefs(const std::string& id, const std::vector<std::
         return false;
     const size_t index = static_cast<size_t>(std::clamp(position, 0, static_cast<int>(ordered.size())));
     ordered.insert(ordered.begin() + index, refs.begin(), refs.end());
+    return setPlaylistRefs(id, ordered);
+}
+
+bool Database::setPlaylistRefs(const std::string& id, const std::vector<std::string>& ordered)
+{
+    if (getPlaylistName(id).empty())
+        return false;
 
     if (sqlite3_exec(m_db, "BEGIN IMMEDIATE;", nullptr, nullptr, nullptr) != SQLITE_OK)
         return false;

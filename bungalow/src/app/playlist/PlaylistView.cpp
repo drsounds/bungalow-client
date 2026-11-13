@@ -1,5 +1,6 @@
 #include "app/playlist/PlaylistView.h"
 
+#include "app/library/MusicEditActions.h"
 #include "app/library/MusicEntityRepository.h"
 #include "app/playlist/PlaylistItemRow.h"
 #include "playlist/Upsl.h"
@@ -10,6 +11,7 @@
 #include "SPTabBarElement.h"
 
 #include <algorithm>
+#include <limits>
 #include <map>
 
 namespace space {
@@ -75,6 +77,22 @@ std::shared_ptr<const Entity> entityFor(const MusicEntityRepository& library, co
 
 PlaylistView::PlaylistView(SPElement* parent, Database* db) : MusicBrowseView(parent, db) {
     addPage("tracks", "Playlist", "", {MusicColumn::Number, MusicColumn::Name, MusicColumn::Artists});
+    this->tabBar->addToolButton("add", "+");
+}
+
+void PlaylistView::onToolButton(const std::string& id) {
+    if (id != "add" || !m_db)
+        return;
+    auto* app = BungalowApp::current();
+    if (!acceptsDrop()) {
+        if (app) app->showError("Entries can only be added to your own playlists.");
+        return;
+    }
+    const std::string ref = views::edit::playlistEntry(*m_db);
+    if (ref.empty())
+        return;
+    if (onDropRefs({ref}, std::numeric_limits<int>::max()))
+        refresh();
 }
 
 bool PlaylistView::acceptsUri(const std::string& uri) {
@@ -127,6 +145,47 @@ bool PlaylistView::onDropRefs(const std::vector<std::string>& refs, int position
     if (!m_db || !playlist::RootlistManager::insertContentRefs(*m_db, m_uri, refs, position)) {
         if (auto* app = BungalowApp::current())
             app->showError("Could not add items to this playlist.");
+        return false;
+    }
+    return true;
+}
+
+bool PlaylistView::onMoveRows(const std::vector<int>& rows, int position, std::vector<int>& newRows) {
+    const auto upsl = playlist::Upsl::parse(m_uri);
+    if (!m_db || !upsl || !acceptsDrop())
+        return false;
+    std::vector<std::string> refs;
+    if (!m_db->getPlaylistRefs(upsl->playlistId, refs))
+        return false;
+
+    std::vector<int> sorted;
+    for (int r : rows)
+        if (r >= 0 && r < static_cast<int>(refs.size()))
+            sorted.push_back(r);
+    std::sort(sorted.begin(), sorted.end());
+    sorted.erase(std::unique(sorted.begin(), sorted.end()), sorted.end());
+    if (sorted.empty())
+        return false;
+
+    position = std::clamp(position, 0, static_cast<int>(refs.size()));
+    std::vector<std::string> moved, rest;
+    int insertAt = 0;
+    for (int i = 0; i < static_cast<int>(refs.size()); ++i) {
+        if (std::binary_search(sorted.begin(), sorted.end(), i)) {
+            moved.push_back(refs[i]);
+        } else {
+            if (i < position) ++insertAt;
+            rest.push_back(refs[i]);
+        }
+    }
+    rest.insert(rest.begin() + insertAt, moved.begin(), moved.end());
+    for (int i = 0; i < static_cast<int>(moved.size()); ++i)
+        newRows.push_back(insertAt + i);
+    if (rest == refs)
+        return true;
+    if (!m_db->setPlaylistRefs(upsl->playlistId, rest)) {
+        if (auto* app = BungalowApp::current())
+            app->showError("Could not reorder this playlist.");
         return false;
     }
     return true;

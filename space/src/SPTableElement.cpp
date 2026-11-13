@@ -352,6 +352,7 @@ namespace space {
         SPDragData data;
         data.uris = dataSource->getDragUris(getSelectedRows());
         if (data.uris.empty()) return;
+        data.source = this;
 
         // The OS runs the drag and takes the button release with it, so the
         // pressed state the mouse-down left on the way here is undone by hand.

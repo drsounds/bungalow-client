@@ -26,8 +26,10 @@ public:
 protected:
     void reload() override;
     void onActivate(Page& page, int row) override;
+    void onToolButton(const std::string& id) override;
     bool acceptsDrop() const override;
     bool onDropRefs(const std::vector<std::string>& refs, int position) override;
+    bool onMoveRows(const std::vector<int>& rows, int position, std::vector<int>& newRows) override;
 
 private:
     std::string m_uri;

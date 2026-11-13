@@ -10,6 +10,8 @@ class SPElement;
 /** What a drag carries: the URIs of the dragged entities. */
 struct SPDragData {
     std::vector<std::string> uris;
+    /** The element the drag started in; lets a target tell a reorder from an outside drop. */
+    const SPElement* source = nullptr;
 };
 
 /**
