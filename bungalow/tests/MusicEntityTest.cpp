@@ -211,6 +211,42 @@ int main() {
         expect(unknown.text(MusicColumn::Name), "Thing", "an unresolved playlist item is named");
         expect(unknown.text(MusicColumn::Version), "", "an unresolved playlist item has no music columns");
     }
+    {
+        // A delete can be taken back: the cascades' junction rows (credits,
+        // saves) and a release's links to its tracks come back with it.
+        Database db(path);
+        const auto state = [&db] {
+            std::string out = describe(db.getAllTracks());
+            for (const auto& r : db.getReleaseSummaries()) out += "R:" + r.release.upc + "|" + r.artists + "\n";
+            return out;
+        };
+        const std::string before = state();
+
+        auto snapshot = db.snapshotLibrary();
+        expect(snapshot ? "ok" : "null", "ok", "a library snapshot is taken");
+        db.deleteRelease("upc-a");
+        expect(state() == before ? "same" : "changed", "changed", "deleting a release changes the library");
+        expect(db.restoreLibrary(*snapshot) ? "ok" : "failed", "ok", "restoring a deleted release");
+        expect(state(), before, "undo of a release delete puts back its credits and track links");
+
+        snapshot = db.snapshotLibrary();
+        db.deleteRecording("isrc-4");
+        db.deleteArtist("isni-abba");
+        expect(db.restoreLibrary(*snapshot) ? "ok" : "failed", "ok", "restoring a deleted recording and artist");
+        expect(state(), before, "undo of a recording and artist delete");
+
+        // Rows added after the snapshot stay.
+        snapshot = db.snapshotLibrary();
+        db.deleteRecording("isrc-1");
+        db.upsertRecording("isrc-new", "Newcomer", "");
+        db.upsertTrack("isrc-new", "");
+        db.restoreLibrary(*snapshot);
+        expect(db.getTracksForRecording("isrc-new").size() == 1 ? "kept" : "lost", "kept",
+               "a restore leaves what was added since");
+        expect(db.getTracksForRecording("isrc-1").size() == 2 ? "back" : "missing", "back",
+               "a restore brings the recording's tracks back");
+        snapshot.reset();   // drops the copy
+    }
     std::filesystem::remove(path);
 
     if (failures == 0) std::cout << "All music entity tests passed\n";

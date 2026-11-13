@@ -3,6 +3,7 @@
 #include "SPTabBarViewElement.h"
 #include "app/library/MusicEntityDataSource.h"
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -29,6 +30,9 @@ namespace space {
          * runs on every navigate() and after refresh().
          * Rows are dragged out by the table itself; a view that takes drops
          * says so with acceptsDrop() and gets them in onDropRefs().
+         * The Delete key removes the selected rows (onDeleteRows) after asking,
+         * unless the view says it needs no asking (confirmsDelete()); Ctrl+Z
+         * brings the last deletion back.
          * Dialogs and menus go through platform::, so the views work on every
          * UI backend.
          */
@@ -75,6 +79,16 @@ namespace space {
                 (void)newRows;
                 return false;
             }
+
+            /**
+             * The Delete key took the page's rows (ascending). Removes them and
+             * returns what puts them back, or an empty function when nothing was
+             * removed. The base removes library entities: tracks, recordings,
+             * releases and artists, undoable through a snapshot of the library.
+             */
+            virtual std::function<void()> onDeleteRows(Page& page, const std::vector<int>& rows);
+            /** Whether deleting with the key asks first. */
+            virtual bool confirmsDelete() const { return true; }
 
             /**
              * reload() then repaint every table. Availability is asked again,

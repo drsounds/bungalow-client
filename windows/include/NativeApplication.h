@@ -27,10 +27,10 @@ namespace space
         bool initialize(HWND window);
         void resize();
         void paint(HDC dc);
-        void mouseEvent(const char *name, int x, int y, int button = 0, bool commandDown = false);
+        void mouseEvent(const char *name, int x, int y, int button = 0, bool commandDown = false, bool shiftDown = false);
         // WM_MOUSEWHEEL at client x, y; wheelDelta is in WHEEL_DELTA units, positive away from the user.
         void wheelEvent(int x, int y, int wheelDelta);
-        void keyEvent(int keyCode, bool commandDown);
+        void keyEvent(int keyCode, bool commandDown, bool shiftDown = false);
         void command(WPARAM wParam, LPARAM lParam);
         void timer();
         // Develop menu: act on the visible web page or app.

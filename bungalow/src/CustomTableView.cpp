@@ -46,6 +46,16 @@ CustomTableView::CustomTableView(SPElement *parent, sqlite3 *db) :
 		reinterpret_cast<SPCallback>(&CustomTableView::onRowRightClicked), this,
 		m_table);
 
+	// Delete removes the selected rows and Ctrl+Z puts them back.
+	m_table->setDeleteHandler(
+		[this](const std::vector<int> &rows) { return deleteRows(rows); },
+		[](const std::vector<int> &rows) {
+			return platform::showConfirmDialog(
+				"Confirm Delete",
+				rows.size() == 1 ? "Delete this row?"
+								 : "Delete " + std::to_string(rows.size()) + " rows?");
+		});
+
 	this->tabStack->appendChild(section);
 	this->tabBar->addTab("overview", "Table", "bungalow:table:");
 	this->tabStack->setTabId("overview");
@@ -76,7 +86,10 @@ void CustomTableView::navigate(const std::string &uri) {
 	static const std::string kPrefix = "bungalow:table:";
 	if (uri.rfind(kPrefix, 0) != 0)
 		return;
-	m_tableName = uri.substr(kPrefix.size());
+	const std::string tableName = uri.substr(kPrefix.size());
+	if (tableName != m_tableName && m_table)
+		m_table->clearUndoHistory();   // undo is per table
+	m_tableName = tableName;
 
 	if (m_dataSource && m_db) {
 		m_dataSource->reload(m_db, m_tableName);
@@ -118,6 +131,46 @@ int CustomTableView::onRowDblClicked(SPObject * /*sender*/, SPEventArgs *args) {
 	if (auto *app = BungalowApp::current())
 		app->navigate("bungalow:table:" + m_tableName + ":" + uuid);
 	return 0;
+}
+
+std::function<void()> CustomTableView::deleteRows(const std::vector<int> &rows) {
+	auto *app = BungalowApp::current();
+	Database *db = app ? app->getDatabase() : nullptr;
+	if (!db || !m_dataSource || m_tableName.empty())
+		return {};
+
+	const std::string table = m_tableName;
+	const CustomTableDef def = m_dataSource->getTableDef();
+	std::vector<CustomRow> removed;   // what undo has to put back
+	for (int row : rows) {
+		const std::string uuid = m_dataSource->getRowUuidForRow(row);
+		CustomRow data = uuid.empty() ? CustomRow() : db->getCustomRow(table, uuid);
+		if (!data.id.empty())
+			removed.push_back(std::move(data));
+	}
+	if (removed.empty())
+		return {};
+	for (const CustomRow &row : removed)
+		db->deleteCustomRow(table, row.id);
+	reloadTable();
+
+	return [this, table, def, removed] {
+		auto *app = BungalowApp::current();
+		Database *db = app ? app->getDatabase() : nullptr;
+		if (!db)
+			return;
+		for (const CustomRow &row : removed)
+			db->insertCustomRow(table, def, row.values, row.id);
+		if (m_tableName == table)
+			reloadTable();
+	};
+}
+
+void CustomTableView::reloadTable() {
+	if (m_dataSource && m_db)
+		m_dataSource->reload(m_db, m_tableName);
+	if (m_table)
+		m_table->invalidate();
 }
 
 int CustomTableView::onRowRightClicked(SPObject * /*sender*/,

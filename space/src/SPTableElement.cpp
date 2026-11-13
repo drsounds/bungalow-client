@@ -14,6 +14,8 @@
 #include <utility>
 
 namespace space {
+    SPTableElement *SPTableElement::s_keyTarget = nullptr;
+
     SPTableElement::SPTableElement()
     {
         //ctor
@@ -34,6 +36,7 @@ namespace space {
     SPTableElement::~SPTableElement()
     {
         SPDragDrop::unregisterTarget(this);
+        if (s_keyTarget == this) s_keyTarget = nullptr;
         if (m_pressed && s_capturedElement == this) releaseMouseCapture();
     }
     string SPTableElement::getType() {
@@ -134,7 +137,15 @@ namespace space {
             }
             if (isRowSelected(i)) {
                 rowFg = selFgColor;
-            } 
+            }
+            if (m_showCursor && s_keyTarget == this && i == m_cursorRow) {
+                // Ctrl+arrows move the cursor apart from the selection: outline it.
+                const SPColor cursorColor(99, 149, 234, 255);
+                g->fillRectangle(x, rowY, width, 1, cursorColor);
+                g->fillRectangle(x, rowY + rowH - 1, width, 1, cursorColor);
+                g->fillRectangle(x, rowY, 1, rowH, cursorColor);
+                g->fillRectangle(x + width - 1, rowY, 1, rowH, cursorColor);
+            }
             float prog = dataSource->getProgressForRow(i);
             for (int j = 0; j < numCols; j++) {
                 // Last column: draw a progress bar when progress >= 0
@@ -223,6 +234,7 @@ namespace space {
     void SPTableElement::mouseDown(SPObject* sender, SPEventArgs* e) {
         auto *me = dynamic_cast<SPMouseEventArgs *>(e);
         if (!me || !dataSource) return;
+        s_keyTarget = this;   // this table takes the keys now
 
         // A left press on a link belongs to the link: it is followed when the
         // button comes up on it again, and does not select or drag the row.
@@ -249,9 +261,13 @@ namespace space {
 
         // ── Right-click → select row + fire "rowrightclicked" ─────────────
         if (me->getButton() == 1) {
-            m_selectedRows.clear();
-            m_selectedRows.insert(rowIdx);
-            m_anchorRow = rowIdx;
+            // A right-click inside a multi-row selection acts on the selection.
+            if (!m_selectedRows.count(rowIdx)) {
+                m_selectedRows.clear();
+                m_selectedRows.insert(rowIdx);
+            }
+            m_anchorRow = m_cursorRow = rowIdx;
+            m_showCursor = false;
             this->invalidate();
             auto* args = new SPTableRowEventArgs(rowIdx);
             this->dispatchEvent("rowrightclicked", args, this);
@@ -277,16 +293,26 @@ namespace space {
         }
 
         // ── Selection update ───────────────────────────────────────────────
-        if (me->getCmdDown()) {
-            if (m_selectedRows.count(rowIdx))
-                m_selectedRows.erase(rowIdx);
-            else
+        pruneSelection();
+        if (me->getShiftDown() && m_anchorRow >= 0) {
+            // Shift: the range from the anchor to here, which stays put. With
+            // Ctrl as well the range joins the rows already picked.
+            if (!me->getCmdDown()) m_selectedRows.clear();
+            selectRange(m_anchorRow, rowIdx);
+            m_cursorRow = rowIdx;
+        } else {
+            if (me->getCmdDown()) {
+                if (m_selectedRows.count(rowIdx))
+                    m_selectedRows.erase(rowIdx);
+                else
+                    m_selectedRows.insert(rowIdx);
+            } else if (!m_selectedRows.count(rowIdx)) {
+                m_selectedRows.clear();
                 m_selectedRows.insert(rowIdx);
-        } else if (!m_selectedRows.count(rowIdx)) {
-            m_selectedRows.clear();
-            m_selectedRows.insert(rowIdx);
+            }
+            m_anchorRow = m_cursorRow = rowIdx;
         }
-        m_anchorRow = rowIdx;
+        m_showCursor = false;
         this->invalidate();
 
         // A press on a selected row may turn into a drag. Capture the mouse so
@@ -381,27 +407,142 @@ namespace space {
         return m_dropHandler(data, dropIndexAtY(y));
     }
 
-    // ── Keyboard navigation ───────────────────────────────────────────────────
+    // ── Selection helpers ─────────────────────────────────────────────────────
+    void SPTableElement::selectRange(int from, int to) {
+        if (from > to) std::swap(from, to);
+        for (int row = from; row <= to; ++row) m_selectedRows.insert(row);
+    }
+
+    // Rows can go while the table is not looking (a refresh, a delete elsewhere).
+    void SPTableElement::pruneSelection() {
+        const int rowCnt = dataSource ? dataSource->getRowCount() : 0;
+        m_selectedRows.erase(m_selectedRows.lower_bound(rowCnt), m_selectedRows.end());
+        if (m_anchorRow >= rowCnt) m_anchorRow = rowCnt - 1;
+        if (m_cursorRow >= rowCnt) m_cursorRow = rowCnt - 1;
+    }
+
+    void SPTableElement::selectAll() {
+        if (!dataSource) return;
+        const int rowCnt = dataSource->getRowCount();
+        m_selectedRows.clear();
+        if (rowCnt > 0) selectRange(0, rowCnt - 1);
+        m_anchorRow = rowCnt > 0 ? 0 : -1;
+        m_cursorRow = rowCnt - 1;
+        m_showCursor = false;
+        invalidate();
+    }
+
+    // ── Delete and undo ───────────────────────────────────────────────────────
+    bool SPTableElement::deleteSelectedRows() {
+        if (!m_remove || !dataSource) return false;
+        pruneSelection();
+        const std::vector<int> rows = getSelectedRows();   // ascending
+        if (rows.empty()) return false;
+        if (m_confirm && !m_confirm(rows)) return false;
+
+        std::function<void()> undo = m_remove(rows);
+        if (!undo) return false;
+        m_history.push_back({ std::move(undo), rows });
+        if (m_history.size() > kMaxHistory)
+            m_history.erase(m_history.begin());
+
+        // Land on the row that took the place of the first one deleted, so
+        // Delete can be pressed again to go on down the list.
+        m_selectedRows.clear();
+        const int rowCnt = dataSource->getRowCount();
+        if (rowCnt > 0) {
+            const int next = std::min(rows.front(), rowCnt - 1);
+            m_selectedRows.insert(next);
+            m_anchorRow = m_cursorRow = next;
+        } else {
+            m_anchorRow = m_cursorRow = -1;
+        }
+        m_showCursor = false;
+        invalidate();
+        return true;
+    }
+
+    bool SPTableElement::undo() {
+        if (m_history.empty()) return false;
+        Deletion last = std::move(m_history.back());
+        m_history.pop_back();
+        last.undo();
+
+        // Select what came back.
+        const int rowCnt = dataSource ? dataSource->getRowCount() : 0;
+        m_selectedRows.clear();
+        for (int row : last.rows)
+            if (row < rowCnt) m_selectedRows.insert(row);
+        m_anchorRow = m_selectedRows.empty() ? -1 : *m_selectedRows.begin();
+        m_cursorRow = m_selectedRows.empty() ? -1 : *m_selectedRows.rbegin();
+        m_showCursor = false;
+        invalidate();
+        return true;
+    }
+
+    // ── Keyboard ──────────────────────────────────────────────────────────────
+    bool SPTableElement::isOnScreen() {
+        for (SPElement *e = this; e; e = e->getParentElement())
+            if (!e->isVisible()) return false;
+        return true;
+    }
+
+    bool SPTableElement::handleKey(const SPKeyEventArgs& key) {
+        const int  code  = key.getKeyCode();
+        const bool cmd   = key.getCmdDown();
+        const bool shift = key.getShiftDown();
+        const int  rowCnt = dataSource->getRowCount();
+        pruneSelection();
+
+        if (cmd && code == SPKeyEventArgs::KeyZ && !shift) return undo();
+        if (cmd && code == SPKeyEventArgs::KeyA) { selectAll(); return true; }
+        if (code == SPKeyEventArgs::KeyDelete && !cmd) return deleteSelectedRows();
+        if (rowCnt == 0) return false;
+
+        if (cmd && code == SPKeyEventArgs::KeySpace) {
+            // Pick the cursor row in or out of the selection.
+            if (m_cursorRow < 0) return false;
+            if (!m_selectedRows.erase(m_cursorRow)) m_selectedRows.insert(m_cursorRow);
+            m_anchorRow = m_cursorRow;
+            m_showCursor = true;
+            invalidate();
+            return true;
+        }
+        if (code != SPKeyEventArgs::KeyUp && code != SPKeyEventArgs::KeyDown) return false;
+
+        const int from = m_cursorRow < 0 ? (code == SPKeyEventArgs::KeyDown ? -1 : rowCnt) : m_cursorRow;
+        const int next = std::max(0, std::min(rowCnt - 1, from + (code == SPKeyEventArgs::KeyDown ? 1 : -1)));
+        if (shift) {
+            // The range from the anchor to the new cursor row: it grows away
+            // from the anchor and shrinks back towards it.
+            if (m_anchorRow < 0) m_anchorRow = next;
+            m_selectedRows.clear();
+            selectRange(m_anchorRow, next);
+            m_showCursor = false;
+        } else if (cmd) {
+            m_showCursor = true;   // move only the cursor; Ctrl+Space picks
+        } else {
+            m_selectedRows.clear();
+            m_selectedRows.insert(next);
+            m_anchorRow = next;
+            m_showCursor = false;
+        }
+        m_cursorRow = next;
+        invalidate();
+        return true;
+    }
+
     void SPTableElement::processEvent(const SPEvent& event) {
         if (event.type == "keydown") {
             auto *ke = dynamic_cast<SPKeyEventArgs *>(event.args);
-            if (ke && dataSource) {
-                int rowCnt = dataSource->getRowCount();
-                if (rowCnt == 0) return;
-
-                int next = m_anchorRow;
-                if (ke->getKeyCode() == SPKeyEventArgs::KeyUp)
-                    next = (m_anchorRow <= 0) ? 0 : m_anchorRow - 1;
-                else if (ke->getKeyCode() == SPKeyEventArgs::KeyDown)
-                    next = (m_anchorRow + 1 >= rowCnt) ? rowCnt - 1 : m_anchorRow + 1;
-                else
-                    return;
-
-                m_selectedRows.clear();
-                m_selectedRows.insert(next);
-                m_anchorRow = next;
-                this->invalidate();
+            if (!ke || !dataSource) return;
+            // One table takes the keys: the one last clicked while it is on
+            // screen, else the first one that sees the key.
+            if (s_keyTarget != this) {
+                if (s_keyTarget && s_keyTarget->isOnScreen()) return;
+                s_keyTarget = this;
             }
+            handleKey(*ke);
             return;
         }
         SPElement::processEvent(event);

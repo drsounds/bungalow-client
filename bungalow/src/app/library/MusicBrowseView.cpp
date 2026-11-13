@@ -27,6 +27,33 @@ std::string libraryKey(const std::string& kind, const std::string& uri) {
 	return uri.substr(prefix.size());
 }
 
+namespace {
+
+// What the question before a delete calls the rows.
+std::string deleteQuestion(const MusicEntityDataSource& source, const std::vector<int>& rows) {
+	const auto first = source.rowAt(rows.front());
+	if (!first)
+		return "Delete the selected entries?";
+	std::string noun = "entries";
+	std::string note;
+	if (std::dynamic_pointer_cast<const TrackEntity>(first)) {
+		noun = "tracks";
+		note = " The recordings stay in the library.";
+	} else if (std::dynamic_pointer_cast<const RecordingEntity>(first)) {
+		noun = "recordings";
+	} else if (std::dynamic_pointer_cast<const ReleaseEntity>(first)) {
+		noun = "releases";
+		note = " Their recordings stay in the library without a release.";
+	} else if (std::dynamic_pointer_cast<const ArtistEntity>(first)) {
+		noun = "artists";
+	}
+	if (rows.size() == 1)
+		return "Delete \"" + first->name() + "\"?" + note;
+	return "Delete " + std::to_string(rows.size()) + " " + noun + "?" + note;
+}
+
+} // namespace
+
 // ── Construction ──────────────────────────────────────────────────────────────
 
 MusicBrowseView::MusicBrowseView(SPElement* parent, Database* db) :
@@ -88,6 +115,15 @@ MusicBrowseView::Page& MusicBrowseView::addPage(const std::string& id,
 				return true;
 			}
 			return onDropRefs(data.uris, index);
+		});
+
+	Page* const pagePtr = page.get();
+	page->table->setDeleteHandler(
+		[this, pagePtr](const std::vector<int>& rows) { return onDeleteRows(*pagePtr, rows); },
+		[this, pagePtr](const std::vector<int>& rows) {
+			if (!confirmsDelete())
+				return true;
+			return platform::showConfirmDialog("Confirm Delete", deleteQuestion(*pagePtr->source, rows));
 		});
 
 	this->tabStack->appendChild(section);
@@ -271,6 +307,39 @@ void MusicBrowseView::trackContextMenu(Page& page, int row, unsigned flags) {
 	default:
 		break;
 	}
+}
+
+std::function<void()> MusicBrowseView::onDeleteRows(Page& page, const std::vector<int>& rows) {
+	if (!m_db)
+		return {};
+	// The cascades take junction rows with the entities; the copy remembers them.
+	const auto snapshot = m_db->snapshotLibrary();
+	if (!snapshot)
+		return {};
+	bool deleted = false;
+	for (int row : rows) {
+		const auto entity = page.source->rowAt(row);
+		if (!entity)
+			continue;
+		if (const auto track = std::dynamic_pointer_cast<const TrackEntity>(entity))
+			m_db->deleteTrack(track->trackId());
+		else if (std::dynamic_pointer_cast<const RecordingEntity>(entity))
+			m_db->deleteRecording(entity->id());
+		else if (std::dynamic_pointer_cast<const ReleaseEntity>(entity))
+			m_db->deleteRelease(entity->id());
+		else if (std::dynamic_pointer_cast<const ArtistEntity>(entity))
+			m_db->deleteArtist(entity->id());
+		else
+			continue;
+		deleted = true;
+	}
+	if (!deleted)
+		return {};
+	refresh();
+	return [this, snapshot] {
+		m_db->restoreLibrary(*snapshot);
+		refresh();
+	};
 }
 
 void MusicBrowseView::open(const std::string& uri) {

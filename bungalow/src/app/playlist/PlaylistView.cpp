@@ -9,6 +9,7 @@
 #include "Database.h"
 #include "BungalowApp.h"
 #include "SPTabBarElement.h"
+#include "SPTableElement.h"
 
 #include <algorithm>
 #include <limits>
@@ -100,6 +101,10 @@ bool PlaylistView::acceptsUri(const std::string& uri) {
 }
 
 void PlaylistView::navigate(const std::string& uri) {
+    // Undo takes back this playlist's deletions; another one starts afresh.
+    if (uri != m_uri)
+        for (auto& page : m_pages)
+            page->table->clearUndoHistory();
     m_uri = uri;
     setTabBaseUri(uri);
     MusicBrowseView::navigate(uri);
@@ -148,6 +153,38 @@ bool PlaylistView::onDropRefs(const std::vector<std::string>& refs, int position
         return false;
     }
     return true;
+}
+
+std::function<void()> PlaylistView::onDeleteRows(Page& /*page*/, const std::vector<int>& rows) {
+    const auto upsl = playlist::Upsl::parse(m_uri);
+    if (!m_db || !upsl)
+        return {};
+    if (!acceptsDrop()) {
+        if (auto* app = BungalowApp::current())
+            app->showError("Entries can only be removed from your own playlists.");
+        return {};
+    }
+    std::vector<std::string> before;
+    if (!m_db->getPlaylistRefs(upsl->playlistId, before))
+        return {};
+
+    std::vector<std::string> after;
+    for (int i = 0; i < static_cast<int>(before.size()); ++i)
+        if (!std::binary_search(rows.begin(), rows.end(), i))
+            after.push_back(before[i]);
+    if (after.size() == before.size())
+        return {};
+    if (!m_db->setPlaylistRefs(upsl->playlistId, after)) {
+        if (auto* app = BungalowApp::current())
+            app->showError("Could not remove the entries from this playlist.");
+        return {};
+    }
+    refresh();
+    const std::string id = upsl->playlistId;
+    return [this, id, before] {
+        m_db->setPlaylistRefs(id, before);
+        refresh();
+    };
 }
 
 bool PlaylistView::onMoveRows(const std::vector<int>& rows, int position, std::vector<int>& newRows) {

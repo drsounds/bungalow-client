@@ -91,18 +91,18 @@ namespace space
         graphics->setDeviceContext(nullptr);
     }
 
-    void NativeApplication::mouseEvent(const char *name, int x, int y, int button, bool commandDown)
+    void NativeApplication::mouseEvent(const char *name, int x, int y, int button, bool commandDown, bool shiftDown)
     {
         if (!space || !windowElement)
             return;
         if (std::string(name) == "mousemove")
             space::SPElement::setCursorHint(space::SPElement::SPCursorHint::Arrow);
-        auto *args = new SPMouseEventArgs(button, x, y, commandDown);
+        auto *args = new SPMouseEventArgs(button, x, y, commandDown, shiftDown);
         space->dispatchEvent(name, args, windowElement);
         if (std::string(name) == "mouseup" &&
             ((button == 0 && leftButtonDown) || (button == 1 && rightButtonDown)))
         {
-            auto *clickArgs = new SPMouseEventArgs(button, x, y, commandDown);
+            auto *clickArgs = new SPMouseEventArgs(button, x, y, commandDown, shiftDown);
             space->dispatchEvent("click", clickArgs, windowElement);
             if (button == 0)
                 leftButtonDown = false;
@@ -134,7 +134,7 @@ namespace space
         space->dispatchEvent("mousewheel", args, windowElement);
     }
 
-    void NativeApplication::keyEvent(int keyCode, bool commandDown)
+    void NativeApplication::keyEvent(int keyCode, bool commandDown, bool shiftDown)
     {
         if (!space || !windowElement)
             return;
@@ -142,7 +142,9 @@ namespace space
             keyCode = SPKeyEventArgs::KeyUp;
         else if (keyCode == VK_DOWN)
             keyCode = SPKeyEventArgs::KeyDown;
-        auto *args = new SPKeyEventArgs(keyCode, commandDown);
+        else if (keyCode == VK_DELETE)
+            keyCode = SPKeyEventArgs::KeyDelete;
+        auto *args = new SPKeyEventArgs(keyCode, commandDown, shiftDown);
         const SPEvent event("keydown", args, nullptr);
         space->dispatchEvent("keydown", args, windowElement);
         space->processEvent(event);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
+#include <memory>
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -333,6 +334,21 @@ public:
     void deleteRelease(const std::string& upc);
     void deleteTrack(int64_t trackId);
 
+    /**
+     * A copy of the library's tables, taken before a delete so that the delete
+     * can be undone: the cascades take junction rows (credits, saves, audio
+     * files) with them, and only a copy knows what they were. The copy lives
+     * as long as the returned handle; null when it could not be taken.
+     */
+    struct LibrarySnapshot;
+    std::shared_ptr<LibrarySnapshot> snapshotLibrary();
+    /**
+     * Puts back what is missing from the library compared to @p snapshot (and
+     * the links tracks lost to their releases). Rows added or changed since
+     * are left as they are.
+     */
+    bool restoreLibrary(const LibrarySnapshot& snapshot);
+
     /** Soft-delete the active save for a track (removes it from the library). */
     void removeSave(int64_t trackId);
 
@@ -373,11 +389,13 @@ public:
 
     /**
      * Insert a new row.  @p values must be parallel to the table's columns.
-     * Returns the newly generated UUID4, or "" on failure.
+     * Returns the newly generated UUID4, or "" on failure. A non-empty
+     * @p uuid is used instead of a generated one, to put a deleted row back.
      */
     std::string insertCustomRow(const std::string& tableName,
                         const CustomTableDef& def,
-                        const std::vector<std::string>& values);
+                        const std::vector<std::string>& values,
+                        const std::string& uuid = {});
 
     /**
      * Update an existing row by UUID.  @p values must be parallel to the table's columns.
@@ -398,6 +416,10 @@ private:
     static constexpr int kBusyTimeoutMs = 3000;
 
     sqlite3* m_db = nullptr;
+    // Outlives every LibrarySnapshot handle that has not expired: lets a handle
+    // tell whether the connection it belongs to is still open.
+    std::shared_ptr<bool> m_alive = std::make_shared<bool>(true);
+    int m_nextSnapshot = 1;
 
     void initialize();
     void initializeCustomTables();

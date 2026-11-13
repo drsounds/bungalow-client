@@ -418,9 +418,13 @@ if(BUILD_TESTING)
             bungalow/src/app/library/MusicEntity.cpp
             bungalow/src/app/library/MusicEntityRepository.cpp
             bungalow/src/app/playlist/PlaylistItemRow.cpp
+            bungalow/src/service/SessionCipher.cpp
             ${BUNGALOW_MODEL_SOURCES})
         target_include_directories(bungalow-music-entity-test PRIVATE bungalow/include)
-        target_link_libraries(bungalow-music-entity-test PRIVATE SQLite3::SQLite3)
+        target_link_libraries(bungalow-music-entity-test PRIVATE SQLite3::SQLite3 nlohmann_json::nlohmann_json)
+        if(WIN32)
+            target_link_libraries(bungalow-music-entity-test PRIVATE crypt32)
+        endif()
         add_test(NAME bungalow-music-entity-test COMMAND bungalow-music-entity-test)
 
         add_executable(bungalow-service-test

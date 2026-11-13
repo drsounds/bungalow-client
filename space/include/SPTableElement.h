@@ -14,6 +14,7 @@ using namespace std;
 
 namespace space {
 class SPTableDataSource;
+class SPKeyEventArgs;
 class SPTableRow;
 class SPTableColumnHeader;
 /**
@@ -27,6 +28,18 @@ class SPTableColumnHeader;
  * Links: a cell the data source gives markup for (getMarkupForCell) is drawn
  * as rich text. Its links show a hand cursor and an underline under the
  * pointer, and a click on one navigates to it instead of selecting the row.
+ *
+ * Selection: click selects a row; Shift+click extends the selection from the
+ * anchor row to the clicked one; Ctrl (Cmd on macOS)+click picks single rows
+ * in or out. Up/Down move the selection; Shift+Up/Down grow or shrink the
+ * range from the anchor; Ctrl+Up/Down move the cursor without selecting, and
+ * Ctrl+Space picks the cursor row; Ctrl+A selects everything. Only the table
+ * last clicked takes keys (see keyTarget).
+ *
+ * Delete: a table with a delete handler (setDeleteHandler) removes the
+ * selected rows on Delete (Backspace on macOS), after the confirm callback
+ * agrees. Every removal that gives back an undo is kept in a history, and
+ * Ctrl+Z (Cmd+Z on macOS) takes the latest back.
  */
 class SPTableElement : public SPElement, public SPDropTarget
 {
@@ -39,6 +52,29 @@ class SPTableElement : public SPElement, public SPDropTarget
             m_dropFilter  = std::move(accepts);
             m_dropHandler = std::move(drop);
         }
+
+        /// Removes the rows (ascending). Returns what takes the removal back,
+        /// or an empty function when nothing was removed. The remover refreshes
+        /// the table's data itself, and so must the undo.
+        using RemoveRows  = std::function<std::function<void()>(const std::vector<int>& rows)>;
+        /// Whether the user agrees to removing the rows.
+        using ConfirmRows = std::function<bool(const std::vector<int>& rows)>;
+        /// Makes the table's rows deletable. Without @p confirm rows go at once.
+        void setDeleteHandler(RemoveRows remove, ConfirmRows confirm = nullptr) {
+            m_remove  = std::move(remove);
+            m_confirm = std::move(confirm);
+        }
+        bool canDelete() const { return static_cast<bool>(m_remove); }
+        /// Deletes the selected rows (after confirming); true when they went.
+        bool deleteSelectedRows();
+        /// Takes the latest deletion back; false when there is none.
+        bool undo();
+        bool canUndo() const { return !m_history.empty(); }
+        void clearUndoHistory() { m_history.clear(); }
+        void selectAll();
+
+        /// The table keys go to: the one last clicked, while it is on screen.
+        static SPTableElement *keyTarget() { return s_keyTarget; }
 
         SPTableDataSource *dataSource;
         /** When true, zebra stripes continue past the last data row to fill
@@ -53,7 +89,8 @@ class SPTableElement : public SPElement, public SPDropTarget
         /** Replaces the selection; the last row becomes the keyboard anchor. */
         void setSelectedRows(const vector<int>& rows) {
             m_selectedRows = std::set<int>(rows.begin(), rows.end());
-            m_anchorRow = rows.empty() ? -1 : rows.back();
+            m_anchorRow = m_cursorRow = rows.empty() ? -1 : rows.back();
+            m_showCursor = false;
             invalidate();
         }
         int rowAtY(int absoluteY) const;
@@ -100,7 +137,23 @@ class SPTableElement : public SPElement, public SPDropTarget
         CellKey m_pressedCell { -1, -1 };
 
         std::set<int> m_selectedRows;
-        int m_anchorRow  = -1; // last directly-clicked or arrow-moved row
+        int m_anchorRow  = -1; // where a Shift range starts: the last row picked without Shift
+        int m_cursorRow  = -1; // the row keys move: the other end of that range
+        bool m_showCursor = false; // draw the cursor row (Ctrl+arrows move it apart from the selection)
+        void selectRange(int from, int to);
+        void pruneSelection();
+        bool handleKey(const SPKeyEventArgs& key);
+        bool isOnScreen();
+
+        RemoveRows  m_remove;
+        ConfirmRows m_confirm;
+        struct Deletion {
+            std::function<void()> undo;
+            std::vector<int>      rows;
+        };
+        std::vector<Deletion> m_history;
+        static constexpr size_t kMaxHistory = 100;
+        static SPTableElement *s_keyTarget;
         int m_firstRowY  = 0;  // screen y of first data row (set during paint)
         int m_dropIndex = -1;
         static const int kRowH = 18;

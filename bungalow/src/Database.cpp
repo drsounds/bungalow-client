@@ -66,7 +66,8 @@ Database::~Database() {
     }
 }
 
-Database::Database(Database&& other) noexcept : m_db(other.m_db) {
+Database::Database(Database&& other) noexcept
+    : m_db(other.m_db), m_alive(std::move(other.m_alive)), m_nextSnapshot(other.m_nextSnapshot) {
     other.m_db = nullptr;
 }
 
@@ -74,6 +75,8 @@ Database& Database::operator=(Database&& other) noexcept {
     if (this != &other) {
         if (m_db) sqlite3_close(m_db);
         m_db = other.m_db;
+        m_alive = std::move(other.m_alive);
+        m_nextSnapshot = other.m_nextSnapshot;
         other.m_db = nullptr;
     }
     return *this;
@@ -1340,6 +1343,78 @@ void Database::deleteTrack(int64_t trackId)
     sqlite3_finalize(s);
 }
 
+// ── Library snapshots (undo of deletes) ───────────────────────────────────────
+
+namespace {
+// Parents before children, so a restored row finds what it refers to.
+const char* const kLibraryTables[] = {
+    "artists", "labels", "recordings", "releases", "files", "audio_files", "playables",
+    "tracks", "recording_artists", "release_artists", "saves", "track_audio_files",
+    "playable_tracks", "music_service_tracks",
+};
+} // namespace
+
+struct Database::LibrarySnapshot {
+    sqlite3*              db = nullptr;
+    std::weak_ptr<bool>   alive;   // expires with the Database
+    int                   id = 0;
+
+    std::string tableName(const char* table) const {
+        return "temp.undo" + std::to_string(id) + "_" + table;
+    }
+    ~LibrarySnapshot() {
+        if (alive.expired()) return;   // the connection is gone, and its temp tables with it
+        for (const char* table : kLibraryTables) {
+            const std::string sql = "DROP TABLE IF EXISTS " + tableName(table) + ";";
+            sqlite3_exec(db, sql.c_str(), nullptr, nullptr, nullptr);
+        }
+    }
+};
+
+std::shared_ptr<Database::LibrarySnapshot> Database::snapshotLibrary()
+{
+    auto snapshot = std::make_shared<LibrarySnapshot>();
+    snapshot->db = m_db;
+    snapshot->alive = m_alive;
+    snapshot->id = m_nextSnapshot++;
+    for (const char* table : kLibraryTables) {
+        const std::string sql = "CREATE TEMP TABLE undo" + std::to_string(snapshot->id) + "_" + table +
+                                " AS SELECT * FROM " + table + ";";
+        if (sqlite3_exec(m_db, sql.c_str(), nullptr, nullptr, nullptr) != SQLITE_OK)
+            return nullptr;   // the destructor drops what was made
+    }
+    return snapshot;
+}
+
+bool Database::restoreLibrary(const LibrarySnapshot& snapshot)
+{
+    if (sqlite3_exec(m_db, "BEGIN IMMEDIATE;", nullptr, nullptr, nullptr) != SQLITE_OK)
+        return false;
+    // Rows go back table by table in parent-first order; the check waits for the commit.
+    bool ok = sqlite3_exec(m_db, "PRAGMA defer_foreign_keys = ON;", nullptr, nullptr, nullptr) == SQLITE_OK;
+    for (const char* table : kLibraryTables) {
+        if (!ok) break;
+        const std::string sql = std::string("INSERT OR IGNORE INTO ") + table + " SELECT * FROM " +
+                                snapshot.tableName(table) + ";";
+        ok = sqlite3_exec(m_db, sql.c_str(), nullptr, nullptr, nullptr) == SQLITE_OK;
+    }
+    // Deleting a release leaves its tracks standing, only detached from it.
+    if (ok) {
+        const std::string sql =
+            "UPDATE tracks SET release_id = (SELECT s.release_id FROM " + snapshot.tableName("tracks") +
+            " s WHERE s.id = tracks.id) WHERE release_id IS NULL AND id IN (SELECT id FROM " +
+            snapshot.tableName("tracks") + " WHERE release_id IS NOT NULL)"
+            " AND (SELECT s.release_id FROM " + snapshot.tableName("tracks") +
+            " s WHERE s.id = tracks.id) IN (SELECT upc FROM releases);";
+        ok = sqlite3_exec(m_db, sql.c_str(), nullptr, nullptr, nullptr) == SQLITE_OK;
+    }
+    if (sqlite3_exec(m_db, ok ? "COMMIT;" : "ROLLBACK;", nullptr, nullptr, nullptr) != SQLITE_OK && ok) {
+        sqlite3_exec(m_db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        return false;
+    }
+    return ok;
+}
+
 void Database::removeSave(int64_t trackId)
 {
     sqlite3_stmt* s = nullptr;
@@ -1666,11 +1741,12 @@ CustomRow Database::getCustomRow(const std::string& tableName, const std::string
 
 std::string Database::insertCustomRow(const std::string& tableName,
                                const CustomTableDef& def,
-                               const std::vector<std::string>& values)
+                               const std::vector<std::string>& values,
+                               const std::string& givenUuid)
 {
     if (tableName.empty() || def.columns.empty()) return "";
 
-    std::string uuid = generateUUID4();
+    const std::string uuid = givenUuid.empty() ? generateUUID4() : givenUuid;
 
     // Build "INSERT INTO user_<name> (id, col1, col2, ...) VALUES (?, ?, ?,...)"
     std::string cols = "id", placeholders = "?";

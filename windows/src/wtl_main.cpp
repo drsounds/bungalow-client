@@ -302,7 +302,7 @@ public:
 		}
 		SetFocus();
 		SetCapture();
-		app.mouseEvent("mousedown", point.x, point.y, 0, IsCommandDown());
+		app.mouseEvent("mousedown", point.x, point.y, 0, IsCommandDown(), IsShiftDown());
 	}
 
 	void OnLeftButtonUp(UINT, CPoint point) {
@@ -315,7 +315,7 @@ public:
 				ActivateCaptionItem(pressed);
 			return;
 		}
-		app.mouseEvent("mouseup", point.x, point.y, 0, IsCommandDown());
+		app.mouseEvent("mouseup", point.x, point.y, 0, IsCommandDown(), IsShiftDown());
 	}
 
 	void OnMouseMove(UINT, CPoint point) {
@@ -323,7 +323,7 @@ public:
 		SetHoveredItem(item);
 		if (item != CaptionItem::None || pressedItem != CaptionItem::None)
 			return;
-		app.mouseEvent("mousemove", point.x, point.y, 0, IsCommandDown());
+		app.mouseEvent("mousemove", point.x, point.y, 0, IsCommandDown(), IsShiftDown());
 
 		ApplyCursorHint();
 	}
@@ -366,19 +366,20 @@ public:
 
 	void OnRightButtonDown(UINT, CPoint point) {
 		SetCapture();
-		app.mouseEvent("mousedown", point.x, point.y, 1, IsCommandDown());
+		app.mouseEvent("mousedown", point.x, point.y, 1, IsCommandDown(), IsShiftDown());
 	}
 
 	void OnRightButtonUp(UINT, CPoint point) {
 		if (GetCapture() == m_hWnd)
 			ReleaseCapture();
-		app.mouseEvent("mouseup", point.x, point.y, 1, IsCommandDown());
+		app.mouseEvent("mouseup", point.x, point.y, 1, IsCommandDown(), IsShiftDown());
 	}
 
 	static bool IsCommandDown() { return (GetKeyState(VK_CONTROL) & 0x8000) != 0; }
+	static bool IsShiftDown() { return (GetKeyState(VK_SHIFT) & 0x8000) != 0; }
 
 	void OnKeyDown(UINT keyCode, UINT, UINT) {
-		app.keyEvent(static_cast<int>(keyCode), IsCommandDown());
+		app.keyEvent(static_cast<int>(keyCode), IsCommandDown(), IsShiftDown());
 	}
 
 	void OnTimer(UINT_PTR) { app.timer(); }

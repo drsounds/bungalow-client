@@ -3,7 +3,9 @@
 #include "SPTabBarViewElement.h"
 #include "CustomTableDataSource.h"
 
+#include <functional>
 #include <sqlite3.h>
+#include <vector>
 #include <string>
 
 namespace space {
@@ -35,6 +37,9 @@ namespace space {
             int onToolButtonClicked(SPObject* sender, SPEventArgs* args);
             int onRowDblClicked    (SPObject* sender, SPEventArgs* args);
             int onRowRightClicked  (SPObject* sender, SPEventArgs* args);
+            /** Deletes the rows; returns what puts them back (for Ctrl+Z). */
+            std::function<void()> deleteRows(const std::vector<int>& rows);
+            void reloadTable();
 
             SPTableElement*        m_table      = nullptr;
             CustomTableDataSource* m_dataSource = nullptr;

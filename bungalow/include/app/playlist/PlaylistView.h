@@ -30,6 +30,9 @@ protected:
     bool acceptsDrop() const override;
     bool onDropRefs(const std::vector<std::string>& refs, int position) override;
     bool onMoveRows(const std::vector<int>& rows, int position, std::vector<int>& newRows) override;
+    std::function<void()> onDeleteRows(Page& page, const std::vector<int>& rows) override;
+    /** Taking an entry out of a playlist is cheap to undo, so it goes without asking. */
+    bool confirmsDelete() const override { return false; }
 
 private:
     std::string m_uri;

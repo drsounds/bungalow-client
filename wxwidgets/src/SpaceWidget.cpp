@@ -184,7 +184,7 @@ void SpaceWidget::OnSize(wxSizeEvent& event)
 void SpaceWidget::OnLeftDown(wxMouseEvent& event) {
     SetFocus(); // grab keyboard focus so key events are delivered here
     auto pos = event.GetPosition();
-    auto *args = new space::SPMouseEventArgs(0, pos.x, pos.y, event.CmdDown());
+    auto *args = new space::SPMouseEventArgs(0, pos.x, pos.y, event.CmdDown(), event.ShiftDown());
     space::SPEvent evt("mousedown", args, nullptr);
     this->m_leftMouseButtonPressed = true;
     this->getSpace()->dispatchEvent(
@@ -200,7 +200,13 @@ void SpaceWidget::OnKeyDown(wxKeyEvent& event) {
         keyCode = space::SPKeyEventArgs::KeyUp;
     else if (keyCode == WXK_DOWN)
         keyCode = space::SPKeyEventArgs::KeyDown;
-    auto *args = new space::SPKeyEventArgs(keyCode, event.CmdDown());
+    else if (keyCode == WXK_DELETE)
+        keyCode = space::SPKeyEventArgs::KeyDelete;
+#ifdef __WXOSX__
+    else if (keyCode == WXK_BACK)   // the Mac's "delete" key
+        keyCode = space::SPKeyEventArgs::KeyDelete;
+#endif
+    auto *args = new space::SPKeyEventArgs(keyCode, event.CmdDown(), event.ShiftDown());
     space::SPEvent evt("keydown", args, nullptr);
     this->getSpace()->dispatchEvent(
         "keydown",
