@@ -613,6 +613,8 @@ std::unique_ptr<PythonHost> PythonHost::create(const fs::path& home, std::string
         PyConfig_SetString(&config, &config.home, home.wstring().c_str());
         config.module_search_paths_set = 1;
         PyWideStringList_Append(&config.module_search_paths, lib.wstring().c_str());
+        // Compiled standard modules (.pyd), where Python is a shared library.
+        PyWideStringList_Append(&config.module_search_paths, (home / "DLLs").wstring().c_str());
         PyWideStringList_Append(&config.module_search_paths, (lib / "site-packages").wstring().c_str());
         impl->interpreter = std::make_unique<py::scoped_interpreter>(&config, 0, nullptr, false);
 

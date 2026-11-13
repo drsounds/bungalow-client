@@ -253,14 +253,49 @@ if(BUNGALOW_ENABLE_PYTHON)
     if(NOT BUNGALOW_PYTHON_STDLIB OR NOT EXISTS "${BUNGALOW_PYTHON_STDLIB}")
         message(FATAL_ERROR "The Python standard library was not found under ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
     endif()
+    # On Windows vcpkg builds Python as a DLL even for a static triplet: the
+    # interpreter DLL goes next to the executable, the compiled standard
+    # modules (.pyd) to python/DLLs.
+    set(BUNGALOW_PYTHON_RUNTIME_COMMANDS)
+    if(WIN32)
+        set(BUNGALOW_PYTHON_PREFIX "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            file(GLOB BUNGALOW_PYTHON_DLLS "${BUNGALOW_PYTHON_PREFIX}/debug/bin/python3*.dll")
+            file(GLOB BUNGALOW_PYTHON_PYDS "${BUNGALOW_PYTHON_PREFIX}/debug/bin/*.pyd")
+        else()
+            file(GLOB BUNGALOW_PYTHON_DLLS "${BUNGALOW_PYTHON_PREFIX}/bin/python3*.dll")
+            file(GLOB BUNGALOW_PYTHON_PYDS "${BUNGALOW_PYTHON_PREFIX}/bin/*.pyd")
+        endif()
+        if(BUNGALOW_PYTHON_DLLS)
+            list(APPEND BUNGALOW_PYTHON_RUNTIME_COMMANDS
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${BUNGALOW_PYTHON_DLLS} "${CMAKE_BINARY_DIR}")
+            install(FILES ${BUNGALOW_PYTHON_DLLS} DESTINATION .)
+        endif()
+        if(BUNGALOW_PYTHON_PYDS)
+            list(APPEND BUNGALOW_PYTHON_RUNTIME_COMMANDS
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/python/DLLs"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${BUNGALOW_PYTHON_PYDS} "${CMAKE_BINARY_DIR}/python/DLLs")
+            install(FILES ${BUNGALOW_PYTHON_PYDS} DESTINATION python/DLLs)
+        endif()
+    endif()
     add_custom_command(OUTPUT "${CMAKE_BINARY_DIR}/python/stdlib.stamp"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${BUNGALOW_PYTHON_STDLIB}" "${CMAKE_BINARY_DIR}/python/Lib"
+        ${BUNGALOW_PYTHON_RUNTIME_COMMANDS}
         COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_BINARY_DIR}/python/stdlib.stamp"
         COMMENT "Copying the Python standard library")
     add_custom_target(bungalow-python-stdlib ALL DEPENDS "${CMAKE_BINARY_DIR}/python/stdlib.stamp")
 
-    target_compile_definitions(bungalow-client PRIVATE BUNGALOW_PYTHON)
-    target_link_libraries(bungalow-client PRIVATE pybind11::embed)
+    # Everything that embeds Python links this. With MSVC a Debug build links
+    # the debug Python DLL, so its headers must be the debug ones too
+    # (pybind11 otherwise picks the release headers, whose structs differ).
+    add_library(bungalow-python INTERFACE)
+    target_compile_definitions(bungalow-python INTERFACE BUNGALOW_PYTHON)
+    if(MSVC)
+        target_compile_definitions(bungalow-python INTERFACE $<$<CONFIG:Debug>:Py_DEBUG>)
+    endif()
+    target_link_libraries(bungalow-python INTERFACE pybind11::embed)
+
+    target_link_libraries(bungalow-client PRIVATE bungalow-python)
     add_dependencies(bungalow-client bungalow-python-stdlib)
     install(DIRECTORY "${BUNGALOW_PYTHON_STDLIB}/" DESTINATION python/Lib
         PATTERN "__pycache__" EXCLUDE PATTERN "test" EXCLUDE)
@@ -454,11 +489,10 @@ if(BUILD_TESTING)
                 bungalow/src/service/SessionCipher.cpp)
             target_include_directories(bungalow-python-plugin-test PRIVATE bungalow/include)
             target_compile_definitions(bungalow-python-plugin-test PRIVATE
-                BUNGALOW_PYTHON
                 BUNGALOW_TEST_PYTHON_HOME="${CMAKE_BINARY_DIR}/python"
                 BUNGALOW_TEST_PYTHON_PLUGIN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/bungalow/examples/plugin")
             target_link_libraries(bungalow-python-plugin-test PRIVATE
-                nlohmann_json::nlohmann_json pybind11::embed ${CMAKE_DL_LIBS})
+                nlohmann_json::nlohmann_json bungalow-python ${CMAKE_DL_LIBS})
             if(WIN32)
                 target_link_libraries(bungalow-python-plugin-test PRIVATE crypt32)
             endif()

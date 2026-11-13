@@ -157,6 +157,7 @@ void testOtherPlugins(PythonHost& python) {
     // No ID/NAME/VERSION, and a service that only has an identity.
     write(dir / "minimal.py",
           "import bungalow\n"
+          "import json, socket, ssl  # the standard library, compiled modules included\n"
           "class Plain(bungalow.Service):\n"
           "    id, name, icon = 'plain.service', 'Plain', 'icons/Plain.svg'\n"
           "def activate(context):\n"

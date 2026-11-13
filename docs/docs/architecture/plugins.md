@@ -146,9 +146,10 @@ written to stderr and treated as a failed call; it never reaches the host.
 
 The interpreter is isolated: it ignores environment variables and any Python
 installed on the machine, and sees only the standard library shipped in
-`<app>/python/Lib` (plus `Lib/site-packages` there, for pure-Python packages).
-Compiled extension modules (`.pyd`) cannot be loaded, because Python is linked
-statically.
+`<app>/python/Lib` (plus `Lib/site-packages` there, for extra packages). On
+Windows Python itself is `python314.dll` next to the executable, and the
+compiled standard modules (`socket`, `ssl`, `sqlite3`, …) are in
+`<app>/python/DLLs`.
 
 ## Threading
 
