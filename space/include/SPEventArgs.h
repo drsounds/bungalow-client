@@ -88,6 +88,7 @@ public:
     /// both the Delete (backspace) and the forward-delete key. The platform
     /// layer maps its own codes to this one.
     static constexpr int KeyDelete = 0x10003;
+    static constexpr int KeyTab = 0x10004;
     /// Letters and the space bar arrive as their upper-case ASCII code.
     static constexpr int KeyA = 'A';
     static constexpr int KeyZ = 'Z';

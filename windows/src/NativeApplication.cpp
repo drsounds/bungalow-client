@@ -142,6 +142,8 @@ namespace space
             keyCode = SPKeyEventArgs::KeyUp;
         else if (keyCode == VK_DOWN)
             keyCode = SPKeyEventArgs::KeyDown;
+        else if (keyCode == VK_TAB)
+            keyCode = SPKeyEventArgs::KeyTab;
         else if (keyCode == VK_DELETE)
             keyCode = SPKeyEventArgs::KeyDelete;
         auto *args = new SPKeyEventArgs(keyCode, commandDown, shiftDown);

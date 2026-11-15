@@ -1,5 +1,6 @@
 #include "SPTreeViewElement.h"
 #include "SPMouseEventArgs.h"
+#include "SPEventArgs.h"
 #include "SPWindowElement.h"
 #include "SPTreeItem.h"
 #include "SPSkin.h"
@@ -250,6 +251,46 @@ void SPTreeViewElement::treeview_mouseup(SPObject *sender, SPEventArgs *e) {
     treeView->invalidate();
 }
 
+// ── Keyboard ──────────────────────────────────────────────────────────────────
+
+bool SPTreeViewElement::onKeyDown(SPKeyEventArgs &e) {
+    const int code = e.getKeyCode();
+    if ((code != SPKeyEventArgs::KeyUp && code != SPKeyEventArgs::KeyDown) || isEditing())
+        return false;
+
+    vector<SPTreeItem*> rows;
+    for (auto& [item, depth] : flattenVisible())
+        if (!item->isSection() && !item->isSpacer() && !item->isEditOnClick())
+            rows.push_back(item);
+    if (rows.empty()) return false;
+
+    int current = -1;
+    for (size_t i = 0; i < rows.size(); ++i)
+        if (rows[i]->isSelected()) { current = static_cast<int>(i); break; }
+    const int last = static_cast<int>(rows.size()) - 1;
+    const int next = current < 0
+        ? (code == SPKeyEventArgs::KeyDown ? 0 : last)
+        : max(0, min(last, current + (code == SPKeyEventArgs::KeyDown ? 1 : -1)));
+    if (next == current) return true;
+
+    SPTreeItem *target = rows[next];
+    forEachItem([](SPTreeItem* item) { item->setSelected(false); });
+    target->setSelected(true);
+
+    // Keep the row in view.
+    const int top = itemTop(target);
+    if (top < getScrollY())
+        scrollToY(top);
+    else if (top + rowHeight(target) > getScrollY() + getHeight())
+        scrollToY(top + rowHeight(target) - getHeight());
+
+    auto *eventArgs = new TreeViewEventArgs();
+    eventArgs->setItem(target);
+    notify(string("itemselected"), this, eventArgs);
+    invalidate();
+    return true;
+}
+
 // ── Inline editing ────────────────────────────────────────────────────────────
 
 void SPTreeViewElement::beginEdit(SPTreeItem *item, const string& text) {
@@ -337,6 +378,7 @@ SPTreeViewElement::SPTreeViewElement(SPElement *parent)
 	this->setOverflowY(SPOverflow::Auto);
 
 	this->itemHeight = 24;
+	this->setTabIndex(0);   // focusable by click and Tab
 	this->addEventListener(string("mousedown"), SPCallback(&SPTreeViewElement::treeview_mousedown), this, this);
 	this->addEventListener(string("mouseup"),   SPCallback(&SPTreeViewElement::treeview_mouseup),   this, this);
 	this->addEventListener(string("mousemove"), SPCallback(&SPTreeViewElement::treeview_mousemove), this, this);

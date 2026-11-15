@@ -84,6 +84,8 @@ namespace space {
         void endDrag();
         void layoutEditInput();
         void onScrolled() override;
+        /// Up and Down move the selection through the navigable rows.
+        bool onKeyDown(SPKeyEventArgs &e) override;
 	public:
         void treeview_mousedown(SPObject* sender, SPEventArgs* e);
         void treeview_mouseup(SPObject* sender, SPEventArgs* e);

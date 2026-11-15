@@ -536,6 +536,8 @@ namespace space {
         if (event.type == "keydown") {
             auto *ke = dynamic_cast<SPKeyEventArgs *>(event.args);
             if (!ke || !dataSource) return;
+            // Another element (the sidebar tree) has the keyboard focus.
+            if (getFocusedElement() != nullptr && getFocusedElement() != this) return;
             // One table takes the keys: the one last clicked while it is on
             // screen, else the first one that sees the key.
             if (s_keyTarget != this) {

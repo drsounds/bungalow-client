@@ -45,6 +45,7 @@ namespace space {
     class SPFontStyle;
     class SPMouseEventArgs;
     class SPRichText;
+    class SPKeyEventArgs;
 
     /// What an element does with content taller than itself.
     enum class SPOverflow {
@@ -139,6 +140,13 @@ namespace space {
         /// Follows a link of the element's own text on a click, and tracks
         /// the one under the pointer. Returns true if the event was consumed.
         bool handleRichTextMouse(const string &event, SPMouseEventArgs *e);
+        int m_tabIndex = -1;
+        static SPElement *s_focusedElement;
+        /// A key was pressed while this element has the focus. Returns true
+        /// if it was handled.
+        virtual bool onKeyDown(SPKeyEventArgs &) { return false; }
+        /// Called when the focus arrives or leaves; repaint the focus cue here.
+        virtual void onFocusChanged(bool) { invalidate(); }
     public:
         /// Sets the element's text as markup: links, bold, italic, underline,
         /// line breaks and images; see SPRichText for the tags. Text that
@@ -181,6 +189,23 @@ namespace space {
         /// is already at its end the wheel scrolls its ancestors instead.
         /// Returns true if anything scrolled.
         virtual bool mouseWheel(SPMouseEventArgs *e);
+
+        // ── Keyboard focus ───────────────────────────────────────────────
+        /// tabindex="n": an element with n >= 0 can take keyboard focus by a
+        /// click or Tab; -1 (the default) is not focusable. Tab walks the
+        /// focusable elements by tabindex, then document order.
+        int getTabIndex() const { return m_tabIndex; }
+        void setTabIndex(int value) { m_tabIndex = value; }
+        bool isFocusable() const { return m_tabIndex >= 0 && visible; }
+        bool hasFocus() const { return s_focusedElement == this; }
+        /// Gives this element the keyboard focus.
+        void focusElement();
+        /// Removes the keyboard focus from this element, if it has it.
+        void blurElement();
+        static SPElement *getFocusedElement() { return s_focusedElement; }
+        /// Moves the focus to the next (or previous) focusable element under
+        /// root. Returns true if the focus moved.
+        static bool moveFocus(SPElement *root, bool backwards);
 
         /// Set by the application layer to receive XUL load-failure notifications.
         static std::function<void(const std::string&)> s_xulErrorHandler;

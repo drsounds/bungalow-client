@@ -13,6 +13,7 @@
 #include "SPWindowElement.h"
 #include "SPObservable.h"
 #include "SPMouseEventArgs.h"
+#include "SPEventArgs.h"
 #include "SPGraphicsContext.h"
 #include "SPPageElement.h"
 #include "SPHBoxElement.h"
@@ -672,6 +673,9 @@ namespace space {
 		if (args->getAttributeName() == "flex") {
 			this->m_flex = atoi(args->getNewValue().c_str());
 		}
+		if (args->getAttributeName() == "tabindex") {
+			this->m_tabIndex = atoi(args->getNewValue().c_str());
+		}
 		if (args->getAttributeName() == "gap") {
 			this->m_gap = atoi(args->getNewValue().c_str());
 		}
@@ -801,6 +805,8 @@ namespace space {
 	SPElement::~SPElement() {
 		if (s_linkHoverElement == this)
 			s_linkHoverElement = nullptr;
+		if (s_focusedElement == this)
+			s_focusedElement = nullptr;
 	}
 
 	// ── Rich text and links ──────────────────────────────────────────────
@@ -941,16 +947,86 @@ namespace space {
 		return colorScheme;
 	}
 
+	SPElement *SPElement::s_focusedElement = nullptr;
+
+	void SPElement::focusElement()
+	{
+		if (s_focusedElement == this) return;
+		SPElement *previous = s_focusedElement;
+		s_focusedElement = this;
+		if (previous) previous->onFocusChanged(false);
+		this->onFocusChanged(true);
+	}
+
+	void SPElement::blurElement()
+	{
+		if (s_focusedElement != this) return;
+		s_focusedElement = nullptr;
+		this->onFocusChanged(false);
+	}
+
+	static void collectFocusable(SPElement *element, vector<SPElement *> &out)
+	{
+		if (!element->isVisible()) return;
+		if (element->isFocusable()) out.push_back(element);
+		for (auto *child : element->children)
+			if (auto *childElement = dynamic_cast<SPElement *>(child))
+				collectFocusable(childElement, out);
+	}
+
+	bool SPElement::moveFocus(SPElement *root, bool backwards)
+	{
+		vector<SPElement *> order;
+		collectFocusable(root, order);
+		if (order.empty()) return false;
+		// Lower tabindex first; equal ones keep document order.
+		stable_sort(order.begin(), order.end(), [](SPElement *a, SPElement *b) {
+			return a->getTabIndex() < b->getTabIndex();
+		});
+		const auto current = find(order.begin(), order.end(), s_focusedElement);
+		const int count = static_cast<int>(order.size());
+		int next;
+		if (current == order.end())
+			next = backwards ? count - 1 : 0;
+		else
+			next = (static_cast<int>(current - order.begin()) + (backwards ? count - 1 : 1)) % count;
+		order[next]->focusElement();
+		return true;
+	}
+
 	void SPElement::processEvent(const SPEvent& event)
 	{
+		if (event.type == "keydown")
+		{
+			auto *keyArgs = dynamic_cast<SPKeyEventArgs *>(event.args);
+			if (keyArgs != nullptr)
+			{
+				if (this->getParentNode() == nullptr && keyArgs->getKeyCode() == SPKeyEventArgs::KeyTab)
+				{
+					moveFocus(this, keyArgs->getShiftDown());
+					return;
+				}
+				if (s_focusedElement == this && this->onKeyDown(*keyArgs))
+					return;
+			}
+		}
 		if (event.type == "mousedown")
 		{
+			// A click moves the focus to the focusable element under it, or
+			// takes it away; the root runs first so the deepest hit wins.
+			if (this->getParentNode() == nullptr && s_focusedElement != nullptr)
+			{
+				SPElement *previous = s_focusedElement;
+				s_focusedElement = nullptr;
+				previous->onFocusChanged(false);
+			}
 			auto *mouseEventArgs = dynamic_cast<SPMouseEventArgs *>(event.args);
 			if (mouseEventArgs != nullptr)
 			{
 				if (mouseEventArgs->getX() > this->getAbsoluteBounds().x && mouseEventArgs->getX() < this->getAbsoluteBounds().x + this->getWidth() &&
 					mouseEventArgs->getY() > this->getAbsoluteBounds().y && mouseEventArgs->getY() < this->getAbsoluteBounds().y + this->getHeight())
 				{
+					if (this->isFocusable()) this->focusElement();
 					this->dispatchEvent("mousedown", mouseEventArgs, this);
 				}
 
