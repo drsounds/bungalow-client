@@ -2,6 +2,8 @@
 
 #include "SPViewStackElement.h"
 
+#include <shore/concept_context.h>
+
 #include <memory>
 #include <string>
 
@@ -16,15 +18,17 @@ class SearchProvider;
 
 namespace concepts {
 
-/// Registration surface handed to Concept::onActivate(). Every contribution
-/// made through it is recorded, so unregistering the concept undoes exactly
-/// what it added.
-class ConceptContext {
+/// Registration surface handed to Concept::onActivate(): Shore's recording
+/// concept context, extended with what a concept contributes to the client
+/// besides features (Space views, search providers). Every contribution made
+/// through it is recorded, so unregistering the concept undoes exactly what
+/// it added.
+class ConceptContext : public shore::SHConceptContext {
 public:
-    virtual ~ConceptContext() = default;
+    using shore::SHConceptContext::SHConceptContext;
 
     /// Id of the concept being activated.
-    virtual std::string conceptId() const = 0;
+    std::string conceptId() const { return ConceptId(); }
 
     /// Registers a feature; its views and sidebar nodes are wired automatically.
     virtual feature::Feature* registerFeature(std::unique_ptr<feature::Feature> feature) = 0;

@@ -9,31 +9,40 @@ namespace feature {
 FeatureManager::FeatureManager(SPViewStackElement* viewStack) : m_viewStack(viewStack) {}
 
 Feature* FeatureManager::registerAspect(std::unique_ptr<Feature> feature) {
-    Feature* registered = BaseAspectManager::registerAspect(std::move(feature));
-    if (!registered || !m_viewStack) return registered;
+    Feature* raw = feature.get();
+    return Register(std::move(feature)) ? raw : nullptr;
+}
 
-    auto& views = m_views[registered->getId()];
-    for (SPViewElement* view : registered->createViews(m_viewStack)) {
+std::vector<Feature*> FeatureManager::all() const {
+    std::vector<Feature*> result;
+    for (shore::SHFeature* item : All())
+        if (auto* feature = dynamic_cast<Feature*>(item)) result.push_back(feature);
+    return result;
+}
+
+void FeatureManager::OnFeatureRegistered(shore::SHFeature& registered) {
+    auto* feature = dynamic_cast<Feature*>(&registered);
+    if (!feature || !m_viewStack) return;
+
+    auto& views = m_views[feature->getId()];
+    for (SPViewElement* view : feature->createViews(m_viewStack)) {
         if (!view) continue;
         m_viewStack->appendChild(view);
         views.push_back(view);
     }
-    return registered;
 }
 
-void FeatureManager::unregisterAspect(const std::string& id) {
-    auto it = m_views.find(id);
-    if (it != m_views.end()) {
-        // Space elements are never freed: other elements may still hold
-        // listeners on them. Detached and hidden, the views are inert.
-        for (SPViewElement* view : it->second) {
-            m_viewStack->removeChild(view);
-            view->setVisible(false);
-        }
-        m_views.erase(it);
-        m_viewStack->pack();
+void FeatureManager::OnFeatureUnregistering(shore::SHFeature& feature) {
+    auto it = m_views.find(feature.Id());
+    if (it == m_views.end()) return;
+    // Space elements are never freed: other elements may still hold
+    // listeners on them. Detached and hidden, the views are inert.
+    for (SPViewElement* view : it->second) {
+        m_viewStack->removeChild(view);
+        view->setVisible(false);
     }
-    BaseAspectManager::unregisterAspect(id);
+    m_views.erase(it);
+    m_viewStack->pack();
 }
 
 std::vector<navigation::SidebarNode> FeatureManager::sidebarNodes() const {

@@ -1,12 +1,13 @@
 #pragma once
 
-#include "aspect/BaseAspectManager.h"
 #include "concept/Concept.h"
 
+#include <shore/concept_manager.h>
+
 #include <functional>
-#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace space {
 class SPViewStackElement;
@@ -16,10 +17,10 @@ namespace search { class SearchManager; }
 
 namespace concepts {
 
-/// Registry of concepts. Registering a concept activates it with a recording
-/// ConceptContext; unregistering deactivates it and removes everything it
-/// contributed.
-class ConceptManager : public aspect::BaseAspectManager<Concept> {
+/// Shore's registry of concepts, wired to the client. Registering a concept
+/// activates it with a recording ConceptContext; unregistering deactivates
+/// it and removes everything it contributed.
+class ConceptManager : public shore::SHConceptManager {
 public:
     /// What a concept may contribute to.
     struct Host {
@@ -30,18 +31,22 @@ public:
     };
 
     explicit ConceptManager(Host host);
-    /// Deactivates every concept (in reverse order) without touching the UI,
-    /// which is being torn down.
-    ~ConceptManager() override;
 
-    Concept* registerAspect(std::unique_ptr<Concept> item) override;
-    void unregisterAspect(const std::string& id) override;
+    /// Takes ownership of the concept, activates it and returns it. A concept
+    /// with the same id is unregistered first.
+    Concept* registerAspect(std::unique_ptr<Concept> item);
+    void unregisterAspect(const std::string& id) { Unregister(id); }
+    Concept* get(const std::string& id) const { return dynamic_cast<Concept*>(Get(id)); }
+    /// Every registered concept, in registration order.
+    std::vector<Concept*> all() const;
+
+protected:
+    std::unique_ptr<shore::SHConceptContext> CreateContext(const std::string& conceptId) override;
 
 private:
     class RecordingContext;
 
     Host m_host;
-    std::map<std::string, std::unique_ptr<RecordingContext>> m_contexts;
 };
 
 } // namespace concepts

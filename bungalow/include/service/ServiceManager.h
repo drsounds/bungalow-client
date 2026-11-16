@@ -1,8 +1,9 @@
 #pragma once
 
-#include "aspect/BaseAspectManager.h"
 #include "service/AccountManager.h"
 #include "service/Service.h"
+
+#include <shore/service_manager.h>
 
 #include <functional>
 #include <memory>
@@ -12,8 +13,8 @@
 namespace space {
 namespace service {
 
-/// Registry of the installed Services, which drives their lifecycle and
-/// selects them by capability:
+/// Shore's registry of the installed Services, which drives their lifecycle
+/// and selects them by capability, plus the client's accounts:
 ///
 ///     for (MusicService* ms : services.getServices<MusicService>()) …
 ///     AuthAspect* auth = services.getService<AuthAspect>();
@@ -22,17 +23,17 @@ namespace service {
 /// including ones that don't derive from Service: a Service is offered for
 /// every interface it implements. Every Service is an AuthAspect, so filter
 /// on isLoggedIn()/login() rather than on the type.
-class ServiceManager : public aspect::BaseAspectManager<Service> {
+class ServiceManager : public shore::SHServiceManager {
 public:
     ServiceManager() = default;
     /// Stops and destroys every remaining Service.
     ~ServiceManager() override;
 
-    ServiceManager(const ServiceManager&) = delete;
-    ServiceManager& operator=(const ServiceManager&) = delete;
-
     /// Registers the Service (replacing one with the same id) and calls onCreate().
-    Service* registerAspect(std::unique_ptr<Service> service) override;
+    Service* registerAspect(std::unique_ptr<Service> service) {
+        Service* raw = service.get();
+        return Register(std::move(service)) ? raw : nullptr;
+    }
     /// registerAspect() that hands back the Service with its own type —
     /// capabilities derive from Service virtually, so the Service* that
     /// registerAspect() returns can't be static_cast back down.
@@ -43,17 +44,21 @@ public:
     }
 
     /// Calls onStop() and onDestroy(), then destroys the Service.
-    void unregisterAspect(const std::string& id) override;
+    void unregisterAspect(const std::string& id) { Unregister(id); }
+
+    Service* get(const std::string& id) const { return dynamic_cast<Service*>(Get(id)); }
+    /// Every Service, in registration order.
+    std::vector<Service*> all() const { return GetServices<Service>(); }
 
     /// onStart() on every Service, in registration order.
-    void startAll();
+    void startAll() { StartAll(); }
     /// Whether startAll() ran (and stopAll() has not since): whoever registers
     /// a Service afterwards calls its onStart() itself.
-    bool isStarted() const { return m_started; }
+    bool isStarted() const { return IsStarted(); }
     /// onStop() on every Service, in registration order.
-    void stopAll();
+    void stopAll() { StopAll(); }
     /// Stops, destroys and unregisters every Service.
-    void shutdownAll();
+    void shutdownAll() { ShutdownAll(); }
 
     /// Signs in to the Service with that id. Asynchronous: returns at once,
     /// then exactly one callback runs on the UI thread. On success the session
@@ -71,23 +76,13 @@ public:
 
     /// The first Service exposing capability T, or nullptr.
     template <class T>
-    T* getService() const {
-        for (Service* s : all())
-            if (T* t = dynamic_cast<T*>(s)) return t;
-        return nullptr;
-    }
+    T* getService() const { return GetService<T>(); }
 
     /// Every Service exposing capability T, in registration order.
     template <class T>
-    std::vector<T*> getServices() const {
-        std::vector<T*> result;
-        for (Service* s : all())
-            if (T* t = dynamic_cast<T*>(s)) result.push_back(t);
-        return result;
-    }
+    std::vector<T*> getServices() const { return GetServices<T>(); }
 
 private:
-    bool m_started = false;
     // Shared, so a sign-in finishing after the manager is gone stays safe.
     std::shared_ptr<AccountManager> m_accounts = std::make_shared<AccountManager>();
 };

@@ -5,6 +5,8 @@
 
 #include "SPViewStackElement.h"
 
+#include <shore/feature.h>
+
 #include <vector>
 
 namespace space {
@@ -12,9 +14,10 @@ class SPViewElement;
 
 namespace feature {
 
-/// A few screens plus their sidebar navigation. Registered with a
-/// FeatureManager, directly or through ConceptContext::registerFeature().
-class Feature : public aspect::Aspect {
+/// A few screens plus their sidebar navigation: a shore::SHFeature that
+/// contributes Space views. Registered with a FeatureManager, directly or
+/// through ConceptContext::registerFeature().
+class Feature : public aspect::AspectNames<shore::SHFeature> {
 public:
     /// Views to mount in the view stack when the feature is registered.
     /// Create them with viewStack as their parent.

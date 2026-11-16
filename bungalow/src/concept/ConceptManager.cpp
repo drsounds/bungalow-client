@@ -12,20 +12,19 @@
 namespace space {
 namespace concepts {
 
-/// Forwards contributions to the host and remembers them for undo().
+/// Forwards contributions to the host and remembers them for Undo(). Features
+/// are recorded by the Shore base class.
 class ConceptManager::RecordingContext : public ConceptContext {
 public:
     RecordingContext(std::string conceptId, const Host& host)
-        : m_conceptId(std::move(conceptId)), m_host(host) {}
-
-    std::string conceptId() const override { return m_conceptId; }
+        : ConceptContext(std::move(conceptId), host.features), m_host(host) {}
 
     feature::Feature* registerFeature(std::unique_ptr<feature::Feature> feature) override {
         if (!feature || !m_host.features) return nullptr;
-        m_features.push_back(feature->getId());
-        feature::Feature* registered = m_host.features->registerAspect(std::move(feature));
+        feature::Feature* raw = feature.get();
+        if (!RegisterFeature(std::move(feature))) return nullptr;
         refreshSidebar();
-        return registered;
+        return raw;
     }
 
     void registerView(SPViewElement* view) override {
@@ -48,58 +47,44 @@ public:
     }
 
     /// Removes every contribution, newest first.
-    void undo() {
+    void Undo() override {
         for (auto it = m_providers.rbegin(); it != m_providers.rend(); ++it)
             m_host.search->unregisterAspect(*it);
-        for (auto it = m_features.rbegin(); it != m_features.rend(); ++it)
-            m_host.features->unregisterAspect(*it);
-        // Space elements are never freed (see FeatureManager::unregisterAspect).
+        ConceptContext::Undo(); // the features
+        // Space elements are never freed (see FeatureManager::OnFeatureUnregistering).
         for (auto it = m_views.rbegin(); it != m_views.rend(); ++it) {
             m_host.viewStack->removeChild(*it);
             (*it)->setVisible(false);
         }
         if (!m_views.empty()) m_host.viewStack->pack();
         m_providers.clear();
-        m_features.clear();
         m_views.clear();
         refreshSidebar();
     }
 
 private:
-    std::string m_conceptId;
     const Host& m_host;
-    std::vector<std::string> m_features;
     std::vector<std::string> m_providers;
     std::vector<SPViewElement*> m_views;
 };
 
-ConceptManager::ConceptManager(Host host) : m_host(std::move(host)) {}
+ConceptManager::ConceptManager(Host host)
+    : shore::SHConceptManager(host.features), m_host(std::move(host)) {}
 
-ConceptManager::~ConceptManager() {
-    auto concepts = all();
-    for (auto it = concepts.rbegin(); it != concepts.rend(); ++it)
-        (*it)->onDeactivate();
+std::unique_ptr<shore::SHConceptContext> ConceptManager::CreateContext(const std::string& conceptId) {
+    return std::make_unique<RecordingContext>(conceptId, m_host);
 }
 
 Concept* ConceptManager::registerAspect(std::unique_ptr<Concept> item) {
-    Concept* registered = BaseAspectManager::registerAspect(std::move(item));
-    if (!registered) return nullptr;
-
-    auto context = std::make_unique<RecordingContext>(registered->getId(), m_host);
-    RecordingContext& ctx = *context;
-    m_contexts[registered->getId()] = std::move(context);
-    registered->onActivate(ctx);
-    return registered;
+    Concept* raw = item.get();
+    return Register(std::move(item)) ? raw : nullptr;
 }
 
-void ConceptManager::unregisterAspect(const std::string& id) {
-    if (Concept* registered = get(id)) registered->onDeactivate();
-    auto it = m_contexts.find(id);
-    if (it != m_contexts.end()) {
-        it->second->undo();
-        m_contexts.erase(it);
-    }
-    BaseAspectManager::unregisterAspect(id);
+std::vector<Concept*> ConceptManager::all() const {
+    std::vector<Concept*> result;
+    for (shore::SHConcept* item : All())
+        if (auto* registered = dynamic_cast<Concept*>(item)) result.push_back(registered);
+    return result;
 }
 
 } // namespace concepts
